@@ -539,7 +539,7 @@ function finish(base: Omit<Job, 'difficulty' | 'reward' | 'xp' | 'minutes'>, fac
   const score = factors.reduce((s, f) => s + f.pts, 0);
   const stars = score < 9 ? 1 : score < 18 ? 2 : score < 30 ? 3 : score < 45 ? 4 : 5;
   const difficulty: Difficulty = { stars, score, factors };
-  const labor = 5000 + score * 1100;
+  const labor = 5000 + score * 800;
   const reward = Math.round((base.par * 1.12 + labor) / 500) * 500;
   return { ...base, difficulty, reward, xp: 20 + score * 6, minutes: Math.round(4 + score * 0.45) };
 }

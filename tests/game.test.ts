@@ -83,3 +83,25 @@ describe('ゲームの進行', () => {
     expect(lo).toBeLessThan(0.7); expect(hi).toBeGreaterThan(1.5);
   });
 });
+
+describe('バランス', () => {
+  it('定価で機材を買って納品し続けても資金が尽きず、最高レベルまで届く', () => {
+    const g = new Game(newSave(77));
+    g.skipTutorial();
+    let jobs = 0, minMoney = g.s.money;
+    while (g.level < 14 && jobs < 200) {
+      // いちばん難しい構築の依頼を受け、模範解答の機材を定価で買ったことにする
+      const o = g.s.board.filter(x => x.kind === 'build').pop()!, job = g.job(o);
+      g.accept(o, false);
+      g.s.money -= job.par;
+      minMoney = Math.min(minMoney, g.s.money);
+      g.s.active!.world = clone(job.solution);
+      expect(g.deliver(evaluate(job.solution, job.checks.map(c => c.check)))).not.toBeNull();
+      jobs++;
+    }
+    console.log(`Lv.14 まで ${jobs}件 / 最少資金 ${minMoney} / 最終資金 ${g.s.money}`);
+    expect(g.level).toBe(14);
+    expect(minMoney).toBeGreaterThan(0);
+    expect(jobs).toBeGreaterThan(30);
+  });
+});

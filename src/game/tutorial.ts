@@ -21,7 +21,7 @@ const never = () => false;
 
 export const TUTORIALS: Tutorial[] = [
   {
-    id: 't1', title: 'はじめての配線', summary: 'PC2台をL2スイッチでつなぎ、IPアドレスを設定します。', xp: 120,
+    id: 't1', title: 'はじめての配線', summary: 'PC2台をL2スイッチでつなぎ、IPアドレスを設定します。', xp: 180,
     steps: [
       { text: 'ようこそ。最初の仕事は、PC2台を通信できるようにすることです。右の「お客様の機器」から PC-1 を机の上にドラッグしてください。', target: '[data-pal="sup:pc1"]', done: c => has(c, 'pc1') },
       { text: '同じように PC-2 も机に置きます。', target: '[data-pal="sup:pc2"]', done: c => has(c, 'pc2') },
@@ -35,7 +35,7 @@ export const TUTORIALS: Tutorial[] = [
     ],
   },
   {
-    id: 't2', title: 'インターネットにつなぐ', summary: 'ルーターを使って、事務所のPCをインターネットにつなぎます。', xp: 180,
+    id: 't2', title: 'インターネットにつなぐ', summary: 'ルーターを使って、事務所のPCをインターネットにつなぎます。', xp: 270,
     steps: [
       { text: '今度はインターネットにつなぎます。机の奥の雲が、契約済みの回線です。まず PC-1、PC-2、プリンタ を机に置いてください。', target: '#palette', done: c => ['pc1', 'pc2', 'prn'].every(x => has(c, x)) },
       { text: 'L2スイッチ と ルーター を購入して机に置きます。ルーターは、社内のネットワークとインターネットをつなぐ機器です。', target: '[data-pal="buy:router"]', done: c => !!kind(c, 'l2') && !!kind(c, 'router') },

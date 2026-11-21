@@ -142,7 +142,7 @@ try {
   // ---- 高レベルの依頼を画面に出しても崩れない ----
   for (const lv of [6, 9, 12]) {
     for (const i of [1, 4]) {
-      await page.evaluate(([lv, i]) => { const g = window.app.game; g.s.xp = 30 * (lv - 1) * (lv + 2); g.s.week += 1; g.refreshBoard(); g.accept(g.s.board[i], false); window.app.show('bench'); }, [lv, i]);
+      await page.evaluate(([lv, i]) => { const g = window.app.game; g.s.xp = 45 * (lv - 1) * (lv + 2); g.s.week += 1; g.refreshBoard(); g.accept(g.s.board[i], false); window.app.show('bench'); }, [lv, i]);
       await solve();
       const ids = await page.evaluate(() => window.__bench.world.devices.map(d => d.id));
       for (const id of ids) { await page.evaluate(x => window.__bench.select(x), id); ok(await page.locator('#panel h2').count() === 1, `Lv${lv} パネル ${id}`); }

@@ -8,7 +8,7 @@ import { TUTORIALS, tutorialJob } from './tutorial';
 export const MAX_LEVEL = 14;
 export const START_MONEY = 30000;
 /** レベル n になるのに必要な累計経験値 */
-export const xpFor = (n: number): number => 30 * (n - 1) * (n + 2);
+export const xpFor = (n: number): number => 45 * (n - 1) * (n + 2);
 
 export interface LevelInfo { level: number; title: string; unlocks: string[] }
 export const LEVELS: LevelInfo[] = [
