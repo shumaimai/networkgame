@@ -10,7 +10,8 @@ html, body { height: 100%; margin: 0; overflow: hidden; background: #05080f; }
 body { font-family: var(--sans); font-weight: 500; color: var(--text); user-select: none; -webkit-user-select: none; cursor: default; }
 img { -webkit-user-drag: none; }
 #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center; overflow: hidden; background: var(--bg); font-size: 18px; line-height: 1.5; }
-.screen { position: absolute; inset: 0; }
+.screen { position: absolute; inset: 0; animation: screen-in .28s ease-out; }
+@keyframes screen-in { from { opacity: 0; transform: scale(1.012); } }
 .hidden { display: none !important; }
 h1, h2, h3, h4, p { margin: 0; }
 h2 { font-size: 26px; font-weight: 900; letter-spacing: .02em; }

@@ -57,6 +57,8 @@ export class App {
     this.unmount?.();
     this.closeModal();
     this.current = id;
+    this.screen.className = '';
+    void this.screen.offsetWidth; // 入場アニメーションをやり直す
     this.screen.className = 'screen s-' + id;
     this.screen.innerHTML = '';
     this.unmount = SCREENS[id](this, this.screen);

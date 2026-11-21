@@ -26,6 +26,8 @@ const S = {
       const a = g.s.active; a.world = JSON.parse(JSON.stringify(g.activeJob.solution)); window.app.show('bench'); }, process.argv[3] ?? 'トランク');
     await page.evaluate(k => { const b = window.__bench; b.select((b.world.devices.find(x => x.kind === k) ?? b.world.devices[1]).id); }, process.argv[4] ?? 'l2m');
   },
+  result: async () => { await S.solved(); await page.click('[data-act="deliver"]'); await page.waitForTimeout(1800); },
+  help: async () => { await S.solved(); await page.click('[data-act="help"]'); for (const k of ['plan', 'answer']) await page.click(`[data-act="use-help"][data-k="${k}"]`); },
   trouble: async () => {
     await page.evaluate(() => { const g = window.app.game; g.skipTutorial(); g.s.xp = 2000; g.refreshBoard(); g.accept(g.s.board[3], false); window.app.show('bench'); });
     await page.evaluate(() => { const b = window.__bench; b.select(b.world.devices.find(x => x.kind === 'pc').id); });
