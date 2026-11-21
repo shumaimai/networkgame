@@ -340,8 +340,9 @@ svg.desk text { font-family: var(--sans); fill: var(--text); text-anchor: middle
 .dev .dname.side, .dev .dip.side { text-anchor: start; }
 .dev .drole { font-size: 12px; font-weight: 700; fill: #9ae6b4; }
 .dev .drole.none { fill: var(--orange); }
-.dev .dip { font-size: 13px; font-family: var(--mono); fill: #86d8ef; paint-order: stroke; stroke: #131c31; stroke-width: 3px; }
+.dev .dip { font-size: 12.5px; letter-spacing: -.3px; font-family: var(--mono); fill: #86d8ef; paint-order: stroke; stroke: #131c31; stroke-width: 3px; }
 .dev .dip.warn { fill: var(--orange); }
+.dev .dip.auto { fill: #b9f0c9; font-style: italic; }
 .dev .plabel { font-size: 10.5px; fill: var(--mute); font-family: var(--mono); }
 .dev .plabel.start { text-anchor: start; }
 .dev .plabel.in { font-size: 9px; font-weight: 700; fill: #0b1222; }

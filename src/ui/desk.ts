@@ -159,7 +159,7 @@ export class Desk {
       }
       y += 16;
       const e = this.host.net.eff.get(d.id);
-      if (e?.dhcp) h += e.ip != null ? `<text class="dip" y="${y}">${ipStr(e.ip)}${pf(e.prefix)} 自動</text>` : `<text class="dip warn" y="${y}">DHCP 取得できず</text>`;
+      if (e?.dhcp) h += e.ip != null ? `<text class="dip auto" y="${y}">${ipStr(e.ip)}${pf(e.prefix)}</text>` : `<text class="dip warn" y="${y}">取得できず</text>`;
       else h += d.cfg.ip ? `<text class="dip" y="${y}">${esc(d.cfg.ip)}${pf(d.cfg.prefix)}</text>` : `<text class="dip warn" y="${y}">IP未設定</text>`;
     } else if (d.kind === 'internet') {
       h += `<text class="dname" y="-58">インターネット</text>`;

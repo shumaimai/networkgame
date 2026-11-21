@@ -18,6 +18,10 @@ describe('依頼の自動生成', () => {
           else expect(job.par).toBeGreaterThan(0);
           expect(job.reward).toBeGreaterThan(job.par);
           for (const d of [...job.solution.devices]) { expect(d.x, `${job.id} ${d.name} x`).toBeGreaterThan(30); expect(d.y).toBeGreaterThan(30); }
+          const ds = job.solution.devices;
+          for (let i = 0; i < ds.length; i++) for (let k = i + 1; k < ds.length; k++) {
+            expect(Math.abs(ds[i].x - ds[k].x) >= 70 || Math.abs(ds[i].y - ds[k].y) >= 100, `${job.id} L${level} ${ds[i].name} と ${ds[k].name} が重なる`).toBe(true);
+          }
           for (const t of job.tags) tags[t] = (tags[t] ?? 0) + 1;
           stars[job.difficulty.stars] = (stars[job.difficulty.stars] ?? 0) + 1;
           n++;

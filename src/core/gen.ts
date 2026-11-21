@@ -477,22 +477,28 @@ function planHints(f: Feats): string[] {
 function layout(b: Builder, t: { groups: Group[]; inet: Device | null; gwDev: Device | null; l3: Device | null; side: Device[]; web: Device | null }): void {
   const cx = t.side.length ? DESK_W / 2 - 90 : DESK_W / 2;
   const put = (d: Device | null | undefined, x: number, y: number) => { if (d) { d.x = Math.round(x); d.y = Math.round(y); } };
-  put(t.inet, cx, 80);
-  put(t.gwDev, cx, 205);
-  put(t.web, cx + 330, 205);
-  put(t.l3, cx, 340);
   const n = t.groups.reduce((s, g) => s + g.hosts.length, 0), gaps = t.groups.length - 1;
   const width = (t.side.length ? DESK_W - 330 : DESK_W - 140);
   const step = Math.min(132, width / (n + gaps * 0.7));
-  let x = cx - (step * (n - 1 + gaps * 0.7)) / 2;
   const two = step < 112;
+  // ある段だけを、上から下まで等間隔に並べる
+  const hasSw = t.groups.some(g => g.sw);
+  const tiers = [t.inet ? 'inet' : '', t.gwDev ? 'gw' : '', t.l3 ? 'l3' : '', hasSw ? 'sw' : '', 'host'].filter(Boolean);
+  const top = t.inet ? 82 : 150, bottom = two ? 585 : 650;
+  const yOf = (k: string) => (tiers.length === 1 ? bottom : top + ((bottom - top) * tiers.indexOf(k)) / (tiers.length - 1));
+  put(t.inet, cx, yOf('inet'));
+  put(t.gwDev, cx, yOf('gw'));
+  put(t.web, cx + 330, yOf('gw'));
+  put(t.l3, cx, yOf('l3'));
+  let x = cx - (step * (n - 1 + gaps * 0.7)) / 2;
   let k = 0;
   for (const g of t.groups) {
     const xs: number[] = [];
-    for (const h of g.hosts) { put(h, x, two && k % 2 ? 705 : two ? 610 : 660); xs.push(x); x += step; k++; }
+    for (const h of g.hosts) { put(h, x, yOf('host') + (two && k % 2 ? 110 : 0)); xs.push(x); x += step; k++; }
     x += step * 0.7;
     const mid = xs.reduce((s, v) => s + v, 0) / xs.length;
-    put(g.sw, t.l3 || t.groups.length > 1 ? mid : cx, t.l3 ? 480 : t.gwDev ? 400 : 330);
+    put(g.sw, t.groups.length > 1 ? mid : cx, yOf('sw'));
   }
-  t.side.forEach((d, i) => put(d, DESK_W - 130, 330 + i * 150));
+  const sideY = yOf(t.l3 ? 'l3' : hasSw ? 'sw' : 'host');
+  t.side.forEach((d, i) => put(d, DESK_W - 130, Math.min(sideY, 480) + i * 150));
 }
