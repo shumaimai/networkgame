@@ -38,6 +38,8 @@ export interface Net {
   eff: Map<string, Eff>;
   adj: Map<string, Edge[]>;
   trace: TraceItem[] | null;
+  /** ループで通信できなくなっている区画 */
+  storm: Set<string>;
 }
 export type Fail = { ok: false; reason: string };
 const fail = <T extends object>(reason: string, extra?: T): Fail & T => ({ ok: false, reason, ...(extra as T) });
@@ -188,7 +190,20 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
     e.prefix = Number(o.pool.prefix); e.gw = parseIp(o.pool.gw); e.dns = parseIp(o.pool.dns); e.lease = o.by;
     add(d, 'eth0', node, e.ip, e.prefix);
   }
-  return { devices, byId, ifaces, eff, adj, trace: opts.trace ? [] : null };
+  // ループの検出: スイッチ同士のケーブルが輪になり、その輪にSTPのないL2スイッチが入っていると通信できなくなる
+  const swLike = (id: string) => { const k = byId.get(id)?.kind; return k === 'l2' || k === 'l2m' || k === 'l3'; };
+  const deg = new Map<string, number>();
+  let live = cables.filter(c => byId.has(c.a.dev) && byId.has(c.b.dev) && swLike(c.a.dev) && swLike(c.b.dev));
+  for (;;) {
+    deg.clear();
+    for (const c of live) { deg.set(c.a.dev, (deg.get(c.a.dev) ?? 0) + 1); deg.set(c.b.dev, (deg.get(c.b.dev) ?? 0) + 1); }
+    const next = live.filter(c => deg.get(c.a.dev)! > 1 && deg.get(c.b.dev)! > 1);
+    if (next.length === live.length) break;
+    live = next;
+  }
+  const storm = new Set<string>();
+  for (const id of deg.keys()) if (byId.get(id)!.kind === 'l2') for (const t of tags) storm.add(find(sw(id, t)));
+  return { devices, byId, ifaces, eff, adj, trace: opts.trace ? [] : null, storm };
 }
 
 const ifs = (net: Net, dev: Device): Iface[] => net.ifaces.filter(i => i.dev === dev);
@@ -299,6 +314,7 @@ function send(net: Net, src: Device, srcIp: number, dst: number, svc: Svc, back 
       wanOut.push(cur);
       if (!back && (cur.cfg as GwCfg).nat) { nats.push({ dev: cur, ip: r.iface.ip }); curSrc = r.iface.ip; }
     }
+    if (net.storm.has(r.iface.seg)) return stop(`${cur.name} のつながるネットワークでループが起きています(スイッチ同士のケーブルが輪になっている)`);
     const n = neighbors(net, r.iface, r.hop);
     if (n.length > 1) return stop(`IPアドレス ${ipStr(r.hop)} が重複しています(${n.map(i => i.dev.name).join(' / ')})`);
     if (!n.length) {

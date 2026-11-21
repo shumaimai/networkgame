@@ -2,7 +2,7 @@
 // apply は机の上の状態を書き換え、何を壊したかの説明を返す。その構成に当てはまらなければ null
 import { ipStr, parseIp } from './ip';
 import { Rng, pick } from './job';
-import { Device, GwCfg, L3Cfg, ServerCfg, World, isEndpoint, isGateway } from './model';
+import { Device, GwCfg, L3Cfg, ServerCfg, SwitchCfg, World, isEndpoint, isGateway } from './model';
 
 export interface Fault { key: string; weight: number; apply: (w: World, r: Rng) => string | null }
 
@@ -130,16 +130,43 @@ export const faultCatalog: Fault[] = [
     return `${d.name} のルート ${rt.dest} のネクストホップが違う(${rt.via})。正しくは ${old}`;
   } },
   { key: 'vlan-port', weight: 3, apply: (w, r) => {
-    const d = w.devices.find(x => x.kind === 'l3');
+    const d = some(r, w.devices.filter(x => x.kind === 'l3' || x.kind === 'l2m'));
     if (!d) return null;
-    const c = d.cfg as L3Cfg;
-    const used = c.portVlan.map((v, i) => (v !== 99 && w.cables.some(x => (x.a.dev === d.id && x.a.port === i) || (x.b.dev === d.id && x.b.port === i)) ? i : -1)).filter(i => i >= 0);
+    const c = d.cfg as SwitchCfg;
+    const used = c.portVlan.map((v, i) => (v !== 99 && c.portMode[i] !== 'trunk' && w.cables.some(x => (x.a.dev === d.id && x.a.port === i) || (x.b.dev === d.id && x.b.port === i)) ? i : -1)).filter(i => i >= 0);
     const i = some(r, used);
-    const other = i == null ? undefined : c.portVlan.find(v => v !== c.portVlan[i] && v !== 99 && v !== 1);
+    const other = i == null ? undefined : used.map(k => c.portVlan[k]).find(v => v !== c.portVlan[i]);
     if (i == null || other === undefined) return null;
     const old = c.portVlan[i];
     c.portVlan[i] = other;
     return `${d.name} のポート${i + 1}のVLANが ${other} になっている。正しくは ${old}`;
+  } },
+  { key: 'trunk-access', weight: 3, apply: (w, r) => {
+    const d = some(r, w.devices.filter(x => (x.kind === 'l3' || x.kind === 'l2m') && (x.cfg as SwitchCfg).portMode.includes('trunk')));
+    if (!d) return null;
+    const c = d.cfg as SwitchCfg, i = c.portMode.indexOf('trunk');
+    c.portMode[i] = 'access';
+    return `${d.name} のポート${i + 1}がトランクになっていない(相手側はトランク)`;
+  } },
+  { key: 'wifi-key', weight: 2, apply: w => {
+    const d = w.devices.find(x => x.kind === 'pc' && x.cfg.wifi?.ssid);
+    if (!d) return null;
+    const old = d.cfg.wifi.key;
+    d.cfg.wifi.key = old.slice(0, -1) + (old.endsWith('0') ? '1' : '0');
+    return `${d.name} の無線LANの暗号化キーが違う(${d.cfg.wifi.key})。正しくは ${old}`;
+  } },
+  { key: 'wifi-ssid', weight: 2, apply: w => {
+    const ap = w.devices.find(x => x.kind === 'ap' && x.cfg.ssid);
+    if (!ap) return null;
+    const old = ap.cfg.ssid;
+    ap.cfg.ssid = old.replace('-wifi', '-guest');
+    return `${ap.name} のSSIDが違う(${ap.cfg.ssid})。正しくは ${old}`;
+  } },
+  { key: 'mail-off', weight: 1, apply: w => {
+    const s = servers(w, c => c.mailOn)[0];
+    if (!s) return null;
+    s.cfg.mailOn = false;
+    return `${s.name} のメールサービスが止まっている`;
   } },
   { key: 'record-wrong', weight: 2, apply: (w, r) => {
     const s = some(r, servers(w, c => c.dnsOn && c.records.length > 0));

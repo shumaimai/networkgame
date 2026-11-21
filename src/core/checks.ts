@@ -14,7 +14,9 @@ export type Check =
   | { t: 'dhcp'; devs: string[] }
   | { t: 'flow'; from: string[]; to: Target; svc: Svc; expect: 'ok' | 'ng'; via?: 'proxy' }
   | { t: 'directWeb'; from: string[] }   // プロキシを通さず直接Webに出られないこと
-  | { t: 'noProxy'; from: string[] };    // 社内のプロキシを使えないこと
+  | { t: 'noProxy'; from: string[] }     // 社内のプロキシを使えないこと
+  | { t: 'wifi'; devs: string[] }        // 無線でつながっていること
+  | { t: 'redundant'; checks: Check[] }; // スイッチ間のケーブルが1本切れても通信が続くこと
 
 export interface CheckResult { ok: boolean; reason?: string }
 const ok: CheckResult = { ok: true };
@@ -23,9 +25,21 @@ const WEB_PROBE = parseIp(EXTERNAL['www.example.com'])!;
 
 export type NameOf = (id: string) => string;
 
-function checkOne(net: Net, q: Check, nameOf: NameOf): CheckResult {
+function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResult {
+  if (q.t === 'redundant') {
+    const kind = (id: string) => net.byId.get(id)?.kind ?? '';
+    const sw = (id: string) => ['l2', 'l2m', 'l3'].includes(kind(id));
+    const base = q.checks.map(c => checkOne(net, c, nameOf)).find(r => !r.ok);
+    if (base) return base;
+    for (const c of world?.cables ?? []) {
+      if (!sw(c.a.dev) || !sw(c.b.dev)) continue;
+      const cut = build(world!.devices, world!.cables.filter(x => x !== c));
+      if (q.checks.some(x => !checkOne(cut, x, nameOf).ok)) return ng(`${nameOf(c.a.dev)} と ${nameOf(c.b.dev)} の間のケーブルが切れると、通信できなくなります`);
+    }
+    return ok;
+  }
   const dev = (id: string) => net.byId.get(id);
-  const ids = q.t === 'addr' || q.t === 'dhcp' ? q.devs : q.from;
+  const ids = q.t === 'addr' || q.t === 'dhcp' || q.t === 'wifi' ? q.devs : q.from;
   const tgt = q.t === 'flow' && 'dev' in q.to && q.to.dev ? [q.to.dev] : [];
   const missing = [...ids, ...tgt].find(id => !dev(id));
   if (missing) return ng(`${nameOf(missing)} がまだ机に置かれていません`);
@@ -56,6 +70,8 @@ function checkOne(net: Net, q: Check, nameOf: NameOf): CheckResult {
         if (!e?.dhcp) return ng(`${d.name} が「自動取得(DHCP)」になっていません`);
         return e.ip != null ? ok : ng(`${d.name} はIPアドレスを取得できていません(${e.note ?? ''})`);
       });
+    case 'wifi':
+      return each(q.devs, d => (net.eff.get(d.id)?.ap ? ok : ng(`${d.name} が無線でつながっていません(ケーブルを外し、SSIDと暗号化キーをアクセスポイントに合わせます)`)));
     case 'directWeb':
       return each(q.from, s => {
         const miss = needIp(s);
@@ -107,7 +123,7 @@ function checkOne(net: Net, q: Check, nameOf: NameOf): CheckResult {
 
 export function evaluate(world: World, checks: Check[], nameOf: NameOf = id => id): CheckResult[] {
   const net = build(world.devices, world.cables);
-  return checks.map(q => checkOne(net, q, nameOf));
+  return checks.map(q => checkOne(net, q, nameOf, world));
 }
 
 const targetLabel = (to: Target, nameOf: NameOf): string =>
@@ -124,6 +140,8 @@ export function describe(q: Check, nameOf: NameOf, group?: string): string {
   switch (q.t) {
     case 'addr': return `${who(q.devs)} のIPアドレスが ${q.cidr} の範囲内`;
     case 'dhcp': return `${who(q.devs)} がDHCPでIPアドレスを自動取得している`;
+    case 'wifi': return `${who(q.devs)} が無線LANでつながっている`;
+    case 'redundant': return 'スイッチ同士をつなぐケーブルが1本切れても、社内の通信が続く';
     case 'directWeb': return `${who(q.from)} から直接Webには出られない`;
     case 'noProxy': return `${who(q.from)} から社内のプロキシを使えない`;
     case 'flow': {

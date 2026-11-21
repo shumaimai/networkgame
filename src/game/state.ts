@@ -22,9 +22,9 @@ export const LEVELS: LevelInfo[] = [
   { level: 8, title: '一人前', unlocks: ['L3スイッチ、VLAN対応スイッチ', 'VLAN、VLAN間ルーティング、スタティックルート'] },
   { level: 9, title: '中堅', unlocks: ['DHCPサービス(サーバー)', 'DHCPリレー'] },
   { level: 10, title: '中堅', unlocks: ['ファイアウォール', 'DMZ、公開サーバー、ポート転送'] },
-  { level: 11, title: 'ベテラン', unlocks: ['VLAN対応スイッチ 24ポート', 'トランクポート'] },
-  { level: 12, title: 'ベテラン', unlocks: ['L3スイッチ 24ポート'] },
-  { level: 13, title: '匠', unlocks: ['無線アクセスポイント'] },
+  { level: 11, title: 'ベテラン', unlocks: ['VLAN対応スイッチ 24ポート', 'トランクポート(階をまたぐVLAN)'] },
+  { level: 12, title: 'ベテラン', unlocks: ['ループと冗長化', 'メールサービス', 'L3スイッチ 24ポート'] },
+  { level: 13, title: '匠', unlocks: ['無線アクセスポイント、無線LAN'] },
 ];
 
 export interface Offer { id: string; seed: number; level: number; kind: 'build' | 'trouble'; ease: number }

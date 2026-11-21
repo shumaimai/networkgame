@@ -80,6 +80,10 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   const fw = internet && want(10, 0.4);
   const vlan = want(8, 0.55);
   const subnet = !vlan && want(5, 0.35);
+  const trunk = vlan && want(11, 0.45);
+  const redundant = trunk && want(12, 0.5);
+  const mail = dns && want(12, 0.35);
+  const wifi = want(13, 0.45);
   let dhcp: 'none' | 'router' | 'server' = 'none';
   if (vlan) dhcp = want(9, 0.5) ? 'server' : 'none';
   else if (cap >= 3 && (cap === 3 ? chance(0.8) : chance(0.5))) dhcp = fw ? 'server' : internet || cap >= 5 ? 'router' : 'none';
@@ -134,6 +138,14 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     staff[0].hosts.push(staff[0].printer);
   }
 
+  // 無線でつなぐノートPCと、アクセスポイント
+  const wireless = new Set<Device>();
+  const ssid = `${romaji}-wifi`, wifiKey = `${romaji.slice(0, 3)}${randInt(r, 1000, 9999)}`;
+  if (wifi) {
+    const list = staff[0].pcs.slice(-Math.min(2, staff[0].pcs.length - 1));
+    list.forEach((d, i) => { wireless.add(d); d.name = `ノートPC-${i + 1}`; d.cfg.wifi = { ssid, key: wifiKey }; });
+  }
+
   // アドレス設計
   const home = staff[0];
   const inHome = (needServer ? 1 : 0) + (nasWanted ? 1 : 0);
@@ -160,6 +172,10 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   const server = needServer ? b.add('server', 'sv', 'サーバー') : null;
   const nas = nasWanted ? b.add('nas', 'nas', 'NAS', nasBought ? 'bought' : 'supplied') : null;
   const web = fw ? b.add('server', 'web', 'Webサーバー') : null;
+  const ap = wireless.size ? b.add('ap', 'ap', '無線AP') : null;
+  if (ap) Object.assign(ap.cfg, { ssid, key: wifiKey });
+  const wired = (g: Group) => g.hosts.filter(h => !wireless.has(h));
+  let floors: { hosts: Device[]; sw?: Device }[] | null = null;
   if (inet && gwDev) b.link(inet, 0, gwDev, 0);
 
   const swFor = (n: number, id: string, name: string): Device | null => {
@@ -173,14 +189,39 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     const extra = (server ? 1 : 0) + (nas ? 1 : 0) + (gwDev ? 1 : 0);
     const direct = groups.reduce((s, g) => s + g.hosts.length, 0) + extra <= 8;
     let p = 0;
-    for (const g of groups) {
-      if (direct) for (const h of g.hosts) { c.portVlan[p] = g.vlan; b.link(h, 0, l3, p++); }
-      else {
+    if (trunk) {
+      // 各階にVLAN対応スイッチ(お客様の既設)があり、L3スイッチまでトランクで運ぶ
+      floors = [{ hosts: [] }, { hosts: [] }];
+      const vlanOf = new Map<Device, number>();
+      for (const g of groups) g.hosts.forEach((h, i) => { floors![i % 2].hosts.push(h); vlanOf.set(h, g.vlan); });
+      const msws = floors.map((f, i) => {
+        const need = f.hosts.length + 3;
+        const m = b.add(need <= 8 ? 'l2m-8' : 'l2m-24', 'msw' + (i + 1), `${i + 1}階スイッチ`, 'supplied');
+        f.sw = m;
+        for (const h of f.hosts) if (!wireless.has(h)) m.cfg.portVlan[b.plug(h, m)] = vlanOf.get(h)!;
+        if (ap && i === 0) m.cfg.portVlan[b.plug(ap, m)] = staff[0].vlan;
+        const up = m.ports.length - 1;
+        m.cfg.portMode[up] = 'trunk'; c.portMode[p] = 'trunk';
+        b.link(m, up, l3, p++);
+        return m;
+      });
+      if (redundant) {
+        const a = msws[0].ports.length - 2, z = msws[1].ports.length - 2;
+        msws[0].cfg.portMode[a] = 'trunk'; msws[1].cfg.portMode[z] = 'trunk';
+        b.link(msws[0], a, msws[1], z);
+      }
+      for (const g of groups) c.svis.push({ vlan: g.vlan, ip: ipStr(g.gw), prefix: g.prefix, relay: '' });
+    } else for (const g of groups) {
+      if (direct) {
+        for (const h of wired(g)) { c.portVlan[p] = g.vlan; b.link(h, 0, l3, p++); }
+        if (ap && g === staff[0]) { c.portVlan[p] = g.vlan; b.link(ap, 0, l3, p++); }
+      } else {
         const s = swFor(g.hosts.length + 1, 'sw' + g.key, 'スイッチ' + letter(groups.indexOf(g)));
         if (!s) return null;
         g.sw = s;
         c.portVlan[p] = g.vlan; b.link(s, 0, l3, p++);
-        for (const h of g.hosts) b.plug(h, s);
+        for (const h of wired(g)) b.plug(h, s);
+        if (ap && g === staff[0]) b.plug(ap, s);
       }
       c.svis.push({ vlan: g.vlan, ip: ipStr(g.gw), prefix: g.prefix, relay: '' });
     }
@@ -208,7 +249,8 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
         b.link(gwDev, lanIdx + 1, s, b.freePort(s));
         c.lan[lanIdx].ip = ipStr(g.gw); c.lan[lanIdx].prefix = g.prefix;
       }
-      for (const h of g.hosts) b.plug(h, s);
+      for (const h of wired(g)) b.plug(h, s);
+      if (ap && g === home) b.plug(ap, s);
       if (g === home) for (const x of [server, nas]) if (x) b.plug(x, s);
     });
     if (groups.some(g => !g.sw)) return null;
@@ -223,6 +265,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     hostCfg(server, srvGroup, serverIp);
     const c = server.cfg as ServerCfg;
     if (dns) { c.dnsOn = true; c.forwarder = '8.8.8.8'; c.records = records; }
+    if (mail) { c.mailOn = true; records.push({ name: `mail.${dom}`, ip: serverIp }); }
     if (proxy) { c.proxyOn = true; if (guests.length) c.proxyAllow = staff.map(cidr).join(', '); }
   }
   if (nas) { nasIp = take(srvGroup, 'nas'); hostCfg(nas, srvGroup, nasIp); if (nasBought) records.push({ name: `nas.${dom}`, ip: nasIp }); }
@@ -343,8 +386,27 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     add({ t: 'flow', from: ['inet'], to: { pub: true }, svc: 'file', expect: 'ng' });
     restrict.push('dmz');
   }
+  if (mail) add({ t: 'flow', from: ids(home.pcs), to: { name: `mail.${dom}` }, svc: 'mail', expect: 'ok' }, whoPc(home));
+  if (wireless.size) add({ t: 'wifi', devs: ids([...wireless]) });
+  if (redundant) {
+    const sub: Check[] = [];
+    for (const g of staff) for (const o of staff) if (g !== o) sub.push({ t: 'flow', from: [g.pcs[0].id], to: { dev: o.pcs[0].id }, svc: 'ping', expect: 'ok' });
+    if (!sub.length) sub.push({ t: 'flow', from: [staff[0].pcs[0].id], to: { dev: staff[0].pcs[1].id }, svc: 'ping', expect: 'ok' });
+    add({ t: 'redundant', checks: sub });
+  }
   // ---- 4) 確かめる ----
-  layout(b, { groups, inet, gwDev, l3, side: [server, nas].filter((x): x is Device => !!x), web });
+  layout(b, { groups: floors ?? groups, inet, gwDev, l3, side: [server, nas].filter((x): x is Device => !!x), web });
+  if (ap) {
+    const ws = [...wireless];
+const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map(d => d.y));
+    // 無線の端末の近くで、ほかの機器と重ならない場所を探す
+    search: for (const dy of [150, 260, 370]) for (const dx of [62, -62, 190, -190, 320, -320, 450, -450]) {
+      const x = Math.round(mx + dx), y = top - dy;
+      if (x < 90 || x > 1310 || y < 120) continue;
+      if (b.devices.every(d => d === ap || Math.abs(d.x - x) >= 100 || Math.abs(d.y - y) >= 115)) { ap.x = x; ap.y = y; break search; }
+    }
+    if (!ap.x) return null;
+  }
   const solution = b.world();
   const rawChecks = checks.map(c => c.check);
   if (evaluate(solution, rawChecks, nameOf).some(x => !x.ok)) return null;
@@ -367,6 +429,10 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   know(vlan, 'VLAN', 10);
   know(dhcp === 'server', 'DHCPサーバー', vlan ? 8 : 4);
   know(fw, 'ファイアウォール', 10);
+  know(trunk, 'トランク', 8);
+  know(redundant, '冗長化', 8);
+  know(mail, 'メール', 3);
+  know(wireless.size > 0, '無線LAN', 5);
   if (restrict.length) { tags.push('通信制限'); factors.push({ label: `通信の制限(${new Set(restrict).size}種類)`, pts: new Set(restrict).size * 3 }); }
 
   const person = pick(r, ind.person);
@@ -376,6 +442,8 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   if (records.length) spec.push({ head: '名前', body: records.map(x => `${x.name} → ${nameOf(b.devices.find(d => d.cfg.ip === x.ip)!.id)}`).join('\n') });
   if (nas) spec.push({ head: 'ファイル共有', body: `${nasBought ? 'NASを新しく用意する' : 'お客様のNASを使う'}。使えるのは ${nasGroups.map(g => (multi ? g.label : '社内のPC')).join('・')}${cams.length ? ' とカメラ' : ''}` });
   if (guests.length) spec.push({ head: 'ゲスト用', body: `${guests[0].label}のPCはインターネットだけ使える。社内の機器には届かないこと` });
+  if (floors) spec.push({ head: 'フロア', body: floors.map((f, i) => `${i + 1}階(${f.sw!.name}): ${f.hosts.map(h => h.name).join('、')}`).join('\n') + '\n各階の機器は、その階のVLAN対応スイッチ(お客様の既設)につなぐ' + (redundant ? '\nスイッチ同士のケーブルが1本切れても止まらないこと' : '') });
+  if (wireless.size) spec.push({ head: '無線LAN', body: `SSID: ${ssid} / 暗号化キー: ${wifiKey}\n${[...wireless].map(d => d.name).join('・')} は無線でつなぐ` });
   if (web) spec.push({ head: '公開サーバー', body: 'Webサーバーをインターネットに公開する。公開サーバーから社内には入れないこと' });
 
   const talk: string[] = [];
@@ -387,11 +455,14 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   if (dns) talk.push('プリンタなどは名前で使えるようにしたいです。');
   if (nas) talk.push(nasGroups.length < staff.length ? `共有フォルダは${nasGroups[0].label}だけが使えるように。` : '共有フォルダも使います。');
   if (guests.length) talk.push(`${guests[0].label}のPCからは、社内の機器が見えないようにしてください。`);
+  if (floors) talk.push('席は1階と2階に分かれていて、各階にVLAN対応のスイッチがあります。' + (redundant ? 'ケーブルが1本切れても仕事が止まらないようにしたいです。' : ''));
+  if (mail) talk.push('社内のメールサーバーも立ててください。');
+  if (wireless.size) talk.push('ノートPCは無線でつなぎたいです。');
   if (web) talk.push('自社のWebサイトも外に公開したいです。');
   talk.push('細かい条件は仕様書にまとめました。');
 
-  const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed });
-  const title = fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
+  const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed, trunk, redundant, mail, wifi: wireless.size > 0 });
+  const title = wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
     : nas ? 'ファイル共有のあるネットワーク' : dns ? '社内DNSのあるネットワーク' : multi ? '2つのネットワークをつなぐ' : dhcp !== 'none' ? 'アドレスを自動で配るLAN'
       : internet ? 'インターネット開通' : 'はじめての社内LAN';
 
@@ -454,7 +525,7 @@ function finish(base: Omit<Job, 'difficulty' | 'reward' | 'xp' | 'minutes'>, fac
   return { ...base, difficulty, reward, xp: 20 + score * 6, minutes: Math.round(4 + score * 0.45) };
 }
 
-interface Feats { internet: boolean; dhcp: string; dns: boolean; proxy: boolean; nas: boolean; vlan: boolean; fw: boolean; subnet: boolean; guest: boolean; multi: boolean; routed: boolean }
+interface Feats { internet: boolean; dhcp: string; dns: boolean; proxy: boolean; nas: boolean; vlan: boolean; fw: boolean; subnet: boolean; guest: boolean; multi: boolean; routed: boolean; trunk: boolean; redundant: boolean; mail: boolean; wifi: boolean }
 function planHints(f: Feats): string[] {
   const h: string[] = [];
   h.push(f.vlan ? '中心にL3スイッチを置き、グループごとにVLANを分けます。各VLANのインターフェースに付けたIPが、そのグループのゲートウェイになります。'
@@ -469,12 +540,16 @@ function planHints(f: Feats): string[] {
   if (f.proxy) h.push('サーバーでプロキシを動かし、PCのプロキシ欄に「サーバーのIP:8080」を入れます。直接のWebは、ルーターやファイアウォールのルールでサーバー以外を拒否します。');
   if (f.nas) h.push('NASの「利用を許可」に、使ってよいネットワークだけを書くと、ほかからは使えなくなります。');
   if (f.guest) h.push('ゲストから社内への通信は、中継する機器(ルーターやL3スイッチ)に拒否ルールを書いて止めます。ゲストのDNSは 8.8.8.8 にします。');
+  if (f.trunk) h.push('各階のVLAN対応スイッチでは、端末のポートにその部署のVLAN番号を割り当てます。L3スイッチへ上がるポートは、両側とも「トランク」にします。');
+  if (f.redundant) h.push('1階と2階のスイッチ同士もトランクでつなぐと、L3スイッチへの道が2通りになります。VLAN対応スイッチとL3スイッチは輪になっても止まりませんが、設定のいらないL2スイッチを輪に入れると通信できなくなります。');
+  if (f.mail) h.push('サーバーでメールサービスをオンにし、DNSに mail の名前を登録します。');
+  if (f.wifi) h.push('無線アクセスポイントをスイッチにつなぎ、SSIDと暗号化キーを仕様書どおりに設定します。ノートPCにはケーブルをつながず、同じSSIDとキーを入れます。');
   if (f.fw) h.push('WebサーバーはDMZにつなぎ、ファイアウォールの「ポート転送」でWebをサーバーへ送ります。DMZから社内への許可ルールは作りません。');
   return h;
 }
 
 // 模範解答の見た目の配置(トラブル対応では、これが最初の机の上になる)
-function layout(b: Builder, t: { groups: Group[]; inet: Device | null; gwDev: Device | null; l3: Device | null; side: Device[]; web: Device | null }): void {
+function layout(_b: Builder, t: { groups: { hosts: Device[]; sw?: Device }[]; inet: Device | null; gwDev: Device | null; l3: Device | null; side: Device[]; web: Device | null }): void {
   const cx = t.side.length ? DESK_W / 2 - 90 : DESK_W / 2;
   const put = (d: Device | null | undefined, x: number, y: number) => { if (d) { d.x = Math.round(x); d.y = Math.round(y); } };
   const n = t.groups.reduce((s, g) => s + g.hosts.length, 0), gaps = t.groups.length - 1;

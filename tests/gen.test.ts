@@ -7,9 +7,10 @@ describe('依頼の自動生成', () => {
     it(`${kind}: どのレベルでも生成でき、正解は全テストを通り、初期状態は通らない`, () => {
       const tags: Record<string, number> = {}, stars: Record<number, number> = {};
       let n = 0;
-      for (let level = kind === 'build' ? 1 : 2; level <= 12; level++) {
+      for (let level = kind === 'build' ? 1 : 2; level <= 13; level++) {
         for (let seed = 1; seed <= 120; seed++) {
-          const job = generate(seed * 7 + level * 1000, level, { kind });
+          // 半分は、そのレベルでいちばん難しい内容(ease=1)にする
+          const job = generate(seed * 7 + level * 1000, level, { kind, ease: seed % 2 ? 1 : undefined });
           const checks = job.checks.map(c => c.check);
           expect(evaluate(job.solution, checks).every(r => r.ok), `${job.id} L${level} 正解`).toBe(true);
           expect(evaluate(job.initial, checks).some(r => !r.ok), `${job.id} L${level} 初期状態`).toBe(true);
