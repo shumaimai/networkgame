@@ -190,6 +190,7 @@ export class Game {
     }
   }
   refreshBoard(): void {
+    if (!Object.keys(this.s.market).length) this.rollMarket();
     const r = mulberry(this.s.seed + this.s.week * 104651), level = this.level;
     const eases = [0.05, 0.3, 0.55, 0.8, 1];
     const troubles = level >= 2 ? new Set([1, 3 + (r() < 0.5 ? 0 : 1)]) : new Set<number>();

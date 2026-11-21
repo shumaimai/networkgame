@@ -6,7 +6,8 @@ import type { App } from './app';
 import { setVolume, sfx } from './audio';
 import { portrait } from './bench';
 import { openDict } from './dict';
-import { esc, nl2br, onAct, stars, yen } from './dom';
+import { MODEL } from '../core/model';
+import { esc, img, nl2br, onAct, stars, yen } from './dom';
 
 export function statusBar(game: Game, here: string): string {
   const full = Math.floor(game.repStars), half = game.repStars - full >= 0.5;
@@ -42,6 +43,14 @@ export function barAct(app: App, act: string): boolean {
 const diffStars = (n: number) => `<span class="diff d${n}">${stars(n, 5)}</span>`;
 const kindChip = (j: Job) => `<span class="chip ${j.kind}">${j.kind === 'build' ? '構築' : 'トラブル対応'}</span>`;
 
+// 依頼カードに出す、規模のひとこと
+function summary(j: Job): string {
+  const ds = j.solution.devices, n = (k: string) => ds.filter(d => d.kind === k).length;
+  const parts = [`PC ${n('pc')}台`, n('printer') ? 'プリンタ' : '', n('phone') ? '電話' : '', n('pos') ? 'レジ' : '', n('camera') ? 'カメラ' : ''].filter(Boolean);
+  const nets = j.spec.find(s => s.head === 'アドレス')?.body.split(String.fromCharCode(10)).length ?? 1;
+  return `${parts.join('・')}${nets > 1 ? ` / ネットワーク ${nets}つ` : ''}${j.kind === 'trouble' ? ` / 不具合 ${j.faults.length}か所` : ''}`;
+}
+
 export function mountHub(app: App, root: HTMLElement): () => void {
   const game = app.game;
   if (game.tutorialFinished && !game.s.board.length) { game.refreshBoard(); game.save(); }
@@ -73,11 +82,21 @@ export function mountHub(app: App, root: HTMLElement): () => void {
             <div class="card-top">${kindChip(j)}${diffStars(j.difficulty.stars)}</div>
             <div class="card-client"><img src="${portrait(j.industry)}" alt=""><div><b>${esc(j.client)}</b><small>${esc(j.industry)}</small></div></div>
             <h3>${esc(j.title)}</h3>
+            <p class="card-sum">${summary(j)}</p>
             <div class="tags">${j.tags.slice(0, 6).map(t => `<i>${esc(t)}</i>`).join('')}</div>
             <div class="card-foot"><span>報酬 <b>${yen(game.rewardOf(j))}</b></span>${j.kind === 'build' ? `<span>機材の目安 ${yen(j.par)}</span>` : '<span>機材はほぼ不要</span>'}</div></button>`;
         }).join('')}</div>`;
     }
-    root.innerHTML = `<div class="hub">${statusBar(game, 'hub')}<div class="hub-main">${main}</div></div>`;
+    // 下段: 今週の相場、次のレベル、最近の納品
+    const deals = game.catalog.map(m => ({ m, pct: Math.round((game.mult(m) - 1) * 100) })).filter(x => Math.abs(x.pct) >= 8).sort((x, y) => x.pct - y.pct).slice(0, 6);
+    const next = LEVELS[game.level];
+    const hist = game.s.history.slice(0, 4);
+    const info = `<div class="hub-info">
+      <section><h3>今週の相場</h3>${deals.length ? deals.map(d => `<div class="deal"><img src="${img(MODEL[d.m].kind)}" alt=""><span>${esc(MODEL[d.m].label)}</span><b class="${d.pct < 0 ? 'down' : 'up'}">${d.pct > 0 ? '+' : ''}${d.pct}%</b><i>${yen(game.price(d.m))}</i></div>`).join('') : '<p class="mute">どの機材も、ほぼ定価です。</p>'}</section>
+      <section><h3>${next ? `次のレベル(Lv.${next.level})で増えるもの` : '最高レベルに到達しました'}</h3>${next ? `<ul class="plain">${next.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><div class="xpbar"><i style="width:${Math.round(game.xpProgress * 100)}%"></i><span>あと ${xpFor(next.level) - game.s.xp}</span></div>` : '<p class="mute">すべての機材と辞書が使えます。</p>'}</section>
+      <section><h3>最近の納品</h3>${hist.length ? hist.map(x => `<div class="deal"><span>${esc(x.client)}</span><b class="st">${stars(x.stars)}</b><i class="${x.profit < 0 ? 'neg' : ''}">${yen(x.profit)}</i></div>`).join('') : '<p class="mute">まだ納品した依頼がありません。</p>'}</section>
+    </div>`;
+    root.innerHTML = `<div class="hub">${statusBar(game, 'hub')}<div class="hub-main">${main}${info}</div></div>`;
   }
 
   function openOffer(o: Offer): void {
