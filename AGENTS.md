@@ -7,7 +7,7 @@
 - `npm run typecheck` / `npm test`(vitest: シミュレータ・生成器・進行)
 - `node e2e/run.mjs` 画面の通しテスト(dev サーバー起動中に実行。Edge を playwright-core で操作)
 - `node e2e/shot.mjs <title|hub|board|offer|t1|shop|dict|solved|trouble>` 画面を `shots/` に撮る
-- `npm run build` → `dist/`
+- `npm run build` → `dist/` / `npm run app` デスクトップアプリで起動 / `npm run package` → `release/`(確認は `node e2e/app.mjs`。シェルに ELECTRON_RUN_AS_NODE があると起動しないので unset する)
 - 変更したら typecheck、npm test、e2e の3つを通す
 
 ## 構成
