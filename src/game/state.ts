@@ -5,7 +5,7 @@ import { Job, mulberry, worldCost } from '../core/job';
 import { CABLE_PRICE, Device, MODEL, MODELS, World, clone, makeDevice } from '../core/model';
 import { TUTORIALS, tutorialJob } from './tutorial';
 
-export const MAX_LEVEL = 13;
+export const MAX_LEVEL = 14;
 export const START_MONEY = 30000;
 /** レベル n になるのに必要な累計経験値 */
 export const xpFor = (n: number): number => 30 * (n - 1) * (n + 2);
@@ -25,6 +25,7 @@ export const LEVELS: LevelInfo[] = [
   { level: 11, title: 'ベテラン', unlocks: ['VLAN対応スイッチ 24ポート', 'トランクポート(階をまたぐVLAN)'] },
   { level: 12, title: 'ベテラン', unlocks: ['ループと冗長化', 'メールサービス', 'L3スイッチ 24ポート'] },
   { level: 13, title: '匠', unlocks: ['無線アクセスポイント、無線LAN'] },
+  { level: 14, title: '匠', unlocks: ['VPN(テレワーク)'] },
 ];
 
 export interface Offer { id: string; seed: number; level: number; kind: 'build' | 'trouble'; ease: number }

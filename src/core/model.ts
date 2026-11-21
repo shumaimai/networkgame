@@ -4,6 +4,7 @@ export type Kind =
   | 'pc' | 'printer' | 'phone' | 'camera' | 'pos'   // お客様の端末
   | 'server' | 'nas'                                // サービスを動かす機器
   | 'l2' | 'l2m' | 'l3' | 'router' | 'fw' | 'ap'    // ネットワーク機器
+  | 'home'                                          // 社外(自宅)からVPNでつなぐPC
   | 'internet';
 
 export type Svc = 'ping' | 'dns' | 'web' | 'proxy' | 'file' | 'print' | 'mail' | 'voice';
@@ -52,6 +53,8 @@ export interface GwCfg {
   routes: Route[];
   rules: Rule[];
   forwards: { svc: Svc; to: string }[];
+  /** リモートアクセスVPN: 認証キーと、つないできた端末に配るアドレス */
+  vpn: { on: boolean; key: string; ip: string };
 }
 export interface ApCfg { ssid: string; key: string }
 
@@ -108,6 +111,7 @@ export const MODELS: Model[] = [
   { id: 'l3-24', kind: 'l3', label: 'L3スイッチ 24ポート', short: 'L3 24p', ports: nums(24), price: 98000, size: 3, level: 12, prefix: 'L3SW', desc: '24ポートのL3スイッチ。' },
   { id: 'ap', kind: 'ap', label: '無線アクセスポイント', short: '無線AP', ports: ['eth0'], price: 12000, size: 1, level: 13, prefix: 'AP', desc: '無線LANの親機。SSIDと暗号化キーが合う端末を有線LANにつなぐ。' },
 
+  { id: 'home', kind: 'home', label: '自宅PC', short: '自宅PC', ports: [], price: 0, size: 0, level: 1, prefix: '', desc: '社員の自宅にあるPC。インターネットの向こうから、VPNで社内につなぐ。' },
   { id: 'internet', kind: 'internet', label: 'インターネット回線', short: '回線', ports: ['ISP'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのインターネット回線。' },
 ];
 export const MODEL: Record<string, Model> = Object.fromEntries(MODELS.map(m => [m.id, m]));
@@ -115,7 +119,7 @@ export const CABLE_PRICE = 500;
 
 export const isEndpoint = (k: Kind): boolean => k === 'pc' || k === 'printer' || k === 'phone' || k === 'camera' || k === 'pos';
 /** 自分のIPアドレスを1つ持ち、ゲートウェイ経由で通信する機器 */
-export const isHost = (k: Kind): boolean => isEndpoint(k) || k === 'server' || k === 'nas';
+export const isHost = (k: Kind): boolean => isEndpoint(k) || k === 'server' || k === 'nas' || k === 'home';
 export const isGateway = (k: Kind): boolean => k === 'router' || k === 'fw';
 export const isManaged = (k: Kind): boolean => k === 'l2m' || k === 'l3';
 export const isRouting = (k: Kind): boolean => isGateway(k) || k === 'l3' || k === 'internet';
@@ -144,9 +148,10 @@ export function defaultCfg(m: Model): any {
     case 'l3':
       return { portMode: m.ports.map(() => 'access'), portVlan: m.ports.map(() => 1), svis: [], routes: [], rules: [] } satisfies L3Cfg;
     case 'router':
-      return { wan: { mode: 'auto', ip: '', prefix: 30, gw: '' }, nat: true, lan: m.ports.slice(1).map(lanIf), routes: [], rules: [], forwards: [] } satisfies GwCfg;
     case 'fw':
-      return { wan: { mode: 'auto', ip: '', prefix: 30, gw: '' }, nat: true, lan: m.ports.slice(1).map(lanIf), routes: [], rules: [], forwards: [] } satisfies GwCfg;
+      return { wan: { mode: 'auto', ip: '', prefix: 30, gw: '' }, nat: true, lan: m.ports.slice(1).map(lanIf), routes: [], rules: [], forwards: [], vpn: { on: false, key: '', ip: '' } } satisfies GwCfg;
+    case 'home':
+      return { vpn: { server: '', key: '' }, dns: '' };
     case 'ap':
       return { ssid: '', key: '' } satisfies ApCfg;
     default:

@@ -109,6 +109,7 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
   const aps = devices.filter(d => d.kind === 'ap' && d.cfg.ssid);
   for (const d of devices) {
     if (!isHost(d.kind)) continue;
+    if (d.kind === 'home') { eff.set(d.id, { ip: null, prefix: 24, gw: null, dns: parseIp(d.cfg.dns), dhcp: false, note: 'VPNの接続先が設定されていません' }); continue; }
     let node = w(d.id, 0, 'u'), apName: string | undefined;
     const wifi = d.cfg.wifi;
     if (d.kind === 'pc' && wifi && wifi.ssid && !cabled.has(d.id + ':0')) {
@@ -129,6 +130,7 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
     ifaces.push({ dev, name, ip, prefix: Number(prefix), node, seg: find(node), wan: wan || undefined });
   };
   for (const d of devices) {
+    if (d.kind === 'home') continue;
     if (isHost(d.kind)) { const e = eff.get(d.id)!; if (!e.dhcp) add(d, 'eth0', hostNode.get(d.id)!, e.ip, e.prefix); }
     else if (d.kind === 'internet') add(d, 'ISP', w(d.id, 0, 'u'), ISP_IP, WAN_PREFIX);
     else if (isGateway(d.kind)) {
@@ -139,6 +141,25 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
     } else if (d.kind === 'l3') {
       for (const s of (d.cfg as L3Cfg).svis) add(d, 'VLAN' + s.vlan, sw(d.id, Number(s.vlan) || 1), parseIp(s.ip), s.prefix);
     }
+  }
+
+  // VPN: 自宅PCは、接続先と認証キーが合えば、VPN装置のLANにいる端末として扱う
+  const isp = ifaces.find(i => i.dev.kind === 'internet');
+  for (const d of devices) {
+    if (d.kind !== 'home') continue;
+    const e = eff.get(d.id)!, target = parseIp(d.cfg.vpn?.server);
+    if (target == null) continue;
+    const wan = ifaces.find(i => i.wan && i.ip === target && isp && i.seg === isp.seg);
+    const v = wan ? (wan.dev.cfg as GwCfg).vpn : undefined;
+    if (!wan) { e.note = `接続先 ${ipStr(target)} に応答する機器がありません`; continue; }
+    if (!v?.on) { e.note = `${wan.dev.name} でVPNが動いていません`; continue; }
+    if (v.key !== d.cfg.vpn.key || !v.key) { e.note = '認証キーが違います'; continue; }
+    const vip = parseIp(v.ip), lan = vip == null ? undefined : ifaces.find(i => i.dev === wan.dev && !i.wan && inNet(vip, i.ip, i.prefix));
+    if (vip == null || !lan) { e.note = `${wan.dev.name} がVPNで配るアドレスが、LANの範囲にありません`; continue; }
+    const node = `vpn:${d.id}`;
+    link(node, lan.node);
+    e.ip = vip; e.prefix = lan.prefix; e.gw = lan.ip; e.note = undefined; e.lease = wan.dev.name;
+    add(d, 'vpn', node, vip, lan.prefix);
   }
 
   // DHCP: 同じ区画にいるDHCPサーバー(またはリレー先)からアドレスを受け取る
@@ -345,6 +366,7 @@ export function reach(net: Net, src: Device, dst: number, opts: FlowOpts = {}): 
       const si = ifs(net, src)[0];
       if (!si) {
         const e = net.eff.get(src.id);
+        if (src.kind === 'home') return early(`${src.name} はVPNにつながっていません(${e?.note ?? ''})`);
         return early(e?.dhcp ? `${src.name} はIPアドレスを取得できていません(${e.note ?? 'DHCP'})` : `${src.name} にIPアドレスが設定されていません`);
       }
       if (!isHostAddr(si.ip, si.prefix)) return early(`${src.name} のIP ${ipStr(si.ip)} はネットワークアドレスかブロードキャストアドレスのため使えません`);

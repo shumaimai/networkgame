@@ -4,7 +4,7 @@
 import { Check, Target, describe, evaluate } from './checks';
 import { cidrStr, ipStr, parseIp } from './ip';
 import { Builder, DESK_W, Difficulty, Factor, Job, JobCheck, Rng, SpecRow, mulberry, pick, randInt, shuffle, worldCost } from './job';
-import { Device, GwCfg, L3Cfg, Rule, ServerCfg, clone, isEndpoint } from './model';
+import { Device, GwCfg, L3Cfg, Rule, ServerCfg, clone, isEndpoint, makeDevice } from './model';
 import { faultCatalog } from './faults';
 
 const ip = (s: string): number => parseIp(s)!;
@@ -84,6 +84,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   const redundant = trunk && want(12, 0.5);
   const mail = dns && want(12, 0.35);
   const wifi = want(13, 0.45);
+  const vpnWanted = internet && !vlan && want(14, 0.5);
   let dhcp: 'none' | 'router' | 'server' = 'none';
   if (vlan) dhcp = want(9, 0.5) ? 'server' : 'none';
   else if (cap >= 3 && (cap === 3 ? chance(0.8) : chance(0.5))) dhcp = fw ? 'server' : internet || cap >= 5 ? 'router' : 'none';
@@ -177,6 +178,14 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   const wired = (g: Group) => g.hosts.filter(h => !wireless.has(h));
   let floors: { hosts: Device[]; sw?: Device }[] | null = null;
   if (inet && gwDev) b.link(inet, 0, gwDev, 0);
+  // テレワーク: 自宅PCがVPNで社内に入る
+  const vpnKey = `vpn-${romaji.slice(0, 4)}${randInt(r, 10, 99)}`;
+  const homePc = vpnWanted && gwDev && (nasWanted || staff[0].printer) ? b.add('home', 'home', '自宅PC', 'fixed') : null;
+  if (homePc && gwDev) {
+    const h = staff[0];
+    (gwDev.cfg as GwCfg).vpn = { on: true, key: vpnKey, ip: ipStr(h.net + (h.prefix === 24 ? 240 : size(h) - 2)) };
+    homePc.cfg.vpn = { server: '203.0.113.2', key: vpnKey };
+  }
 
   const swFor = (n: number, id: string, name: string): Device | null => {
     const model = n <= 5 ? 'l2-5' : n <= 8 ? 'l2-8' : n <= 16 && bigSwitch ? 'l2-16' : null;
@@ -386,6 +395,12 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     add({ t: 'flow', from: ['inet'], to: { pub: true }, svc: 'file', expect: 'ng' });
     restrict.push('dmz');
   }
+  if (homePc) {
+    homePc.cfg.dns = dnsFor(home);
+    if (nas) add({ t: 'flow', from: ['home'], to: nasBought ? { name: `nas.${dom}` } : { dev: nas.id }, svc: 'file', expect: 'ok' });
+    else add({ t: 'flow', from: ['home'], to: { dev: home.printer!.id }, svc: 'print', expect: 'ok' });
+    add({ t: 'flow', from: ['home'], to: { dev: home.pcs[0].id }, svc: 'ping', expect: 'ok' });
+  }
   if (mail) add({ t: 'flow', from: ids(home.pcs), to: { name: `mail.${dom}` }, svc: 'mail', expect: 'ok' }, whoPc(home));
   if (wireless.size) add({ t: 'wifi', devs: ids([...wireless]) });
   if (redundant) {
@@ -396,6 +411,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   }
   // ---- 4) 確かめる ----
   layout(b, { groups: floors ?? groups, inet, gwDev, l3, side: [server, nas].filter((x): x is Device => !!x), web });
+  if (homePc && inet) { homePc.x = inet.x - 330; homePc.y = inet.y + 24; }
   if (ap) {
     const ws = [...wireless];
 const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map(d => d.y));
@@ -403,7 +419,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
     search: for (const dy of [150, 260, 370]) for (const dx of [62, -62, 190, -190, 320, -320, 450, -450]) {
       const x = Math.round(mx + dx), y = top - dy;
       if (x < 90 || x > 1310 || y < 120) continue;
-      if (b.devices.every(d => d === ap || Math.abs(d.x - x) >= 100 || Math.abs(d.y - y) >= 115)) { ap.x = x; ap.y = y; break search; }
+      if (b.devices.every(d => d === ap || Math.abs(d.x - x) >= (isEndpoint(d.kind) ? 100 : 60 + d.ports.length * 11 + 70) || Math.abs(d.y - y) >= 120)) { ap.x = x; ap.y = y; break search; }
     }
     if (!ap.x) return null;
   }
@@ -433,6 +449,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   know(redundant, '冗長化', 8);
   know(mail, 'メール', 3);
   know(wireless.size > 0, '無線LAN', 5);
+  know(!!homePc, 'VPN', 7);
   if (restrict.length) { tags.push('通信制限'); factors.push({ label: `通信の制限(${new Set(restrict).size}種類)`, pts: new Set(restrict).size * 3 }); }
 
   const person = pick(r, ind.person);
@@ -444,6 +461,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   if (guests.length) spec.push({ head: 'ゲスト用', body: `${guests[0].label}のPCはインターネットだけ使える。社内の機器には届かないこと` });
   if (floors) spec.push({ head: 'フロア', body: floors.map((f, i) => `${i + 1}階(${f.sw!.name}): ${f.hosts.map(h => h.name).join('、')}`).join('\n') + '\n各階の機器は、その階のVLAN対応スイッチ(お客様の既設)につなぐ' + (redundant ? '\nスイッチ同士のケーブルが1本切れても止まらないこと' : '') });
   if (wireless.size) spec.push({ head: '無線LAN', body: `SSID: ${ssid} / 暗号化キー: ${wifiKey}\n${[...wireless].map(d => d.name).join('・')} は無線でつなぐ` });
+  if (homePc) spec.push({ head: 'テレワーク', body: `自宅PCからVPNで社内につなぐ。認証キー: ${vpnKey}\n会社の外側のアドレスは 203.0.113.2` });
   if (web) spec.push({ head: '公開サーバー', body: 'Webサーバーをインターネットに公開する。公開サーバーから社内には入れないこと' });
 
   const talk: string[] = [];
@@ -458,11 +476,12 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   if (floors) talk.push('席は1階と2階に分かれていて、各階にVLAN対応のスイッチがあります。' + (redundant ? 'ケーブルが1本切れても仕事が止まらないようにしたいです。' : ''));
   if (mail) talk.push('社内のメールサーバーも立ててください。');
   if (wireless.size) talk.push('ノートPCは無線でつなぎたいです。');
+  if (homePc) talk.push('自宅からも、社内にいるときと同じように仕事をしたいです。');
   if (web) talk.push('自社のWebサイトも外に公開したいです。');
   talk.push('細かい条件は仕様書にまとめました。');
 
-  const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed, trunk, redundant, mail, wifi: wireless.size > 0 });
-  const title = wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
+  const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed, trunk, redundant, mail, wifi: wireless.size > 0, vpn: !!homePc });
+  const title = homePc && !fw ? '自宅からもつながるネットワーク' : wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
     : nas ? 'ファイル共有のあるネットワーク' : dns ? '社内DNSのあるネットワーク' : multi ? '2つのネットワークをつなぐ' : dhcp !== 'none' ? 'アドレスを自動で配るLAN'
       : internet ? 'インターネット開通' : 'はじめての社内LAN';
 
@@ -470,7 +489,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   const par = worldCost(solution);
   const base: Omit<Job, 'difficulty' | 'reward' | 'xp' | 'minutes'> = {
     id: `j${id}`, seed: id, kind: 'build', client, industry: ind.label, person, title, brief: talk.join(''), spec, tags,
-    supplied, checks, initial: { devices: inet ? [clone(inet)] : [], cables: [] }, solution, par, hints, faults: [],
+    supplied, checks, initial: { devices: b.devices.filter(d => d.own === 'fixed').map(d => makeDevice(d.model, d.id, d.name, 'fixed', d.x, d.y)), cables: [] }, solution, par, hints, faults: [],
   };
 
   if ((opts.kind ?? 'build') === 'build') return finish(base, factors);
@@ -525,7 +544,7 @@ function finish(base: Omit<Job, 'difficulty' | 'reward' | 'xp' | 'minutes'>, fac
   return { ...base, difficulty, reward, xp: 20 + score * 6, minutes: Math.round(4 + score * 0.45) };
 }
 
-interface Feats { internet: boolean; dhcp: string; dns: boolean; proxy: boolean; nas: boolean; vlan: boolean; fw: boolean; subnet: boolean; guest: boolean; multi: boolean; routed: boolean; trunk: boolean; redundant: boolean; mail: boolean; wifi: boolean }
+interface Feats { internet: boolean; dhcp: string; dns: boolean; proxy: boolean; nas: boolean; vlan: boolean; fw: boolean; subnet: boolean; guest: boolean; multi: boolean; routed: boolean; trunk: boolean; redundant: boolean; mail: boolean; wifi: boolean; vpn: boolean }
 function planHints(f: Feats): string[] {
   const h: string[] = [];
   h.push(f.vlan ? '中心にL3スイッチを置き、グループごとにVLANを分けます。各VLANのインターフェースに付けたIPが、そのグループのゲートウェイになります。'
@@ -544,6 +563,7 @@ function planHints(f: Feats): string[] {
   if (f.redundant) h.push('1階と2階のスイッチ同士もトランクでつなぐと、L3スイッチへの道が2通りになります。VLAN対応スイッチとL3スイッチは輪になっても止まりませんが、設定のいらないL2スイッチを輪に入れると通信できなくなります。');
   if (f.mail) h.push('サーバーでメールサービスをオンにし、DNSに mail の名前を登録します。');
   if (f.wifi) h.push('無線アクセスポイントをスイッチにつなぎ、SSIDと暗号化キーを仕様書どおりに設定します。ノートPCにはケーブルをつながず、同じSSIDとキーを入れます。');
+  if (f.vpn) h.push('ルーター(またはファイアウォール)でVPNをオンにし、認証キーと、自宅PCに配る社内のアドレスを決めます。自宅PCには、会社の外側のアドレスと同じ認証キーを入れます。');
   if (f.fw) h.push('WebサーバーはDMZにつなぎ、ファイアウォールの「ポート転送」でWebをサーバーへ送ります。DMZから社内への許可ルールは作りません。');
   return h;
 }

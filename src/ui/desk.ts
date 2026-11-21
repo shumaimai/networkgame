@@ -140,6 +140,7 @@ export class Desk {
     }
     h += `<image class="sprite" href="${img(d.kind)}" x="${-sprite / 2}" y="${g.spriteY - sprite / 2}" width="${sprite}" height="${sprite}" filter="url(#shadow)"/>`;
     const sc = d.kind === 'l2m' || d.kind === 'l3' ? (d.cfg as SwitchCfg) : null;
+    if (host && !d.ports.length) h += '';
     d.ports.forEach((name, i) => {
       const p = portRel(d, i), used = !!this.cableAt(d.id, i);
       const active = this.linkFrom?.dev === d.id && this.linkFrom.port === i;
@@ -160,6 +161,7 @@ export class Desk {
       y += 16;
       const e = this.host.net.eff.get(d.id);
       if (e?.dhcp) h += e.ip != null ? `<text class="dip auto" y="${y}">${ipStr(e.ip)}${pf(e.prefix)}</text>` : `<text class="dip warn" y="${y}">取得できず</text>`;
+      else if (d.kind === 'home') h += e?.ip != null ? `<text class="dip auto" y="${y}">VPN ${ipStr(e.ip)}</text>` : `<text class="dip warn" y="${y}">VPN未接続</text>`;
       else h += d.cfg.ip ? `<text class="dip" y="${y}">${esc(d.cfg.ip)}${pf(d.cfg.prefix)}</text>` : `<text class="dip warn" y="${y}">IP未設定</text>`;
     } else if (d.kind === 'internet') {
       h += `<text class="dname" y="-58">インターネット</text>`;
@@ -192,6 +194,10 @@ export class Desk {
     for (const d of w.devices) {
       const ap = this.host.net.eff.get(d.id)?.ap, a = ap ? w.devices.find(x => x.kind === 'ap' && x.name === ap) : null;
       if (a) h += `<line class="wifi" x1="${d.x}" y1="${d.y - 40}" x2="${a.x}" y2="${a.y}"/>`;
+    }
+    for (const d of w.devices) {
+      const cloud = d.kind === 'home' && this.host.net.eff.get(d.id)?.ip != null ? w.devices.find(x => x.kind === 'internet') : null;
+      if (cloud) h += `<line class="wifi vpn" x1="${d.x + 40}" y1="${d.y}" x2="${cloud.x - 50}" y2="${cloud.y}"/>`;
     }
     for (const d of w.devices) h += this.devSvg(d);
     if (this.linkFrom) {

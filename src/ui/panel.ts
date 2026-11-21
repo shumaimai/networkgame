@@ -135,10 +135,18 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
       h += `<h3>${d.ports[i + 1]}</h3>` + field('IPアドレス', `lan.${i}.ip`, 'ip', i === 0 && !fw ? '192.168.1.1' : '未使用なら空欄') + mask(`lan.${i}.prefix`) + toggle(`lan.${i}.dhcpOn`, 'DHCPでアドレスを配る');
       if (l.dhcpOn) h += `<div class="svc"><div class="row pair">${inp(`lan.${i}.dhcpStart`, 'ip', '開始')}<span class="arrow">〜</span>${inp(`lan.${i}.dhcpEnd`, 'ip', '終了')}<span></span></div>${field('配るDNS', `lan.${i}.dhcpDns`, 'ip', `例 ${PUBLIC_DNS}`)}<div class="info">ゲートウェイには、この${d.ports[i + 1]}のIPアドレスを配ります。</div></div>`;
     });
+    if (ctx.devices.some(x => x.kind === 'home')) {
+      h += '<h3>VPN<small>社外の端末を社内に入れる</small></h3>' + toggle('vpn.on', 'リモートアクセスVPNを受け付ける');
+      if (g.vpn?.on) h += '<div class="svc">' + field('認証キー', 'vpn.key', '', '') + field('配るアドレス', 'vpn.ip', 'ip', 'LANの範囲の空きアドレス') + '<div class="info">つないできた端末は、このアドレスを持つLANの端末として扱われます。</div></div>';
+    }
     h += routes() + rules(fw)
       + '<h3>ポート転送<small>外から来た通信を社内のサーバーへ送る</small></h3>'
       + g.forwards.map((_, i) => `<div class="row fwd">${sel(`forwards.${i}.svc`, SVCS.filter(s => s !== 'any' && s !== 'ping').map(s => [s, svcLabel(s)] as [string, string]))}<span class="arrow">→</span>${inp(`forwards.${i}.to`, 'ip', 'サーバーのIP')}${del('forwards', i)}</div>`).join('')
       + addBtn('forwards', '転送を追加');
+  } else if (d.kind === 'home') {
+    const e = ctx.net.eff.get(d.id);
+    h += '<h3>VPN<small>インターネット経由で会社につなぐ</small></h3>' + field('接続先', 'vpn.server', 'ip', '会社の外側のアドレス') + field('認証キー', 'vpn.key', '', '') + field('DNSサーバー', 'dns', 'ip', '空欄可')
+      + (e?.ip != null ? `<div class="lease ok"><b>${esc(e.lease)}</b> に接続しました<table><tr><td>社内でのアドレス</td><td>${ipStr(e.ip)} /${e.prefix}</td></tr></table></div>` : `<div class="lease ng">VPNにつながっていません<br><small>${esc(e?.note ?? '')}</small></div>`);
   } else if (d.kind === 'ap') {
     h += '<h3>無線LAN</h3>' + field('SSID', 'ssid', '', 'ネットワーク名') + field('暗号化キー', 'key', '', 'パスワード')
       + '<div class="info">SSIDと暗号化キーが同じPCを、有線LANにつなぎます。</div>';

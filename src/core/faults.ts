@@ -162,6 +162,20 @@ export const faultCatalog: Fault[] = [
     ap.cfg.ssid = old.replace('-wifi', '-guest');
     return `${ap.name} のSSIDが違う(${ap.cfg.ssid})。正しくは ${old}`;
   } },
+  { key: 'vpn-key', weight: 2, apply: w => {
+    const g = gws(w).find(x => (x.cfg as GwCfg).vpn?.on);
+    if (!g) return null;
+    const old = g.cfg.vpn.key;
+    g.cfg.vpn.key = old + '0';
+    return `${g.name} のVPNの認証キーが違う(${g.cfg.vpn.key})。自宅PCのキーは ${old}`;
+  } },
+  { key: 'vpn-addr', weight: 3, apply: w => {
+    const g = gws(w).find(x => (x.cfg as GwCfg).vpn?.on);
+    if (!g) return null;
+    const old = g.cfg.vpn.ip;
+    g.cfg.vpn.ip = '10.99.0.5';
+    return `${g.name} がVPNで配るアドレス(10.99.0.5)が、LANの範囲にない。元は ${old}`;
+  } },
   { key: 'mail-off', weight: 1, apply: w => {
     const s = servers(w, c => c.mailOn)[0];
     if (!s) return null;

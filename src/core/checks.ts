@@ -51,6 +51,7 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
   const needIp = (d: NonNullable<ReturnType<typeof dev>>): string | null => {
     if (d.kind === 'internet' || ipOf(net, d) != null) return null;
     const e = net.eff.get(d.id);
+    if (d.kind === 'home') return `${d.name} はVPNにつながっていません(${e?.note ?? ''})`;
     return e?.dhcp ? `${d.name} はIPアドレスを取得できていません(${e.note ?? ''})` : `${d.name} のIPアドレスが未設定です`;
   };
 

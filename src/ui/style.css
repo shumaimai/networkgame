@@ -363,6 +363,7 @@ svg.desk text { font-family: var(--sans); fill: var(--text); text-anchor: middle
 .cable:hover .wire { stroke: #9be2ff; }
 .cable.sel .wire { stroke: var(--yellow); stroke-width: 4.2; }
 .wifi { stroke: var(--teal); stroke-width: 2.5; stroke-dasharray: 3 8; stroke-linecap: round; opacity: .8; pointer-events: none; }
+.wifi.vpn { stroke: var(--violet); stroke-dasharray: 10 7; }
 .rubber { stroke: var(--yellow); stroke-width: 3; stroke-dasharray: 7 6; pointer-events: none; }
 .fx { pointer-events: none; }
 .packet { stroke: #0a1020; stroke-width: 2; fill: var(--yellow); }
