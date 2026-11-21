@@ -483,9 +483,9 @@ function layout(b: Builder, t: { groups: Group[]; inet: Device | null; gwDev: De
   put(t.l3, cx, 340);
   const n = t.groups.reduce((s, g) => s + g.hosts.length, 0), gaps = t.groups.length - 1;
   const width = (t.side.length ? DESK_W - 330 : DESK_W - 140);
-  const step = Math.min(118, width / (n + gaps * 0.7));
+  const step = Math.min(132, width / (n + gaps * 0.7));
   let x = cx - (step * (n - 1 + gaps * 0.7)) / 2;
-  const two = step < 96;
+  const two = step < 112;
   let k = 0;
   for (const g of t.groups) {
     const xs: number[] = [];
