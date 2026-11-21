@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ネットワーク屋さん - プロトタイプ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <h1>ネットワーク屋さん</h1>
+    <div id="order-title"></div>
+    <div class="spacer"></div>
+    <div id="rank"></div>
+    <div id="funds"></div>
+    <button id="btn-levels">依頼ボード</button>
+    <button id="btn-help">遊び方</button>
+  </header>
+  <main>
+    <aside id="left">
+      <section id="order"></section>
+      <section id="order-foot"></section>
+    </aside>
+    <section id="stage">
+      <div id="canvas-wrap">
+        <svg id="canvas" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="grain" width="140" height="18" patternUnits="userSpaceOnUse">
+              <rect width="140" height="18" fill="#4a3526"/>
+              <path d="M0 4 Q35 1 70 5 T140 4 M0 12 Q40 15 80 11 T140 13" stroke="#3d2b1f" stroke-width="1.2" fill="none"/>
+            </pattern>
+            <pattern id="dots" width="25" height="25" patternUnits="userSpaceOnUse">
+              <circle cx="12.5" cy="12.5" r="1" fill="#2a3a55"/>
+            </pattern>
+          </defs>
+          <g id="bg">
+            <rect class="wood" x="0" y="0" width="1000" height="600" rx="14"/>
+            <rect class="mat" x="18" y="18" width="964" height="564" rx="16"/>
+            <rect class="mat-dots" x="18" y="18" width="964" height="564" rx="16"/>
+          </g>
+          <g id="scene"></g>
+          <g id="fx"></g>
+        </svg>
+      </div>
+      <div id="console"></div>
+    </section>
+    <aside id="right">
+      <section id="palette"></section>
+      <section id="panel"></section>
+    </aside>
+  </main>
+  <div id="ghost" class="hidden"></div>
+  <div id="modal" class="hidden"><div id="modal-box"></div></div>
+
+  <script src="js/ip.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

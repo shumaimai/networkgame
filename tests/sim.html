@@ -1,0 +1,221 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>sim tests</title>
+<pre id="out">RUNNING</pre>
+<script src="../js/ip.js"></script>
+<script src="../js/model.js"></script>
+<script src="../js/sim.js"></script>
+<script src="../js/levels.js"></script>
+<script src="solutions.js"></script>
+<script>
+'use strict';
+const out = [];
+let failed = 0;
+const ok = (c, m) => { out.push((c ? 'ok   ' : 'FAIL ') + m); if (!c) failed++; };
+
+// ゲーム本体と同じ初期状態から始め、お客様のケーブルの再利用も同じルールで扱う
+function world(level) {
+  const st = initialState(level, 1000, 600), { devices, cables } = st;
+  let n = 100;
+  const at = (d, p) => cables.findIndex(c => (c.a.dev === d && c.a.port === p) || (c.b.dev === d && c.b.port === p));
+  const api = {
+    put(id) { devices.push(deviceFromDef(level.supplied.find(x => x.id === id), 0, 0)); },
+    buy(type) { const id = 'b' + ++n; devices.push(makeDevice(type, id, type + n, 0, 0, 'bought')); return id; },
+    link(a, pa, b, pb) { const free = st.spare > 0; if (free) st.spare--; cables.push({ id: 'c' + ++n, a: { dev: a, port: pa }, b: { dev: b, port: pb }, free }); },
+    unplug(d, p) { const i = at(d, p); if (cables[i].free) st.spare++; cables.splice(i, 1); },
+    cfg(id) { return devices.find(d => d.id === id).cfg; },
+  };
+  const cost = () => equipmentCost(devices, cables);
+  const evalAll = () => Sim.evaluate(devices, cables, level);
+  const req = label => evalAll()[level.reqs.findIndex(q => q.label.includes(label))];
+  const first = type => devices.find(d => d.type === type);
+  return { level, devices, cables, api, cost, evalAll, req, first, at };
+}
+const fresh = id => world(LEVELS.find(l => l.id === id));
+const solved = id => { const w = fresh(id); SOLUTIONS[id](w.api); return w; };
+
+try {
+  // IP ユーティリティ
+  ok(IP.str(IP.parse('192.168.1.10')) === '192.168.1.10', 'IP parse/str');
+  ok(IP.parse('192.168.1.256') === null && IP.parse('abc') === null && IP.parse('') === null, 'IP parse rejects invalid');
+  ok(IP.str(IP.mask(24)) === '255.255.255.0' && IP.str(IP.mask(30)) === '255.255.255.252', 'IP mask');
+  ok(IP.inNet(IP.parse('192.168.1.200'), IP.parse('192.168.1.0'), 24) && !IP.inNet(IP.parse('192.168.2.1'), IP.parse('192.168.1.0'), 24), 'IP inNet');
+  ok(IP.isPrivate(IP.parse('172.16.5.1')) && !IP.isPrivate(IP.parse('8.8.8.8')), 'IP isPrivate');
+  ok(!IP.isHostAddr(IP.parse('192.168.1.0'), 24) && !IP.isHostAddr(IP.parse('192.168.1.255'), 24) && IP.isHostAddr(IP.parse('192.168.1.1'), 24), 'IP isHostAddr');
+
+  // 各依頼: 開始時点では未達、模範解答で全条件達成、機材費は par と一致
+  ok(new Set(LEVELS.map(l => l.id)).size === LEVELS.length && Object.keys(SOLUTIONS).length === LEVELS.length, '依頼IDが一意で、すべてに模範解答がある');
+  for (const level of LEVELS) {
+    const init = fresh(level.id).evalAll();
+    ok(level.kind === 'build' ? init.every(r => !r.ok && r.reason) : init.every(r => !r.ok), `${level.id} 開始時点では全条件NG`);
+    const w = solved(level.id), res = w.evalAll();
+    res.forEach((r, i) => ok(r.ok, `${level.id} 解答: ${level.reqs[i].label}${r.ok ? '' : ' -> ' + r.reason}`));
+    ok(w.cost() === level.par, `${level.id} 模範解答の機材費 ${w.cost()} = par ${level.par}`);
+    ok(level.contract > level.par, `${level.id} 契約金 > 機材費`);
+    ok(level.shop.every(t => TYPES[t].price > 0) && level.hints.length >= 3, `${level.id} 購入機材に価格があり、ヒントが3つ以上`);
+  }
+  // 解放条件: need は並び順で増え、資金が足りなくならない(par どおりに解いた場合の最小資金で確認)
+  ok(LEVELS.every((l, i) => l.need <= i && (i === 0 || l.need >= LEVELS[i - 1].need)), 'need は並び順に沿っている');
+  let moneyOk = true;
+  const walk = (done, money) => {
+    const open = LEVELS.filter(l => !done.includes(l.id) && done.length >= l.need);
+    for (const l of open) {
+      if (money < l.par) moneyOk = false;
+      else walk(done.concat(l.id), money + l.contract - l.par);
+    }
+  };
+  walk([], 30000);
+  ok(moneyOk, 'どの順番で依頼を受けても、★3の解き方なら資金が足りる');
+
+  // ---- 異常系: 基本 ----
+  let w = fresh('l1');
+  w.api.put('pc1');
+  ok(/PC-2 がまだ机に置かれていません/.test(w.req('PC同士').reason), 'l1 置いていない機器を理由として表示');
+  w = solved('l1');
+  w.cables.pop();
+  ok(!w.req('プリンタに通信').ok, 'l1 ケーブルを抜くとNG');
+  w = solved('l1');
+  w.api.cfg('pc2').ip = '192.168.1.10';
+  ok(!w.evalAll().every(r => r.ok) && /重複/.test(w.evalAll().find(r => !r.ok).reason), 'l1 IP重複を検出');
+  w = solved('l1');
+  w.api.cfg('pc1').ip = '192.168.1.255';
+  ok(!w.req('プリンタに通信').ok, 'l1 ブロードキャストアドレスは使えない');
+  w = solved('l2');
+  w.api.cfg('pc1').gw = '';
+  ok(!w.req('8.8.8.8').ok && w.req('プリンタ').ok, 'l2 ゲートウェイなしではインターネット不可・LAN内は可');
+  w = solved('l2');
+  w.api.cfg('pc1').dns = '';
+  ok(w.req('8.8.8.8').ok && !w.req('www.example.com').ok, 'l2 DNSなしでは名前で開けない');
+
+  // ---- トラブル対応: 不具合を1つずつ直すと段階的に良くなる ----
+  w = fresh('t1');
+  ok(w.devices.length === 4 && w.cables.length === 2 && w.cables.every(c => c.free) && w.cost() === 0, 't1 既設の機器とケーブルがあり、機材費は0');
+  w.api.link('prn1', 0, 'sw', 2);
+  ok(/受付PC/.test(w.req('プリンタに通信').reason) && w.cost() === 500, 't1 ケーブルをつなぐと診察室PCは通り、受付PCが残る');
+  w = fresh('t2');
+  ok(/WAN/.test(w.req('8.8.8.8').reason), 't2 回線がWANに挿さっていないことを検出');
+  w.api.unplug('inet', 0);
+  w.api.link('inet', 0, 'rt', 0);
+  ok(w.cost() === 0 && w.cables.every(c => c.free), 't2 外したお客様のケーブルは無料でつなぎ直せる');
+  ok(/園長PC/.test(w.req('8.8.8.8').reason) && /職員室PC-2/.test(w.req('www.example.com').reason) && /DNSサーバーではありません/.test(w.req('www.example.com').reason), 't2 残りの不具合(GW違い・DNS打ち間違い)が理由に出る');
+  w = fresh('t3');
+  ok(/営業PC-1/.test(w.req('全PCで').reason) && /戻り/.test(w.req('全PCで').reason), 't3 営業PC-1は戻りのルートで失敗');
+  ok(/192\.168\.10\.20 を指しています/.test(w.req('printer.tsubame.local').reason), 't3 DNSレコードが古いIPを指している');
+  w.api.cfg('rt').routes[1].via = '10.0.0.2';
+  ok(/営業PC-2/.test(w.req('全PCで').reason), 't3 ルートを直すと営業PC-2(VLAN違い)が残る');
+  w = fresh('t3');
+  SOLUTIONS.t3(w.api);
+  w.api.cfg('srv').records[0].ip = '192.168.10.20';
+  w.api.cfg('eprn').ip = '192.168.10.20';
+  ok(w.evalAll().every(r => r.ok), 't3 別解: レコードではなくプリンタのIPを合わせる');
+
+  // ---- DNSサービス ----
+  w = solved('l3');
+  w.first('server').cfg.dnsOn = false;
+  ok(/DNSサービスが動いていません/.test(w.req('printer.midori.local').reason), 'l3 DNSサービスがオフ');
+  w = solved('l3');
+  w.first('server').cfg.records = [];
+  ok(/公開DNSは printer\.midori\.local を知りません/.test(w.req('printer.midori.local').reason), 'l3 レコード未登録だとフォワーダー先でも見つからない');
+  w = solved('l3');
+  w.first('server').cfg.records[0].ip = '192.168.1.99';
+  ok(/192\.168\.1\.99 を指しています/.test(w.req('printer.midori.local').reason), 'l3 レコードが別のIPを指している');
+  w = solved('l3');
+  w.first('server').cfg.forwarder = '';
+  ok(w.req('printer.midori.local').ok && /フォワーダー/.test(w.req('www.example.com').reason), 'l3 フォワーダー未設定だと外部名を引けない');
+  w = solved('l3');
+  w.first('server').cfg.gw = '';
+  ok(w.req('printer.midori.local').ok && !w.req('www.example.com').ok, 'l3 サーバーにGWがないとフォワーダーへ届かない');
+  w = solved('l3');
+  w.api.cfg('pc1').dns = '8.8.8.8';
+  ok(!w.req('printer.midori.local').ok && w.req('www.example.com').ok, 'l3 公開DNSでは社内名を引けない');
+  w = solved('l3');
+  w.first('server').cfg.forwarder = '192.168.1.53';
+  ok(/自分自身/.test(w.req('www.example.com').reason), 'l3 フォワーダーが自分自身');
+
+  // ---- プロキシサービス ----
+  w = solved('l4');
+  ok(w.devices.filter(d => d.type === 'server').length === 1, 'l4 模範解答はサーバー1台でDNSとプロキシを兼ねる');
+  w.first('router').cfg.fwMode = 'all';
+  ok(!w.req('直接Web').ok && w.req('プロキシ経由').ok, 'l4 ファイアウォールなしでは直接出られてしまう');
+  w = solved('l4');
+  w.first('router').cfg.fwMode = 'all';
+  ['pc1', 'pc2', 'pc3'].forEach(id => { w.api.cfg(id).gw = ''; });
+  ok(w.evalAll().every(r => r.ok), 'l4 別解: PCにGWを設定しない');
+  w = solved('l4');
+  w.first('server').cfg.proxyOn = false;
+  ok(/プロキシサービスが動いていません/.test(w.req('プロキシ経由').reason), 'l4 プロキシサービスがオフ');
+  w = solved('l4');
+  w.first('server').cfg.proxyPort = 3128;
+  ok(/3128 番ポート/.test(w.req('プロキシ経由').reason), 'l4 待受ポートとPC側の設定が違う');
+  w.api.cfg('pc1').proxy = '192.168.1.53:3128';
+  w.api.cfg('pc2').proxy = '192.168.1.53:3128';
+  w.api.cfg('pc3').proxy = 'proxy.hokuto.local:3128';
+  ok(w.req('プロキシ経由').ok, 'l4 待受ポートを変えてPC側も合わせれば通る');
+  w = solved('l4');
+  w.first('server').cfg.proxyAllow = '192.168.1.10, 192.168.1.11';
+  ok(/192\.168\.1\.12 からの利用を許可していません/.test(w.req('プロキシ経由').reason), 'l4 利用許可に入っていないPCは弾かれる');
+  w = solved('l4');
+  w.first('server').cfg.dns = '192.168.1.200';
+  ok(/名前解決できません/.test(w.req('プロキシ経由').reason), 'l4 サーバーの参照DNSが間違っているとプロキシが名前解決できない');
+  w = solved('l4');
+  w.api.cfg('pc1').proxy = '';
+  ok(!w.req('プロキシ経由').ok, 'l4 プロキシ未設定のPCはNG');
+
+  // ---- VLAN / ルーティング ----
+  w = solved('l5');
+  w.first('router').cfg.routes.length = 0;
+  ok(/戻り/.test(w.req('全PCで').reason || ''), 'l5 ルーターに戻りのルートがないとNG');
+  w = solved('l5');
+  w.first('l3').cfg.routes.length = 0;
+  ok(!w.req('全PCで').ok && !w.req('prn-eigyo').ok, 'l5 L3スイッチのデフォルトルートがないとNG');
+  w = solved('l5');
+  w.first('l3').cfg.portVlan[0] = 20;
+  ok(!w.req('prn-eigyo').ok, 'l5 ポートのVLAN間違いを検出');
+
+  w = solved('l6');
+  w.first('l3').cfg.deny.length = 0;
+  ok(!w.req('通信できない').ok, 'l6 拒否ルールなしではゲストから事務に届いてしまう');
+  w = solved('l6');
+  w.first('server').cfg.proxyAllow = '';
+  ok(/使えてしまいます/.test(w.req('社内のプロキシ').reason), 'l6 利用許可が空だとゲストがプロキシを使えてしまう');
+  w.first('l3').cfg.deny.push({ src: '192.168.50.0/24', dst: '192.168.100.0/24' });
+  w.api.cfg('g2').dns = '8.8.8.8';
+  ok(w.evalAll().every(r => r.ok), 'l6 別解: ゲスト→サーバーのネットワークごと拒否する');
+  w = solved('l6');
+  w.first('router').cfg.fwAllow = '192.168.100.53';
+  ok(!w.req('ゲストPCで').ok && w.req('プロキシ経由').ok, 'l6 許可リストにゲストがないとゲストがWeb不可');
+  w = solved('l6');
+  Object.assign(w.api.cfg('g1'), { ip: '', gw: '' });
+  ok(!w.req('通信できない').ok && !w.req('社内のプロキシ').ok, 'l6 未設定のゲストPCでは分離条件を満たしたことにならない');
+
+  // ---- 経路のトレース(アニメーション用) ----
+  w = solved('l1');
+  let net = Sim.build(w.devices, w.cables, { trace: true });
+  const dev = id => w.devices.find(d => d.id === id);
+  let r = Sim.reach(net, dev('pc1'), IP.parse('192.168.1.200'));
+  const c1 = w.cables[w.at('pc1', 0)].id, c3 = w.cables[w.at('prn1', 0)].id;
+  ok(r.ok && JSON.stringify(r.path) === JSON.stringify([{ cable: c1, rev: false }, { cable: c3, rev: true }]), 'trace: PC-1→プリンタはケーブル2本を順に通る');
+  ok(JSON.stringify(r.back) === JSON.stringify([{ cable: c3, rev: false }, { cable: c1, rev: true }]), 'trace: 戻りは逆順');
+  ok(net.trace.length === 1 && net.trace[0].kind === 'ping', 'trace: reach ごとに1件記録');
+  r = Sim.reach(net, dev('pc1'), IP.parse('192.168.1.77'));
+  ok(!r.ok && r.failAt === 'pc1' && r.path.length === 0, 'trace: 宛先が見つからないときは送信元で止まる');
+
+  w = solved('l6');
+  net = Sim.build(w.devices, w.cables, { trace: true });
+  const d6 = id => w.devices.find(d => d.id === id);
+  const web = Sim.web(net, d6('o1'), 'www.example.com');
+  ok(web.ok && web.via === 'proxy' && web.hops[0] === '事務PC-1' && web.hops.at(-1) === 'インターネット', 'web: プロキシ経由の経路 ' + (web.hops || []).join('>'));
+  ok(net.trace.map(t => t.label).join('|') === 'プロキシへ接続|DNS転送|Webアクセス(プロキシから)', 'trace: Web閲覧の各段階 ' + net.trace.map(t => t.label).join('|'));
+  ok(net.trace.every(t => t.ok && t.path.length >= 2 && t.back.length === t.path.length), 'trace: 各段階に行きと戻りの経路がある');
+  net = Sim.build(w.devices, w.cables, { trace: true });
+  r = Sim.reach(net, d6('g1'), IP.parse('192.168.10.11'));
+  ok(!r.ok && r.failAt === w.first('l3').id && r.path.length === 1, 'trace: 拒否ルールで止まった機器(L3スイッチ)が分かる');
+  ok(Sim.resolve(net, d6('o1'), 'nothing.invalid').ok === false, 'resolve: 存在しない名前');
+  ok(IP.str(Sim.resolve(net, d6('o1'), 'PRINTER.shirakaba.local').ip) === '192.168.10.200', 'resolve: 大文字小文字を区別しない');
+  ok(Sim.reach(net, d6('o1'), IP.parse('192.168.10.11')).ok, 'reach: 自分自身');
+  ok(!Sim.reach(net, d6('o1'), IP.parse('10.9.9.9')).ok, 'reach: 経路のない宛先');
+} catch (e) {
+  ok(false, 'exception: ' + e.stack);
+}
+document.getElementById('out').textContent = out.join('\n') + '\nRESULT: ' + (failed ? `FAIL (${failed})` : 'PASS') + ` / ${out.length} checks`;
+</script>
