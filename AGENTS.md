@@ -5,6 +5,7 @@
 ## コマンド
 - `npm run dev` 開発サーバー(http://127.0.0.1:5173)
 - `npm run typecheck` / `npm test`(vitest: シミュレータ・生成器・進行)
+- `node e2e/panel.mjs` 設定パネルの入力テスト(dev サーバー起動中)
 - `node e2e/run.mjs` 画面の通しテスト(dev サーバー起動中に実行。Edge を playwright-core で操作)
 - `node e2e/shot.mjs <title|hub|board|offer|t1|shop|dict|solved|trouble>` 画面を `shots/` に撮る
 - `npm run build` → `dist/` / `npm run app` デスクトップアプリで起動 / `npm run package` → `release/`(確認は `node e2e/app.mjs`。シェルに ELECTRON_RUN_AS_NODE があると起動しないので unset する)
