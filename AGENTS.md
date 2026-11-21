@@ -1,40 +1,36 @@
-# ネットワーク屋さん(プロトタイプ)
+# ネットワーク屋さん
 
-現状はビルド不要の静的サイト(素のHTML/CSS/JS、依存ライブラリなし)。Node.js v26 は導入済み(`C:\Program Files\nodejs`)。TypeScript + Vite への移行を予定。
+ネットワーク構築を学ぶ2Dゲーム。Vite + TypeScript(フレームワークなし)。Node.js v26(`C:\Program Files\nodejs`、シェルのPATHに無ければ `export PATH="/c/Program Files/nodejs:$PATH"`)。
 
-## 起動
-- `index.html` をブラウザで直接開く。または `python -m http.server 8765 --bind 127.0.0.1` で配信。
+## コマンド
+- `npm run dev` 開発サーバー(http://127.0.0.1:5173)
+- `npm run typecheck` / `npm test`(vitest: シミュレータ・生成器・進行)
+- `node e2e/run.mjs` 画面の通しテスト(dev サーバー起動中に実行。Edge を playwright-core で操作)
+- `node e2e/shot.mjs <title|hub|board|offer|t1|shop|dict|solved|trouble>` 画面を `shots/` に撮る
+- `npm run build` → `dist/`
+- 変更したら typecheck、npm test、e2e の3つを通す
 
 ## 構成
-- 画面: 左=依頼文と納品条件 / 中央=机(SVG)とログ / 右=機材パレット(上)と選択中の機器の設定(下)
-- 依頼は2種類。構築(空の机から組む)とトラブル対応(既設ネットワークの不具合を直す)。依頼ボードから選び、納品件数(need)で解放される
-- サーバー機にDNSサービス(レコード・フォワーダー)とプロキシサービス(待受ポート・利用許可)を立てる。1台で兼用可。電源の概念はない
-- お客様の既設ケーブルは無料(free)。外すと手元に残り(spare)、つなぎ直しに使える
-- `js/ip.js` IPv4計算 / `js/model.js` 機器カタログと初期状態 / `js/sim.js` 通信シミュレータ(DOM非依存)
-- `js/levels.js` 依頼定義(supplied/cables/shop・納品条件・契約金・par) / `js/game.js` 画面と操作
-- `tests/solutions.js` 各依頼の模範解答(テストが使用。依頼を変えたらここも更新。par は模範解答の機材費と一致させる)
-- 診断ツールは `Sim.build(..., {trace:true})` の記録(通ったケーブル列)を使ってパケットをアニメーションする
+- `src/core/` 画面に依存しない中身
+  - `model.ts` 機器カタログと設定の型 / `ip.ts` IPv4計算
+  - `sim.ts` シミュレータ(VLAN・トランク、DHCP・リレー、NAT、ポート転送、フィルター、DNS、プロキシ、ARP)
+  - `checks.ts` 検収テスト(依頼ごとに生成。全部通れば納品できる)
+  - `gen.ts` 依頼の自動生成(要件 → 正解の構成 → 検収テスト → シミュレータで検証)/ `faults.ts` トラブル対応用の不具合
+- `src/game/` `state.ts` 進行(レベル、相場、倉庫、受注、ヘルプ、納品)/ `tutorial.ts` 研修3件 / `dict.ts` 辞書の本文と図解
+- `src/ui/` `app.ts`(1920×1080の固定ステージを拡大縮小)/ `hub.ts` 受注ボード / `bench.ts` 作業画面 / `desk.ts` 机(SVG)/ `panel.ts` 機器の設定 / `shop.ts` / `dict.ts` / `style.css`
+- `public/img/` Geminiで作った素材。`python tools/gen_assets.py [名前]` で作り直せる(マゼンタ背景を抜く)
 
-## テスト(Edgeのヘッドレスで実行)
-先に上記の http.server を起動しておく(`tests/ui.html` は file:// では動かない)。
-
-    EDGE="/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
-    for t in sim ui; do MSYS_NO_PATHCONV=1 "$EDGE" --headless=new --disable-gpu --no-first-run \
-      --user-data-dir="$(cygpath -w "$(mktemp -d)")" --window-size=1500,1000 --virtual-time-budget=40000 \
-      --dump-dom "http://127.0.0.1:8765/tests/$t.html" 2>/dev/null | grep -E "^FAIL|^RESULT"; done
-
-どちらも `RESULT: PASS` になればOK。
-
-## 注意
-- シェル経由のコマンドは約8KBで切れる。大きなファイルはヒアドキュメントで書かない。
-- SVGの `text-anchor` はCSS側の指定が属性より優先される。位置揃えはクラスで切り替える。
-- ヘッドレスの仮想時間では requestAnimationFrame がほぼ発火しない。アニメーションはタイマーとの早い方で進めている(`frame()`)。
+## 決まり
+- 学習内容を足すときは、sim.ts・gen.ts(組み立てと検収テスト)・faults.ts・辞書・LEVELS(state.ts)をそろえて更新する
+- 生成した依頼は必ず `evaluate(solution)` が全合格になること(tests/gen.test.ts が全レベルで確認)
+- チュートリアルの案内は `[data-pal]` `[data-dev]` `[data-port]` `[data-diag]` `[data-act]` を目印にしている。属性名を変えたら tutorial.ts も直す
+- シェル経由のコマンドは約8KBで切れる。大きなファイルはヒアドキュメントで書かない
 
 ## 日本語の文章
-- ゲーム内の文章(依頼文、ヒント、辞書、チュートリアル、画面の文言)を書いたり直したりしたら、仕上げに yomiyasu で推敲する(`.devin/skills/yomiyasu/`、v3.1.0)。
-- 検査スクリプト: `python .devin/skills/yomiyasu/scripts/yomiyasu_lint.py <ファイル.md>`
-- SKILL.md 中の `${CLAUDE_SKILL_DIR}` は `.devin/skills/yomiyasu` と読み替える。Devin の形式に合わないため frontmatter の `allowed-tools` 行だけ削ってある。
+- ゲーム内の文章(依頼文、ヒント、辞書、チュートリアル、画面の文言)を書いたり直したりしたら、仕上げに yomiyasu で推敲する(`.devin/skills/yomiyasu/`、v3.1.0)
+- 検査: 文章を標準入力で渡す `python .devin/skills/yomiyasu/scripts/yomiyasu_lint.py -`
+- SKILL.md 中の `${CLAUDE_SKILL_DIR}` は `.devin/skills/yomiyasu` と読み替える
 
 ## 素材
-- 画像は Gemini API で作る。キーはユーザー環境変数 `gemini`(このシェルのプロセス環境には無いので、レジストリ HKCU\Environment から読む)。キーを表示・記録しない。
-- `assets/trial/` は画風の試作。
+- 画像は Gemini API で作る。キーはユーザー環境変数 `gemini`(レジストリ HKCU\Environment から読む)。キーを表示・記録しない
+- 効果音は `src/ui/audio.ts` でその場で合成している(素材ファイルなし)
