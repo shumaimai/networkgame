@@ -697,3 +697,22 @@ p, li, td, dd, .brief, .info, .sl, .card h3, .coach p { word-break: auto-phrase;
 .stp button:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
 .stp button:disabled { opacity: .3; cursor: default; }
 .svi { grid-template-columns: 76px 1fr 68px 30px; }
+
+/* プレイグラウンドと、ハードモードの連続成功 */
+.chip.play { background: #3d2f6e; color: #d9ccff; }
+.play-tips { display: grid; gap: 6px; line-height: 1.6; }
+.play-tips li { color: #c9d4ee; }
+.set-note { color: var(--mute); font-size: 14px; line-height: 1.7; margin: 0 0 10px; }
+.streak { background: #3a2410; border: 1px solid #b86a1e; border-radius: 99px; padding: 4px 14px; font-size: 14px; color: #ffcf99; white-space: nowrap; display: flex; align-items: baseline; gap: 6px; }
+.streak b { font-size: 18px; color: var(--orange); }
+.streak i { font-style: normal; font-size: 12px; color: #ffe2bf; }
+.r-streak { margin: 0 0 10px; font-size: 14px; color: #ffcf99; }
+.r-streak b { color: var(--orange); font-size: 17px; }
+.r-meta { flex-wrap: wrap; row-gap: 4px; }
+.toggle.challenge b em { font-style: normal; font-weight: 500; font-size: 13px; color: var(--mute); margin-left: 10px; }
+.modal:has(.offer) { padding-top: 22px; padding-bottom: 20px; }
+/* 依頼の詳細が長くても、「受注する」は下に貼り付けて、いつも見えるようにする */
+.offer .modal-btns { position: sticky; bottom: -20px; margin: 12px -36px -20px; padding: 12px 36px 16px; background: var(--panel); border-top: 1px solid var(--line); z-index: 2; }
+.offer .modal-btns .toggle.challenge { flex: 1; margin: 0; font-size: 13.5px; line-height: 1.55; text-align: left; }
+.offer .modal-btns .btn { flex: none; }
+.offer .modal-btns .mute { max-width: 220px; font-size: 13px; }

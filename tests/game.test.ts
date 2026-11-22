@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/core/checks';
+import { browse, build, reach } from '../src/core/sim';
+import { parseIp } from '../src/core/ip';
 import { generate } from '../src/core/gen';
 import { Builder, worldCost } from '../src/core/job';
 import { clone } from '../src/core/model';
@@ -341,5 +343,115 @@ describe('プレイで見つかった不具合', () => {
     // 数え方を入れる前のセーブ: 記録(CSVのもと)に残っている件数を使う
     delete g.s.totals;
     expect(g.totals.n).toBe(60);
+  });
+});
+
+describe('ハードモードの連続成功', () => {
+  // 依頼を1件、模範解答で納品する。late: 納期に遅れる
+  const run = (g: Game, o: { hard: boolean; late?: boolean; answer?: boolean }) => {
+    const offer = g.s.board.find(x => !x.special)!;
+    g.accept(offer, o.hard);
+    const a = g.s.active!, job = g.activeJob!;
+    a.world = clone(job.solution);
+    if (job.kind === 'trouble') for (const c of a.world.cables) c.free = true;
+    if (o.late) a.elapsed = job.minutes * 60000 + 1000;
+    if (o.answer) g.useHelp('answer');
+    const out = g.deliver(evaluate(a.world, job.checks.map(c => c.check)))!;
+    return { out, base: job.xp * (0.6 + 0.2 * out.stars) };
+  };
+  it('納期に間に合うたびに、経験値の倍率が 1.5 → 2 → 3 → 4 → 6 → 8 と上がり、8 で止まる', () => {
+    const g = new Game(newSave(41));
+    g.skipTutorial();
+    const seen: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const { out, base } = run(g, { hard: true });
+      seen.push(out.xpMult);
+      expect(out.xp).toBe(Math.round(base * out.xpMult));
+      expect(out.streak).toBe(i + 1);
+    }
+    expect(seen).toEqual([1.5, 2, 3, 4, 6, 8, 8, 8]);
+    expect(g.s.bestStreak).toBe(8);
+  });
+  it('遅れる・取り下げる・「答え」を使うと0に戻る。時間制限なしの依頼では、倍率は付かず、連続も変わらない', () => {
+    const g = new Game(newSave(42));
+    g.skipTutorial();
+    run(g, { hard: true }); run(g, { hard: true });
+    expect(g.streak).toBe(2);
+    const easy = run(g, { hard: false });
+    expect(easy.out.xpMult).toBe(1);
+    expect(easy.out.xp).toBe(Math.round(easy.base));
+    expect(easy.out.onTime).toBeNull();
+    expect(g.streak).toBe(2);
+    const late = run(g, { hard: true, late: true });
+    expect(late.out).toMatchObject({ xpMult: 1, streak: 0, streakBefore: 2, onTime: false });
+    expect(late.out.xp).toBe(Math.round(late.base));
+    expect(g.streak).toBe(0);
+    run(g, { hard: true });
+    expect(g.streak).toBe(1);
+    const ans = run(g, { hard: true, answer: true });
+    expect(ans.out.xpMult).toBe(1);
+    expect(g.streak).toBe(0);
+    run(g, { hard: true });
+    g.accept(g.s.board.find(x => !x.special)!, true);
+    g.abandon();
+    expect(g.streak).toBe(0);
+    // 時間制限なしの依頼を取り下げても、連続は変わらない
+    run(g, { hard: true });
+    g.accept(g.s.board.find(x => !x.special)!, false);
+    g.abandon();
+    expect(g.streak).toBe(1);
+  });
+});
+
+describe('プレイグラウンド', () => {
+  it('お金もレベルも関係なく、どの機器でも置ける。進行中の依頼と資金には影響しない', () => {
+    const g = new Game(newSave(43));
+    g.skipTutorial();
+    g.accept(g.s.board.find(x => !x.special)!, false);
+    const money = g.s.money, active = JSON.stringify(g.s.active);
+    g.s.money = 0;
+    expect(g.level).toBeLessThan(5);
+    g.sandbox = true;
+    const w = g.playground().world, ids: string[] = [];
+    for (const m of ['l3-24', 'fw', 'lb', 'server', 'pc', 'pc', 'printer', 'home', 'internet-3', 'cloud', 'wan', 'vserver', 'vserver']) {
+      const d = g.buyDevice(m);
+      if (typeof d === 'string') throw new Error(d);
+      expect(d.cost).toBe(0);
+      w.devices.push(d); ids.push(d.id);
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(new Set(w.devices.map(d => d.name)).size).toBe(w.devices.length);
+    expect(w.devices.find(d => d.kind === 'internet')).toMatchObject({ id: 'inet', ports: ['回線1', '回線2', '回線3'] });
+    expect(w.devices.find(d => d.kind === 'internet')!.cfg.domain).toBe('play.example.jp');
+    // 回線・クラウド・広域イーサネットは1つだけ
+    expect(typeof g.buyDevice('internet')).toBe('string');
+    expect(typeof g.buyDevice('cloud')).toBe('string');
+    expect(typeof g.buyDevice('wan')).toBe('string');
+    expect(g.payCable()).toBe(true);
+    g.refundCable();
+    expect(g.s.money).toBe(0);
+    g.sandbox = false;
+    g.s.money = money;
+    expect(JSON.stringify(g.s.active)).toBe(active);
+    // 机の上は残る。片付けると空になる
+    expect(g.playground().world.devices.length).toBe(13);
+    g.clearPlayground();
+    expect(g.playground().world.devices.length).toBe(0);
+    // ふだんは、資金が足りなければ買えない
+    g.s.money = 0;
+    expect(typeof g.buyDevice('l2-5')).toBe('string');
+  });
+  it('プレイグラウンドで組んだネットワークで、通信できる', () => {
+    const g = new Game(newSave(44));
+    g.sandbox = true;
+    const w = g.playground().world, add = (m: string) => { const d = g.buyDevice(m); if (typeof d === 'string') throw new Error(d); w.devices.push(d); return d; };
+    const inet = add('internet'), rt = add('router'), sw = add('l2-8'), pc = add('pc');
+    const link = (a: string, pa: number, b: string, pb: number) => w.cables.push({ id: 'c' + w.cables.length, a: { dev: a, port: pa }, b: { dev: b, port: pb } });
+    link(inet.id, 0, rt.id, 0); link(rt.id, 1, sw.id, 0); link(pc.id, 0, sw.id, 1);
+    rt.cfg.lan[0].ip = '192.168.1.1';
+    Object.assign(pc.cfg, { ip: '192.168.1.10', gw: '192.168.1.1', dns: '8.8.8.8' });
+    const n = build(w.devices, w.cables);
+    expect(reach(n, pc, parseIp('8.8.8.8')!).ok).toBe(true);
+    expect(browse(n, pc, 'www.example.com').ok).toBe(true);
   });
 });

@@ -2,15 +2,16 @@
 import { CheckResult, evaluate } from '../core/checks';
 import { ipStr, parseIp } from '../core/ip';
 import { Job, KIND_LABEL, worldCost } from '../core/job';
-import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, PortRef, ServerCfg, SVC, SwitchCfg, defaultCfg, dkimKey, fillCfg, isGateway, isHost, linkError, makeDevice } from '../core/model';
+import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, MODELS, PortRef, ServerCfg, SVC, SwitchCfg, defaultCfg, dkimKey, fillCfg, isGateway, isHost, linkError, makeDevice } from '../core/model';
 import { Net, arpTable, browse, build, reach, resolve, traceroute } from '../core/sim';
 import { ReviewItem, review } from '../game/review';
-import { Active, Game, HELP_COST, HelpUse, Outcome } from '../game/state';
+import { Active, Game, HELP_COST, HelpUse, MAX_LEVEL, Outcome, PLAY_JOB, streakMult } from '../game/state';
 import { Step, StepCtx, TUTORIALS } from '../game/tutorial';
 import type { App } from './app';
 import { sfx } from './audio';
 import { Desk, Sel } from './desk';
 import { guideChips, openGuide } from './guide';
+import { openSettings } from './hub';
 import { $, esc, img, onAct, stars, yen } from './dom';
 import { COPY_LABEL, PanelCtx, ROW_TEMPLATE, VALID, cablePanel, copyKeys, copySource, devicePanel, setPath } from './panel';
 
@@ -34,8 +35,26 @@ const copyable = (html: string): string => html.replace(COPY_RE, v => {
 // 仕様書の1項目: 改行ごとに段落にする(折り返した行と、次の行を見分けられるようにする)
 const specLines = (body: string, copy: boolean): string => body.split('\n').map(l => `<p class="sl">${copy ? copyable(esc(l)) : esc(l)}</p>`).join('');
 
-export function mountBench(app: App, root: HTMLElement): () => void {
-  const game: Game = app.game, a: Active = game.s.active!, job: Job = game.activeJob!;
+// ハードモードの依頼の途中で作業画面を離れた時刻。離れている間も納期の時計を進めるために使う(アプリを閉じたあとは数えない)
+let leftAt: { key: string; t: number } | null = null;
+// プレイグラウンドで置ける機器。値段のない機器(端末、回線、クラウド)も置ける
+const PLAY_GROUPS: [string, string[]][] = [
+  ['端末', ['pc', 'printer', 'phone', 'camera', 'pos', 'home']],
+  ['ネットワーク機器とサーバー', MODELS.filter(m => m.price > 0).map(m => m.id)],
+  ['回線とクラウド', ['internet', 'internet-2', 'internet-3', 'wan', 'cloud', 'vserver']],
+];
+// クリックで置いたときの場所(回線やクラウドは、机の上のほうに置く)
+const PLAY_SPOT: Record<string, [number, number][]> = { internet: [[700, 80], [460, 80], [940, 80]], cloud: [[1180, 100], [1180, 480], [940, 480], [700, 480]], wan: [[280, 100], [280, 480], [520, 480]] };
+
+/** sandbox: プレイグラウンド(お金も依頼もない机)として開く */
+export function mountBench(app: App, root: HTMLElement, sandbox = false): () => void {
+  const game: Game = app.game;
+  game.sandbox = sandbox;
+  const a: Active = sandbox ? game.playground() : game.s.active!, job: Job = sandbox ? PLAY_JOB : game.activeJob!;
+  // 離れていた間の時間を、納期の時計に足す
+  const clockKey = sandbox ? '' : `${a.offer?.id}:${a.offer?.seed}`;
+  if (a.challenge && leftAt?.key === clockKey) a.elapsed += Date.now() - leftAt.t;
+  if (!sandbox) leftAt = null;
   const world = a.world;
   const tut = job.tutorial ? TUTORIALS.find(t => t.id === job.tutorial)! : null;
   for (const d of world.devices) fillCfg(d);
@@ -51,22 +70,34 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   root.innerHTML = `
     <div class="bench">
       <header class="bar">
-        <button class="btn ghost" data-act="back">◀ 受注へ</button>
-        <div class="bar-title"><span class="chip ${job.kind}">${KIND_LABEL[job.kind]}</span><b>${esc(job.client)}</b><span>${esc(job.title)}</span></div>
+        <button class="btn ghost" data-act="back">${sandbox ? '◀ 戻る' : '◀ 受注へ'}</button>
+        <div class="bar-title">${sandbox ? '<span class="chip play">プレイグラウンド</span><b>自由に組んで試す</b><span>お金はかかりません。ここで組んだものは、依頼や資金に影響しません。</span>' : `<span class="chip ${job.kind}">${KIND_LABEL[job.kind]}</span><b>${esc(job.client)}</b><span>${esc(job.title)}</span>`}</div>
         <div class="spacer"></div>
         <div id="timer" class="timer hidden"></div>
         <div id="b-money" class="money"></div>
         <button class="btn" data-act="guide">ガイド</button>
-        <button class="btn" data-act="help">ヘルプ</button>
+        <button class="btn${sandbox ? ' hidden' : ''}" data-act="help">ヘルプ</button>
         <button class="btn" data-act="menu">…</button>
-        <button class="btn primary big" data-act="deliver" disabled>納品する</button>
+        <button class="btn primary big${sandbox ? ' hidden' : ''}" data-act="deliver" disabled>納品する</button>
       </header>
-      <aside class="col left">
+      <aside class="col left">${sandbox ? `
+        <h3>プレイグラウンド</h3>
+        <div class="brief">依頼もお金もない机です。作中に出てくる機器を、レベルに関係なく、何台でも置けます。組んだものは残るので、あとで続きから触れます。</div>
+        <h3>できること</h3>
+        <ul class="plain small play-tips">
+          <li>右の一覧から機器を置き、ポート同士をクリックしてつなぐ。</li>
+          <li>機器を選び、右下の診断ツール(ping、tracert、nslookup、Web閲覧)で通信を確かめる。</li>
+          <li>ルーターやスイッチを「一時的に止める」で、予備の経路に切り替わるかを見る。</li>
+          <li>設定欄の「?」から、その内容のガイドを開く。</li>
+        </ul>
+        <h3>机の上</h3><div id="play-count" class="cost"></div>
+        <button class="btn wide" data-act="play-clear">机の上を全部片付ける</button>` : `
         <div class="client"><img src="${portrait(job.industry)}" alt=""><div><b>${esc(job.client)}</b><small>${esc(job.industry)}・${esc(job.person)}</small></div></div>
         <div class="brief">${esc(job.brief)}</div>
         ${job.spec.length ? `<h3>仕様書</h3>${tut ? '' : '<p class="spec-hint">アドレスや名前は、クリックでコピーできます。/24 は付きません。</p>'}<div class="spec stack">${job.spec.map(s => `<section><h4>${esc(s.head)}</h4>${specLines(s.body, !tut)}</section>`).join('')}</div>` : ''}
         ${tut ? '' : '<div id="b-guides"></div>'}
         <h3>お金</h3><div id="b-cost" class="cost"></div>
+`}
       </aside>
       <section class="center">
         <div class="desk-wrap"><svg id="desk" class="desk"></svg><div id="offnote" class="offnote hidden"></div>
@@ -80,7 +111,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
         </div>
         <div id="coach" class="coach hidden"></div>
         <div class="under">
-          <div class="pane"><h3>検収テスト <span id="pass"></span></h3><ul id="checks" class="checks"></ul></div>
+          <div class="pane"><h3>${sandbox ? '確かめ方' : '検収テスト'} <span id="pass"${sandbox ? ' class="hidden"' : ''}></span></h3>${sandbox ? '<ul class="plain small play-tips"><li>ここには検収テストがありません。通信できるかは、診断ツールの結果とコンソールで確かめます。</li><li>インターネットを使う構成では、「回線とクラウド」の回線を置き、ルーターのWANをつなぎます。</li><li>公開DNSのレコードは、回線を選ぶと編集できます(ドメインは play.example.jp)。</li></ul>' : ''}<ul id="checks" class="checks${sandbox ? ' hidden' : ''}"></ul></div>
           <div class="pane"><h3>コンソール</h3><div id="console" class="console"></div></div>
         </div>
       </section>
@@ -137,7 +168,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   const desk = new Desk($<SVGSVGElement>('#desk', root), {
     get world() { return world; },
     get net() { return net; },
-    emptyHint: ['右の機材をここにドラッグして、机の上に並べましょう', '並べたら、ポート(小さな四角)同士をクリックしてLANケーブルでつなぎます'],
+    emptyHint: sandbox ? ['右の一覧から、機器をここにドラッグして並べます', 'お金はかかりません。レベルに関係なく、どの機器でも置けます'] : ['右の機材をここにドラッグして、机の上に並べましょう', '並べたら、ポート(小さな四角)同士をクリックしてLANケーブルでつなぎます'],
     zones: job.zones,
     link, removeCable, log,
     onSelect: () => { renderPanel(); updateCoach(); },
@@ -160,9 +191,11 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       const r = kind === 'buy' ? game.buyDevice(ref) : game.useStock(ref);
       if (typeof r === 'string') { log(r, 'ng'); sfx('ng'); return; }
       d = r;
-      log(kind === 'buy' ? `${d.name}(${MODEL[ref].label})を購入しました。${yen(d.cost)}` : `${d.name}(${MODEL[ref].label})を倉庫から出しました。`);
+      log(sandbox ? `${d.name}(${MODEL[ref].label})を置きました。` : kind === 'buy' ? `${d.name}(${MODEL[ref].label})を購入しました。${yen(d.cost)}` : `${d.name}(${MODEL[ref].label})を倉庫から出しました。`);
     }
-    Object.assign(d, pos ?? desk.autoSpot(d));
+    // プレイグラウンドの回線やクラウドは、決めた場所のうち、ほかの機器と重ならない最初の場所に置く
+    const spot = sandbox ? PLAY_SPOT[d.kind]?.find(([x, y]) => world.devices.every(o => Math.abs(o.x - x) > 150 || Math.abs(o.y - y) > 115)) : undefined;
+    Object.assign(d, pos ?? (spot ? { x: spot[0], y: spot[1] } : desk.autoSpot(d)));
     desk.clampPos(d);
     desk.separate(d);
     world.devices.push(d);
@@ -179,7 +212,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     world.cables = world.cables.filter(x => x.a.dev !== id && x.b.dev !== id);
     world.devices.splice(world.devices.indexOf(d), 1);
     if (d.own === 'supplied') { a.shelf[id] = d.cfg; log(`${d.name} を机から片付けました。設定は残っています。`); }
-    else { game.returnDevice(d); log(d.own === 'bought' ? `${d.name} を返品しました。${yen(d.cost)} 返金` : `${d.name} を倉庫に戻しました。`); }
+    else { game.returnDevice(d); log(sandbox ? `${d.name} を机から片付けました。` : d.own === 'bought' ? `${d.name} を返品しました。${yen(d.cost)} 返金` : `${d.name} を倉庫に戻しました。`); }
     desk.sel = null;
     sfx('unplug');
     changed();
@@ -234,6 +267,11 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     box.innerHTML = chips ? `<h3>関連するガイド</h3><div class="gchips">${chips}</div>` : '';
   }
   function renderMoney(): void {
+    if (sandbox) {
+      $('#b-money', root).innerHTML = 'お金はかかりません';
+      $('#play-count', root).innerHTML = `<div><span>機器</span><b>${world.devices.length}台</b></div><div><span>ケーブル</span><b>${world.cables.length}本</b></div>`;
+      return;
+    }
     const cost = worldCost(world), reward = game.rewardOf(job), pen = Math.round(reward * game.helpPenalty), diff = game.stockDiff(world);
     $('#b-money', root).innerHTML = `資金 <b>${yen(game.s.money)}</b>`;
     const [l3] = game.starLimits(job);
@@ -255,6 +293,13 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   // 「購入」の一覧は閉じられる。トラブル対応では機材をほとんど買わないので、最初は閉じておく
   let buyOpen = job.kind !== 'trouble';
   function renderPalette(): void {
+    if (sandbox) {
+      // どの機器も、レベルに関係なく、無料で何台でも置ける(回線・クラウド・広域イーサネットは1つずつ)
+      const one = (m: string) => ['internet', 'cloud', 'wan'].includes(MODEL[m].kind) && world.devices.some(d => d.kind === MODEL[m].kind);
+      paletteEl.innerHTML = PLAY_GROUPS.map(([title, list]) => `<h3>${title}</h3><div class="tiles">${list.map(m => tile('buy:' + m, m === 'vserver' ? 'vserver' : MODEL[m].kind, MODEL[m].short + (m === 'internet-2' ? '(2契約)' : m === 'internet-3' ? '(3契約)' : ''), one(m) ? '机の上にあります' : '無料', one(m) ? 'poor' : '')).join('')}</div>`).join('')
+        + '<div class="note">LANケーブルも無料です。</div>';
+      return;
+    }
     const waiting = suppliedAll.filter(x => !dev(x.id));
     const stock = Object.keys(game.s.stock);
     let h = '';
@@ -274,7 +319,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   }
   // 「設定を写す」は、DHCPを習う Lv.3 から出す。それまでは、1台ずつ手で入れることが学ぶ内容になっている
   // トラブル対応では出さない(ボタンに出る項目名で、不具合の場所が分かってしまうため)
-  const panelCtx = (): PanelCtx => ({ net, diagTarget, cables: world.cables, devices: world.devices, level: game.level, assist: !tut && game.level >= 3 && job.kind !== 'trouble' });
+  const panelCtx = (): PanelCtx => ({ net, diagTarget, cables: world.cables, devices: world.devices, level: sandbox ? MAX_LEVEL : game.level, assist: sandbox || (!tut && game.level >= 3 && job.kind !== 'trouble'), sandbox });
   let panelDev = '';
   /** 設定パネルの中の「いまの状態」の表示(接続中・未接続、受け取ったアドレスなど)だけを、入力欄はそのままに更新する */
   function syncLive(): void {
@@ -491,7 +536,13 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   // ---------- 入力 ----------
   onAct(root, (act, el) => {
     switch (act) {
-      case 'back': sfx('click'); app.show('hub'); break;
+      case 'back': sfx('click'); app.show(!sandbox ? 'hub' : app.playBack === 'bench' && game.s.active ? 'bench' : app.playBack === 'title' || app.playBack === 'shop' || app.playBack === 'ware' ? app.playBack : 'hub'); break;
+      case 'play-clear': {
+        const m = app.modal(`<h2>机の上を全部片付ける</h2><p class="lead">プレイグラウンドの机の上の機器とケーブルを、すべて片付けます。入力した設定も消えます。</p>
+          <div class="modal-btns"><button class="btn" data-act="close">やめる</button><button class="btn danger" data-act="do-clear">片付ける</button></div>`);
+        onAct(m, x => { if (x === 'do-clear') { game.clearPlayground(); app.closeModal(); app.show('play'); } });
+        break;
+      }
       case 'zoom-in': desk.zoomStep(1); sfx('tick'); break;
       case 'zoom-out': desk.zoomStep(-1); sfx('tick'); break;
       case 'view-reset': desk.resetView(); sfx('tick'); break;
@@ -518,10 +569,12 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       case 'deliver': deliver(); break;
       case 'menu': {
         const m = app.modal(`<h2>メニュー</h2>
-          <button class="btn wide" data-act="restart">最初からやり直す(購入した機材は返金)</button>
-          ${tut ? '<button class="btn wide" data-act="skip">研修をスキップして、依頼を受けはじめる</button>' : '<button class="btn danger wide" data-act="abandon">この依頼を取り下げる(前金を返し、評判が下がる)</button>'}
+          ${sandbox ? '' : '<button class="btn wide" data-act="restart">最初からやり直す(購入した機材は返金)</button>'}
+          ${sandbox ? '' : tut ? '<button class="btn wide" data-act="skip">研修をスキップして、依頼を受けはじめる</button>' : '<button class="btn danger wide" data-act="abandon">この依頼を取り下げる(前金を返し、評判が下がります)</button>'}
+          <button class="btn wide" data-act="settings">設定(音の大きさ、プレイグラウンドなど)</button>
           <div class="modal-btns"><button class="btn primary" data-act="close">閉じる</button></div>`);
         onAct(m, x => {
+          if (x === 'settings') { app.closeModal(); openSettings(app); }
           if (x === 'restart') { game.restart(); app.closeModal(); app.show('bench'); }
           if (x === 'abandon') { game.abandon(job.checks.filter((_, i) => results[i] && !results[i].ok).map(c => c.label)); app.closeModal(); app.show('hub'); }
           if (x === 'skip') { game.abandon(); game.skipTutorial(); app.closeModal(); app.show('hub'); }
@@ -569,7 +622,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
         if (!d) break;
         // 設定を入れた購入品・在庫品は、返すと設定が消える。1回目は確かめるだけにする
         const edited = d.own !== 'supplied' && JSON.stringify(d.cfg) !== JSON.stringify(defaultCfg(MODEL[d.model]));
-        if (edited && !el.dataset.armed) { el.dataset.armed = '1'; el.classList.add('danger'); el.textContent = `入力した設定が消えます。もう一度押すと${d.own === 'bought' ? '返品します' : '倉庫に戻します'}`; sfx('ng'); break; }
+        if (edited && !el.dataset.armed) { el.dataset.armed = '1'; el.classList.add('danger'); el.textContent = `入力した設定が消えます。もう一度押すと${sandbox ? '片付けます' : d.own === 'bought' ? '返品します' : '倉庫に戻します'}`; sfx('ng'); break; }
         removeDevice(d.id);
         break;
       }
@@ -653,7 +706,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   const timer = window.setInterval(tick, 1000);
   if (a.challenge) { a.elapsed -= 1000; tick(); }
 
-  log(`【${KIND_LABEL[job.kind]}】${job.client}「${job.title}」`);
+  log(sandbox ? '【プレイグラウンド】機器を自由に置いて、通信を試せます。お金はかかりません。' : `【${KIND_LABEL[job.kind]}】${job.client}「${job.title}」`);
   if (job.kind === 'trouble') log('既設のネットワークに不具合があります。診断ツールで原因を探して直しましょう。');
   if (job.kind === 'migrate') log('机の上は、いま動いているネットワークです。仕様書の「変更内容」のとおりに作り替えます。不合格の検収テストが、これから変える部分です。');
   changed();
@@ -663,6 +716,9 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   (window as any).__bench = { place, link, removeDevice, removeCable, diag, changed, desk, world, job, get results() { return results; }, select: (id: string) => desk.select({ kind: 'dev', id }) };
 
   return () => {
+    // ハードモードの依頼を離れている間も、納期の時計は進む(受注の画面やプレイグラウンドで時間を止められないようにする)
+    if (!sandbox && a.challenge && game.s.active === a) leftAt = { key: clockKey, t: Date.now() };
+    game.sandbox = false;
     clearInterval(timer);
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
@@ -689,8 +745,10 @@ function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[], answe
         <span>経験値 <b>+${out.xp}</b></span>
         ${out.repDelta ? `<span>評判 <b class="${out.repDelta < 0 ? 'neg' : ''}">${out.repDelta > 0 ? '+' : ''}${out.repDelta}</b></span>` : ''}
         ${out.onTime === true ? '<span class="good">納期内に納品</span>' : out.onTime === false ? '<span class="neg">納期に間に合わず</span>' : ''}
+        ${out.xpMult > 1 ? `<span class="good">ハードモード ${out.streak}回連続 → 経験値 <b>×${out.xpMult}</b></span>` : out.onTime != null && out.streakBefore > 0 ? `<span class="neg">連続成功(${out.streakBefore}回)が止まりました</span>` : ''}
         <span>資金 <b>${yen(out.final)}</b></span>
       </div>
+      ${out.xpMult > 1 ? `<div class="r-streak">次もハードモードで納期に間に合うと、経験値は <b>×${streakMult(out.streak + 1)}</b> です。</div>` : ''}
       <div class="xpbar"><i style="width:${Math.round(game.xpProgress * 100)}%"></i><span>Lv.${game.level} ${esc(game.levelInfo.title)}</span></div>
       ${up ? `<div class="levelup"><b>レベルアップ! Lv.${out.levelAfter}</b><ul>${out.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><small>機材とガイドのページが増えました。</small></div>` : ''}
       </div>

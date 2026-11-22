@@ -44,6 +44,19 @@ export interface Offer { id: string; seed: number; level: number; kind: 'build' 
 export const REGULAR_WEEK = 3;
 /** 常連の依頼が出るのは、このレベルまで */
 export const REGULAR_MAX_LEVEL = 6;
+/** ハードモード(納期つき)で連続して成功したときの、経験値の倍率。n回目の成功に、n番目の値を掛ける(7回目からは最後の値) */
+export const STREAK_XP = [1.5, 2, 3, 4, 6, 8];
+export const streakMult = (n: number): number => (n <= 0 ? 1 : STREAK_XP[Math.min(n, STREAK_XP.length) - 1]);
+
+/** プレイグラウンド(お金も依頼もない机)で、作業画面に渡す依頼。検収テストも報酬もない */
+export const PLAY_JOB: Job = {
+  id: 'playground', seed: 0, kind: 'build', client: '', industry: '事務所', person: '', title: '自由に組んで試す', brief: '', spec: [], tags: [],
+  supplied: [], checks: [], initial: { devices: [], cables: [] }, solution: { devices: [], cables: [] }, par: 0,
+  difficulty: { stars: 0, score: 0, factors: [] }, reward: 0, xp: 0, minutes: 0, hints: [], faults: [],
+};
+/** プレイグラウンドで、机の上に1つだけ置ける機器(種類 → ID)と、その名前 */
+const PLAY_SINGLE: Record<string, [string, string]> = { internet: ['inet', 'インターネット'], cloud: ['cloud', 'クラウド'], wan: ['wan', '広域イーサネット'] };
+
 export interface HelpUse { plan: boolean; reasons: boolean; answer: boolean }
 export interface Active {
   offer: Offer | null;
@@ -111,10 +124,17 @@ export interface Save {
   log?: PlayLog[];
   /** 納品した件数、利益の合計、★3の件数 */
   totals?: { n: number; profit: number; star3: number };
+  /** ハードモードで連続して成功している回数と、これまでの最高 */
+  streak?: number;
+  bestStreak?: number;
+  /** プレイグラウンドの机の上 */
+  play?: Active;
   settings: { sfx: number; bgm: number };
 }
 
 export interface Outcome {
+  /** ハードモードの連続成功: 納品する前の回数、納品したあとの回数、経験値に掛けた倍率 */
+  streakBefore: number; streak: number; xpMult: number;
   stars: number; reward: number; parts: { label: string; amount: number }[];
   cost: number; profit: number; xp: number;
   levelBefore: number; levelAfter: number; unlocks: string[];
@@ -136,6 +156,25 @@ export class Game {
   private jobCache = new Map<string, Job>();
   constructor(public s: Save, private persist: (s: Save) => void = () => {}) {}
   save(): void { this.persist(this.s); }
+
+  // ---- プレイグラウンド ----
+  /** プレイグラウンドを開いている間は true。機器もケーブルも無料で、レベルに関係なく置ける */
+  sandbox = false;
+  playground(): Active {
+    return (this.s.play ??= { offer: null, tutorial: null, world: { devices: [], cables: [] }, shelf: {}, spare: 0, seq: 1, challenge: false, elapsed: 0, help: { plan: false, reasons: false, answer: false }, advance: 0 });
+  }
+  clearPlayground(): void { this.s.play = undefined; this.save(); }
+  /** いま作業している机(プレイグラウンドか、受注した依頼) */
+  private get cur(): Active { return this.sandbox ? this.playground() : this.s.active!; }
+  private playDevice(model: string): Device | string {
+    const m = MODEL[model], single = PLAY_SINGLE[m.kind];
+    if (single && this.cur.world.devices.some(d => d.kind === m.kind)) return `${single[1]}は、机の上に1つだけ置けます。`;
+    const d = makeDevice(model, single ? single[0] : this.nextId(), single ? single[1] : this.nameFor(model), 'bought', 0, 0, 0);
+    // 公開DNSのレコードを編集できるよう、回線にはドメインを付けておく
+    if (m.kind === 'internet') d.cfg.domain = 'play.example.jp';
+    return d;
+  }
+  get streak(): number { return this.s.streak ?? 0; }
 
   // ---- レベル ----
   get level(): number {
@@ -349,7 +388,7 @@ export class Game {
     const rows = (this.s.log ?? []).map(x => [x.week, x.level, x.client, x.title, x.kind === 'build' ? '構築' : x.kind === 'trouble' ? 'トラブル対応' : '構成変更', x.tags.join(' '), x.score,
       x.result === 'delivered' ? '納品' : '取り下げ', x.stars, x.seconds, x.challenge ? 'あり' : '', x.help.map(k => ({ plan: '方針', reasons: '原因', answer: '答え' }[k] ?? k)).join(' '),
       Object.entries(x.diag).map(([k, n]) => `${k}:${n}`).join(' '), x.failed.join(' / ')].map(q).join(','));
-    return ['週,レベル,依頼主,依頼,種類,タグ,難易度の点数,結果,★,かかった時間(秒),チャレンジ,使ったヘルプ,診断ツールの回数,不合格のまま残った検収テスト', ...rows].join('\r\n');
+    return ['週,レベル,依頼主,依頼,種類,タグ,難易度の点数,結果,★,かかった時間(秒),ハードモード,使ったヘルプ,診断ツールの回数,不合格のまま残った検収テスト', ...rows].join('\r\n');
   }
   /** failed: 取り下げた時点で不合格だった検収テスト(記録に残す) */
   abandon(failed: string[] = []): void {
@@ -357,6 +396,8 @@ export class Game {
     if (!a) return;
     const job = this.activeJob;
     if (job) this.record(job, a, 'abandoned', 0, failed);
+    // ハードモードの依頼を取り下げると、連続成功は0に戻る
+    if (a.challenge) this.s.streak = 0;
     this.clearDesk();
     this.s.money -= a.advance;
     if (!a.tutorial) { this.s.rep = Math.max(0, this.s.rep - 5); this.s.board = this.s.board.filter(o => o.id !== a.offer!.id); }
@@ -367,19 +408,20 @@ export class Game {
   // ---- 作業中の売り買い ----
   // 机の上にすでにある機器と重ならないIDにする(前に納品した机から始まる依頼では、そのときの購入品のIDが残っている)
   private nextId(): string {
-    const a = this.s.active!, used = new Set([...a.world.devices.map(d => d.id), ...Object.keys(a.shelf)]);
+    const a = this.cur, used = new Set([...a.world.devices.map(d => d.id), ...Object.keys(a.shelf)]);
     let id = 'b' + a.seq++;
     while (used.has(id)) id = 'b' + a.seq++;
     return id;
   }
   private nameFor(model: string): string {
-    const m = MODEL[model], ds = this.s.active!.world.devices;
+    const m = MODEL[model], ds = this.cur.world.devices, prefix = m.prefix || m.short;
     let n = 1;
-    while (ds.some(d => d.name === `${m.prefix}-${n}`)) n++;
-    return `${m.prefix}-${n}`;
+    while (ds.some(d => d.name === `${prefix}-${n}`)) n++;
+    return `${prefix}-${n}`;
   }
   /** 新品を買って机に置く */
   buyDevice(model: string): Device | string {
+    if (this.sandbox) return this.playDevice(model);
     const price = this.price(model);
     if (price > this.s.money) return `資金が足りません(${MODEL[model].label})`;
     this.s.money -= price;
@@ -397,11 +439,12 @@ export class Game {
     else if (d.own === 'stock') this.putStock(d.model, d.cost);
   }
   payCable(): boolean {
+    if (this.sandbox) return true;
     if (this.s.money < CABLE_PRICE) return false;
     this.s.money -= CABLE_PRICE;
     return true;
   }
-  refundCable(): void { this.s.money += CABLE_PRICE; }
+  refundCable(): void { if (!this.sandbox) this.s.money += CABLE_PRICE; }
 
   useHelp(kind: keyof HelpUse): void { this.s.active!.help[kind] = true; this.save(); }
   get helpPenalty(): number {
@@ -421,13 +464,19 @@ export class Game {
     const penalty = Math.round(base * this.helpPenalty);
     if (penalty) parts.push({ label: 'ヘルプの利用', amount: -penalty });
     let onTime: boolean | null = null;
+    const streakBefore = this.streak;
+    let streak = streakBefore, xpMult = 1;
     if (a.challenge) {
       onTime = a.elapsed <= job.minutes * 60000;
       if (onTime) parts.push({ label: '納期ボーナス', amount: Math.round((base * 0.3) / 100) * 100 });
+      // 連続成功に数えるのは、納期に間に合い、ヘルプの「答え」を使わなかった納品。それ以外は0に戻る
+      if (onTime && !a.help.answer) { streak = streakBefore + 1; xpMult = streakMult(streak); } else streak = 0;
     }
     const reward = parts.reduce((t, p) => t + p.amount, 0);
     const levelBefore = this.level;
-    const xp = job.tutorial ? job.xp : Math.round(job.xp * (0.6 + 0.2 * stars) * (onTime ? 1.2 : 1));
+    const xp = job.tutorial ? job.xp : Math.round(job.xp * (0.6 + 0.2 * stars) * xpMult);
+    this.s.streak = streak;
+    this.s.bestStreak = Math.max(this.s.bestStreak ?? 0, streak);
     const repDelta = job.tutorial ? 0 : (stars - 2) * 4 + (onTime === false ? -3 : onTime ? 1 : 0);
     this.s.money += reward - a.advance;
     this.s.xp += xp;
@@ -446,6 +495,6 @@ export class Game {
     const unlocks = LEVELS.filter(l => l.level > levelBefore && l.level <= levelAfter).flatMap(l => l.unlocks);
     if (job.tutorial) { if (this.tutorialFinished) this.refreshBoard(); this.save(); }
     else this.nextWeek();
-    return { stars, reward, parts, cost, profit: reward - cost, xp, levelBefore, levelAfter, unlocks, onTime, repDelta, final: this.s.money };
+    return { stars, reward, parts, cost, profit: reward - cost, xp, levelBefore, levelAfter, unlocks, onTime, repDelta, final: this.s.money, streakBefore, streak, xpMult };
   }
 }

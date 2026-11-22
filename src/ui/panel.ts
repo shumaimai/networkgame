@@ -37,7 +37,7 @@ export function setPath(o: any, path: string, v: any): void {
 const OWN: Record<string, string> = { fixed: '据え付けの設備', supplied: 'お客様の機器', stock: '在庫から使用' };
 
 /** level: いまのレベル。まだ習っていない内容の設定欄は出さない */
-export interface PanelCtx { net: Net; diagTarget: string; cables: Cable[]; devices: Device[]; level: number; /** 入力を助けるボタンを出す(研修では出さない) */ assist?: boolean }
+export interface PanelCtx { net: Net; diagTarget: string; cables: Cable[]; devices: Device[]; level: number; /** 入力を助けるボタンを出す(研修では出さない) */ assist?: boolean; /** プレイグラウンド(値段や返品の表示を出さない) */ sandbox?: boolean }
 
 /** 設定を写す元にする端末。同じL2の範囲(同じVLAN)にある、同じ種類の、手動で設定済みの端末だけを選ぶ */
 export function copySource(d: Device, ctx: Pick<PanelCtx, 'devices' | 'net'>): Device | null {
@@ -129,7 +129,7 @@ function panelBody(d: Device, ctx: PanelCtx): string {
 
   const used = usedFeatures(d), open = (k: Gate) => ctx.level >= GATE[k] || used.has(k);
   const cabled = (port: number) => ctx.cables.some(x => (x.a.dev === d.id && x.a.port === port) || (x.b.dev === d.id && x.b.port === port));
-  let h = `<h2>${esc(d.name)}</h2><div class="sub">${m.label} / ${d.own === 'bought' ? '購入品 ' + yen(d.cost) : OWN[d.own]}</div>`;
+  let h = `<h2>${esc(d.name)}</h2><div class="sub">${m.label}${ctx.sandbox ? '' : ' / ' + (d.own === 'bought' ? '購入品 ' + yen(d.cost) : OWN[d.own])}</div>`;
   if (isHost(d.kind)) h += `<div class="mac">MACアドレス <code>${d.mac}</code></div>`;
 
   if (isEndpoint(d.kind)) {
@@ -298,7 +298,7 @@ function panelBody(d: Device, ctx: PanelCtx): string {
     h += `<h3>故障テスト</h3><button class="btn wide${d.off ? ' primary' : ''}" data-act="toggle-off">${d.off ? 'この機器を動かす' : 'この機器を一時的に止める'}</button>
       <div class="info">${d.off ? '止めてあります。この機器を通る通信はできません。動かすまで納品はできません。' : '止めた状態で ping を打つと、残りの機器だけで通信できるかを確かめられます。設定や配線は消えません。'}</div>`;
   }
-  if (d.own === 'bought') h += '<button class="btn danger wide" data-act="remove">返品する(返金)</button>';
+  if (d.own === 'bought') h += ctx.sandbox ? '<button class="btn wide" data-act="remove">机から片付ける</button>' : '<button class="btn danger wide" data-act="remove">返品する(返金)</button>';
   if (d.own === 'stock') h += '<button class="btn wide" data-act="remove">倉庫に戻す</button>';
   if (d.own === 'supplied') h += '<button class="btn wide" data-act="remove">机から片付ける</button>';
   return h;

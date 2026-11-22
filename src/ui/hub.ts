@@ -1,7 +1,7 @@
 // 受注: 研修と、今週の依頼の一覧
 import { Job, KIND_LABEL } from '../core/job';
 import { MODEL } from '../core/model';
-import { Game, LEVELS, MAX_LEVEL, Offer, PriceMove, xpFor } from '../game/state';
+import { Game, LEVELS, MAX_LEVEL, Offer, PriceMove, STREAK_XP, streakMult, xpFor } from '../game/state';
 import { TUTORIALS, tutorialJob } from '../game/tutorial';
 import type { App } from './app';
 import { setBgm, setVolume, sfx } from './audio';
@@ -19,6 +19,7 @@ export function statusBar(game: Game, here: string): string {
       <small>${game.level >= MAX_LEVEL ? '最高レベル' : `次まで ${xpFor(game.level + 1) - game.s.xp}`}</small></div>
     <div class="rep" title="評判が高いほど契約金が増えます">評判 <span class="repstars">${'★'.repeat(full)}${half ? '<i>★</i>' : ''}<u>${'★'.repeat(5 - full - (half ? 1 : 0))}</u></span></div>
     <div class="week">${game.s.week}週目</div>
+    ${game.streak ? `<div class="streak" title="ハードモードで、納期に間に合った納品が続いている回数です。遅れるか、取り下げると0に戻ります。">ハード <b>${game.streak}</b>回連続<i>次は経験値 ×${streakMult(game.streak + 1)}</i></div>` : ''}
     <div class="spacer"></div>
     <div class="money">資金 <b>${yen(game.s.money)}</b></div>
     <nav>
@@ -118,7 +119,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
             <p class="card-sum">${summary(j)}</p>
             <div class="tags">${j.tags.slice(0, 8).map(t => `<i>${esc(t)}</i>`).join('')}</div>
             <div class="card-checks"><small>検収テスト ${j.checks.length}項目</small><ul>${j.checks.map(c => `<li>${esc(c.label)}</li>`).join('')}</ul></div>
-            <div class="card-facts"><div><span>難易度の点数</span><b>${j.difficulty.score}点</b></div><div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div><div><span>納期(チャレンジ)</span><b>${j.minutes}分</b></div></div>
+            <div class="card-facts"><div><span>難易度の点数</span><b>${j.difficulty.score}点</b></div><div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div><div><span>納期(ハードモード)</span><b>${j.minutes}分</b></div></div>
             <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind !== 'trouble' ? `<span>新品でそろえた場合の目安: 機材費 ${yen(game.parNow(j))} ・ 利益 <i>${yen(game.rewardOf(j) - game.parNow(j))}</i></span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
         }).join('')}</div>`;
     }
@@ -144,10 +145,11 @@ export function mountHub(app: App, root: HTMLElement): () => void {
             <h3>お金</h3>
             <div class="cost"><div><span>契約金</span><b>${yen(reward)}</b></div><div><span>前金(受注したときに受け取る)</span><b>${yen(Math.round(reward / 2 / 500) * 500)}</b></div>
               ${j.kind !== 'trouble' ? `<div><span>機材費の目安(今週の値段)</span><b>${yen(game.parNow(j))}</b></div><div><span>★3になる機材費</span><b>${yen(l3)} 以下</b></div>` : ''}<div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div></div>
-            <label class="toggle challenge"><input type="checkbox" id="challenge"${challenge ? ' checked' : ''}><i></i><span><b>チャレンジモード</b>納期は${j.minutes}分です。間に合うと契約金が30%、経験値が20%増えます。遅れると評判が下がります。</span></label>
           </div>
         </div>
-        <div class="modal-btns">${busy ? '<span class="mute">作業中の依頼があります。納品するか取り下げると、次の依頼を受けられます。</span>' : ''}
+        <div class="modal-btns">
+          <label class="toggle challenge"><input type="checkbox" id="challenge"${challenge ? ' checked' : ''}><i></i><span><b>ハードモード<em>納期 ${j.minutes}分</em></b>間に合うと契約金 +30%、経験値 ×${streakMult(game.streak + 1)}${game.streak ? `(いま${game.streak}回連続)` : ''}。続けて間に合うほど倍率が上がります(最大 ×${STREAK_XP[STREAK_XP.length - 1]})。遅れるか取り下げると、連続は0に戻り、評判が下がります。オフなら時間の制限はありません。</span></label>
+          ${busy ? '<span class="mute">作業中の依頼があります。納品するか取り下げると、次の依頼を受けられます。</span>' : ''}
           <button class="btn" data-act="close">閉じる</button><button class="btn primary big" data-act="accept"${busy ? ' disabled' : ''}>受注する</button></div>
       </div>`;
     const m = app.modal(body(), { wide: true });
@@ -205,6 +207,9 @@ export function openSettings(app: App): void {
     <label class="f range"><span>効果音の大きさ</span><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.sfx}"></label>
     <label class="f range"><span>BGMの大きさ</span><input type="range" id="bgm" min="0" max="1" step="0.05" value="${s.bgm}"></label>
     <label class="f"><span>画面</span><button class="btn" data-act="fullscreen">全画面にする / 戻す</button></label>
+    <h3>プレイグラウンド</h3>
+    <p class="set-note">お金も依頼もない机です。作中に出てくる機器をどれでも、何台でも置いて、自由に組んで試せます。進行中の依頼、資金、レベルには影響しません。</p>
+    <button class="btn primary" data-act="play"${app.current === 'play' ? ' disabled' : ''}>${app.current === 'play' ? 'プレイグラウンドを開いています' : 'プレイグラウンドを開く'}</button>
     <h3>セーブデータ</h3>
     <div class="save-btns"><button class="btn" data-act="save-out">セーブデータを書き出す</button><button class="btn" data-act="save-in">セーブデータを読み込む</button><input type="file" id="save-file" accept=".json,application/json" hidden></div>
     <button class="btn danger" data-act="wipe">セーブデータを消して最初から始める</button>
@@ -229,6 +234,7 @@ export function openSettings(app: App): void {
   onAct(m, (act, el) => {
     if (act === 'fullscreen') { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => {}); }
     if (act === 'title') { app.closeModal(); app.show('title'); }
+    if (act === 'play') { app.closeModal(); app.openPlay(); }
     if (act === 'save-out') {
       const url = URL.createObjectURL(new Blob([JSON.stringify(app.game.s)], { type: 'application/json' })), link = document.createElement('a');
       link.href = url; link.download = `networkshop-save-lv${app.game.level}.json`;

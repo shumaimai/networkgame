@@ -10,8 +10,8 @@ import { mountWare } from './ware';
 
 const SAVE_KEY = 'netshop-save';
 export const STAGE_W = 1920, STAGE_H = 1080;
-export type ScreenId = 'title' | 'hub' | 'bench' | 'shop' | 'ware';
-const SCREENS: Record<ScreenId, (app: App, root: HTMLElement) => () => void> = { title: mountTitle, hub: mountHub, bench: mountBench, shop: mountShop, ware: mountWare };
+export type ScreenId = 'title' | 'hub' | 'bench' | 'shop' | 'ware' | 'play';
+const SCREENS: Record<ScreenId, (app: App, root: HTMLElement) => () => void> = { title: mountTitle, hub: mountHub, bench: mountBench, shop: mountShop, ware: mountWare, play: (app, root) => mountBench(app, root, true) };
 
 export class App {
   game!: Game;
@@ -33,6 +33,13 @@ export class App {
     this.show('title');
   }
 
+  /** プレイグラウンドから戻る先(開く前にいた画面) */
+  playBack: ScreenId = 'hub';
+  /** プレイグラウンドを開く。どの画面からでも開ける */
+  openPlay(): void {
+    if (this.current !== 'play') this.playBack = this.current;
+    this.show('play');
+  }
   hasSave(): boolean { try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; } }
   private load(): void {
     let s: Save | null = null;
