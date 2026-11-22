@@ -14,7 +14,8 @@
 - Webでの公開(Cloudflare): リポジトリをつないであり、main に push すると公開される。`npm run build` で作った `dist/` を、そのまま配信する。Pages としてつなぐ場合は出力先に `dist`、Workers としてつなぐ場合は `wrangler.jsonc` を使う。Node.js の版は `.node-version`(22)。`public/_headers` が配信時のHTTPヘッダーを決める。難読化はしない
 - リポジトリは公開する。秘密の値(APIキーなど)、個人のパス、セーブデータをコミットしない。`.github/workflows/ci.yml` が、push のたびに型の検査・単体テスト・ビルドを回す
 - 画面の通しテストは、環境変数 `GAME_URL` で別のURLに向けられる。公開用のビルドを確かめるときは、`npm run build` のあと `npx vite preview --port 4173 --strictPort --host 127.0.0.1` を立てて `GAME_URL=http://127.0.0.1:4173/ node e2e/run.mjs` のように回す
-- `npm run trial` Webで公開するお試し版(Lv.5 まで)を `trial/index.html` に作る。画像・フォント・プログラムを全部埋め込んだ、1つのHTMLファイルになる。作ったあとは `node e2e/trial.mjs` で確かめる(ファイルを直接開く場合と、Webサーバーに置く場合の両方)
+- `npm run trial` Webで公開するお試し版(Lv.5 まで)を `trial/index.html` に作る(作ったファイルはコミットしない)。画像・フォント・プログラムを全部埋め込んだ、1つのHTMLファイルになる。作ったあとは `node e2e/trial.mjs` で確かめる(ファイルを直接開く場合と、Webサーバーに置く場合の両方)
+- `node e2e/perf.mjs` 読み込みの量(画面ごとに取ってくるファイルの数と大きさ)と、描画の速さを測る
 - `node e2e/mode.mjs` プレイグラウンドと、ハードモードの連続成功
 - `node e2e/view.mjs` 机の拡大・縮小と移動(ボタン、何もない場所のドラッグ、ホイール、拡大したままの操作)
 - `node e2e/play.mjs` AIに遊ばせて見つかった点(研修の案内の位置、習う前の設定欄、ポートの重なり、設定パネルの状態表示、納品結果の収まり)
