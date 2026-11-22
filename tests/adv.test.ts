@@ -279,3 +279,68 @@ describe('ガイドの図解', () => {
     }
   });
 });
+
+describe('ガイドの具体例に書いた動き', () => {
+  it('トランク: 片側だけトランクにすると、階をまたぐ通信がどのVLANでもできない', () => {
+    const b = new Builder(), s1 = b.add('l2m-8', 's1', 's1'), s2 = b.add('l2m-8', 's2', 's2');
+    const a1 = host(b, 'pc', 'a1', '192.168.10.11'), a2 = host(b, 'pc', 'a2', '192.168.10.12'), c1 = host(b, 'pc', 'c1', '192.168.20.11'), c2 = host(b, 'pc', 'c2', '192.168.20.12');
+    b.link(a1, 0, s1, 0); b.link(c1, 0, s1, 1); b.link(a2, 0, s2, 0); b.link(c2, 0, s2, 1); b.link(s1, 7, s2, 7);
+    for (const sw of [s1, s2]) { sw.cfg.portVlan[0] = 10; sw.cfg.portVlan[1] = 20; sw.cfg.portMode[7] = 'trunk'; }
+    let n = build(b.devices, b.cables);
+    expect(reach(n, a1, ip('192.168.10.12')).ok && reach(n, c1, ip('192.168.20.12')).ok).toBe(true);
+    expect(reach(n, a1, ip('192.168.20.12')).ok).toBe(false);
+    s2.cfg.portMode[7] = 'access'; s2.cfg.portVlan[7] = 10;
+    n = build(b.devices, b.cables);
+    expect(reach(n, a1, ip('192.168.10.12')).ok || reach(n, c1, ip('192.168.20.12')).ok).toBe(false);
+  });
+  it('ゲスト: 拒否ルールがあっても、社内から始めた通信の返事は戻る', () => {
+    const b = new Builder(), inet = b.add('internet', 'inet', 'inet', 'fixed'), rt = b.add('router', 'rt', 'RT'), s1 = b.add('l2-5', 's1', 's1'), s2 = b.add('l2-5', 's2', 's2');
+    b.link(inet, 0, rt, 0); b.link(rt, 1, s1, 0); b.link(rt, 2, s2, 0);
+    gw(rt).lan[0].ip = '192.168.10.1'; gw(rt).lan[1].ip = '192.168.20.1';
+    const pc = host(b, 'pc', 'pc', '192.168.10.11', '192.168.10.1'), guest = host(b, 'pc', 'guest', '192.168.20.11', '192.168.20.1', '8.8.8.8');
+    b.plug(pc, s1); b.plug(guest, s2);
+    expect(reach(build(b.devices, b.cables), guest, ip('192.168.10.11')).ok).toBe(true);
+    gw(rt).rules.push({ action: 'deny', src: '192.168.20.0/24', dst: '192.168.10.0/24', svc: 'any' });
+    const n = build(b.devices, b.cables);
+    expect(reach(n, guest, ip('192.168.10.11')).ok).toBe(false);
+    expect(reach(n, pc, ip('192.168.20.11')).ok).toBe(true);
+    expect(browse(n, guest, 'www.example.com').ok).toBe(true);
+  });
+  it('NAS: 「利用を許可」には、ネットワークと1台のIPアドレスを並べて書ける', () => {
+    const b = new Builder(), rt = b.add('router', 'rt', 'RT'), s1 = b.add('l2-5', 's1', 's1'), s2 = b.add('l2-5', 's2', 's2');
+    b.link(rt, 1, s1, 0); b.link(rt, 2, s2, 0);
+    gw(rt).lan[0].ip = '192.168.10.1'; gw(rt).lan[1].ip = '192.168.20.1';
+    const nas = host(b, 'nas', 'nas', '192.168.10.60', '192.168.10.1'), pc = host(b, 'pc', 'pc', '192.168.10.11', '192.168.10.1');
+    const far = host(b, 'pc', 'far', '192.168.20.11', '192.168.20.1'), cam = host(b, 'camera', 'cam', '192.168.20.31', '192.168.20.1');
+    b.plug(nas, s1); b.plug(pc, s1); b.plug(far, s2); b.plug(cam, s2);
+    nas.cfg.fileAllow = '192.168.10.0/24, 192.168.20.31';
+    const n = build(b.devices, b.cables), f = (d: Device) => connect(n, d, ip('192.168.10.60'), 'file').ok;
+    expect([f(pc), f(far), f(cam)]).toEqual([true, false, true]);
+    expect(reach(n, far, ip('192.168.10.60')).ok).toBe(true);
+  });
+  it('診断: 回線が抜けていると tracert はルーターで止まり、NATがオフなら tracert は届くが ping は失敗する', async () => {
+    const { traceroute } = await import('../src/core/sim');
+    const b = new Builder(), inet = b.add('internet', 'inet', 'inet', 'fixed'), s = site(b, 1, '192.168.10');
+    let n = build(b.devices, b.cables);
+    const t = traceroute(n, s.pc, ip('8.8.8.8'));
+    expect(t.ok).toBe(false);
+    expect(t.hops).toEqual(['pc1', 'RT-1']);
+    b.link(inet, 0, s.rt, 0);
+    gw(s.rt).nat = false;
+    n = build(b.devices, b.cables);
+    expect(traceroute(n, s.pc, ip('8.8.8.8')).ok).toBe(true);
+    const r = reach(n, s.pc, ip('8.8.8.8'));
+    expect(!r.ok && /戻り/.test(r.reason)).toBe(true);
+  });
+  it('DHCPの二重化: 2台のルーターの範囲から交互に配られ、1台が止まっても残りで配れる', () => {
+    const b = new Builder(), sw = b.add('l2-8', 'sw', 'sw'), r1 = b.add('router', 'r1', 'RT-1'), r2 = b.add('router', 'r2', 'RT-2');
+    b.link(r1, 1, sw, 0); b.link(r2, 1, sw, 1);
+    Object.assign(gw(r1).lan[0], { ip: '192.168.10.1', dhcpOn: true, dhcpStart: '192.168.10.100', dhcpEnd: '192.168.10.124' });
+    Object.assign(gw(r2).lan[0], { ip: '192.168.10.2', dhcpOn: true, dhcpStart: '192.168.10.125', dhcpEnd: '192.168.10.129' });
+    const pcs = [1, 2, 3].map(i => { const d = b.add('pc', 'p' + i, 'p' + i, 'supplied'); d.cfg.mode = 'dhcp'; b.plug(d, sw); return d; });
+    let n = build(b.devices, b.cables);
+    expect(pcs.map(d => n.eff.get(d.id)!.ip)).toEqual([ip('192.168.10.100'), ip('192.168.10.125'), ip('192.168.10.101')]);
+    n = build(b.devices.filter(d => d !== r1), b.cables.filter(c => c.a.dev !== 'r1' && c.b.dev !== 'r1'));
+    expect(pcs.every(d => n.eff.get(d.id)!.ip != null)).toBe(true);
+  });
+});
