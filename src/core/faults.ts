@@ -13,6 +13,8 @@ const pcs = (w: World): Device[] => w.devices.filter(d => d.kind === 'pc');
 const servers = (w: World, f: (c: ServerCfg) => boolean): Device[] => w.devices.filter(d => (d.kind === 'server' || d.kind === 'nas') && f(d.cfg));
 const gws = (w: World): Device[] => w.devices.filter(d => isGateway(d.kind));
 const cableOf = (w: World, d: Device) => w.cables.findIndex(c => c.a.dev === d.id || c.b.dev === d.id);
+// SPFのレコード。TXTレコードにはDKIMやDMARCのものもあるので、値で見分ける
+const isSpf = (x: { type: string; value: string }): boolean => x.type === 'TXT' && /^v=spf1/.test(x.value);
 const zone = (w: World): InetCfg | undefined => { const c = w.devices.find(d => d.kind === 'internet')?.cfg; return c?.zone?.length ? c : undefined; };
 const kindOf = (w: World, id: string) => w.devices.find(d => d.id === id)!.kind;
 
@@ -191,20 +193,20 @@ export const faultCatalog: Fault[] = [
     return `公開DNSのMXレコード(${gone.name} → ${gone.value})が消えている`;
   } },
   { key: 'spf-missing', weight: 3, apply: w => {
-    const z = zone(w), i = z ? z.zone.findIndex(x => x.type === 'TXT') : -1;
+    const z = zone(w), i = z ? z.zone.findIndex(isSpf) : -1;
     if (!z || i < 0) return null;
     const gone = z.zone.splice(i, 1)[0];
     return `公開DNSにSPFレコードがない。元は ${gone.value}`;
   } },
   { key: 'spf-ip', weight: 3, apply: w => {
-    const t = zone(w)?.zone.find(x => x.type === 'TXT');
+    const t = zone(w)?.zone.find(isSpf);
     if (!t) return null;
     const old = t.value;
     t.value = 'v=spf1 ip4:203.0.113.20 -all';
     return `SPFレコードに書かれた送信元(203.0.113.20)が、会社の外側のアドレスと違う。正しくは ${old}`;
   } },
   { key: 'spf-all', weight: 3, apply: w => {
-    const t = zone(w)?.zone.find(x => x.type === 'TXT');
+    const t = zone(w)?.zone.find(isSpf);
     if (!t) return null;
     const old = t.value;
     t.value = 'v=spf1 +all';

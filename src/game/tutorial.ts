@@ -4,11 +4,11 @@ import { Builder, Job, JobCheck, worldCost } from '../core/job';
 import { inCidr, isHostAddr, parseCidr, parseIp } from '../core/ip';
 import { Device, World, clone } from '../core/model';
 
-export interface StepCtx { world: World; results: CheckResult[]; diag: Set<string> }
+export interface StepCtx { world: World; results: CheckResult[]; diag: Set<string>; /** いま選んでいる機器のID */ sel: string | null }
 export interface Step {
   text: string;
-  /** 光らせる画面の部品(CSSセレクタ) */
-  target?: string;
+  /** 光らせる画面の部品(CSSセレクタ)。選んでいる機器によって変えるときは関数にする */
+  target?: string | ((c: StepCtx) => string);
   /** 「ヒント」を押すたびに1つずつ見せる文。先に「次に何を見比べるか」を書き、答えは最後に置く */
   hints?: string[];
   /** 最後のヒントまで見せたときに光らせる部品 */
@@ -47,7 +47,7 @@ export const TUTORIALS: Tutorial[] = [
           return null;
         },
         done: c => { const a = parseIp(cfg(c, 'pc2').ip); return a != null && inCidr(a, parseCidr('192.168.1.0/24')!) && isHostAddr(a, 24) && cfg(c, 'pc2').ip !== cfg(c, 'pc1').ip; } },
-      { text: '届くか確かめましょう。PC-1 を選び、診断ツールの宛先に、いま PC-2 に付けたIPアドレスを入れて「ping」を押します。通信がケーブルの上を流れます。', target: '[data-diag="ping"]', done: c => c.diag.has('ping:ok') },
+      { text: '届くか確かめましょう。PC-1 を選び、診断ツールの宛先に、いま PC-2 に付けたIPアドレスを入れて「ping」を押します。通信がケーブルの上を流れます。', target: c => (c.sel === 'pc1' ? '[data-diag="ping"]' : '[data-dev="pc1"]'), done: c => c.diag.has('ping:ok') },
       { text: '左の検収テストがすべて合格になりました。「納品する」を押すと、契約金の残りを受け取れます。', target: '[data-act="deliver"]', done: never },
     ],
   },
@@ -63,7 +63,7 @@ export const TUTORIALS: Tutorial[] = [
         hints: ['検収テストの「インターネット(8.8.8.8)に通信できる」が合格になるまで進めます。不合格のときは、PCを選んで 192.168.10.1 に ping を打ち、ルーターまで届くかを確かめます。', 'PC-1 と PC-2 の両方に、IPアドレス(192.168.10.11 と 192.168.10.12 など)とゲートウェイ 192.168.10.1 を入れます。プリンタにもIPアドレス(192.168.10.200 など)を付けます。'],
         note: c => (c.results[2]?.ok && !(c.results[0]?.ok && c.results[1]?.ok) ? 'PCはインターネットに届きました。検収テストの上の2つ(全機器のIPアドレス、印刷)がまだ不合格です。プリンタにもIPアドレスを付けます。' : null),
         done: c => [0, 1, 2].every(i => c.results[i]?.ok) },
-      { text: '検収テストを見てください。「8.8.8.8 に通信できる」は合格になりましたが、「www.example.com を開ける」は不合格のままです。PC-1 を選び、診断ツールの宛先に www.example.com と入れて「Web閲覧」を押してみてください。', target: '[data-diag="web"]', done: c => c.diag.has('web:ng') || c.results[3]?.ok === true },
+      { text: '検収テストを見てください。「8.8.8.8 に通信できる」は合格になりましたが、「www.example.com を開ける」は不合格のままです。PC-1 を選び、診断ツールの宛先に www.example.com と入れて「Web閲覧」を押してみてください。', target: c => (c.sel === 'pc1' ? '[data-diag="web"]' : '[data-dev="pc1"]'), done: c => c.diag.has('web:ng') || c.results[3]?.ok === true },
       { text: 'コンソールに「DNSサーバーが設定されていません」と出ました。8.8.8.8 という番号には届くのに、www.example.com という名前では開けません。名前を番号に変えてもらう問い合わせ先が、まだ決まっていないからです。PC-1 と PC-2 の「DNSサーバー」に 8.8.8.8 を入力してください。', done: c => c.results.every(r => r.ok) },
       { text: '検収テストがすべて合格です。「納品する」を押しましょう。機材費を抑えるほど評価(★)が上がります。', target: '[data-act="deliver"]', done: never },
     ],
@@ -75,7 +75,7 @@ export const TUTORIALS: Tutorial[] = [
         hints: ['印刷は PC-1 からも PC-2 からもできません。2台に共通しているのは、プリンタの側です。机の上で、プリンタからスイッチまでの配線を見てください。', 'プリンタにケーブルがつながっていません。プリンタの上のポートをクリックし、続けてスイッチの空いているポートをクリックします。'],
         note: c => (c.diag.size && !linked(c, 'prn', 'sw') ? '診断ツールを使う前に、机の上で見て分かることがあります。ケーブルが全部つながっているかを見てください。' : null),
         hintTarget: '[data-dev="prn"]', done: c => linked(c, 'prn', 'sw') },
-      { text: '印刷は直りました。次に PC-2 を選び、診断ツールで 8.8.8.8 に「tracert」を打ってみてください。通信がどこまで進んだかが分かります。', target: '[data-diag="tracert"]',
+      { text: '印刷は直りました。次に PC-2 を選び、診断ツールで 8.8.8.8 に「tracert」を打ってみてください。通信がどこまで進んだかが分かります。', target: c => (c.sel === 'pc2' ? '[data-diag="tracert"]' : '[data-dev="pc2"]'),
         note: c => (c.diag.has('tracert:ok@pc1') || c.diag.has('ping:ok@pc1') ? 'PC-1 からは 8.8.8.8 に届きました。スイッチ、ルーター、回線は正常だと分かります。次は PC-2 から同じ宛先に tracert を打ち、PC-1 の結果と比べてください。' : null),
         done: c => c.diag.has('tracert:ng@pc2') || c.results.every(r => r.ok) },
       { text: 'PC-2 からの tracert は、PC-2 から先へ進めませんでした。PC-2 は、外へ送るデータを渡す相手を見つけられていません。PC-2 の設定を、仕様書や PC-1 の設定と見比べて、違うところを直してください。', target: '[data-dev="pc2"]',

@@ -2,6 +2,9 @@
 const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 
+// テストから起動するときは、セーブの置き場所を別のフォルダにする(遊んでいるセーブを上書きしないため)
+if (process.env.NETSHOP_USER_DATA) app.setPath('userData', process.env.NETSHOP_USER_DATA);
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1600, height: 900, minWidth: 1024, minHeight: 576,

@@ -89,6 +89,21 @@ export class Desk {
     d.x = Math.round(clamp(d.x, g.half + 14, DESK_W - g.half - 14));
     d.y = Math.round(clamp(d.y, -g.top + 10, DESK_H - g.bottom - 6));
   }
+  /** 置いた機器のポートが、ほかの機器のポートと重なるときは、重ならない位置まで下(下に余地がなければ上)へずらす */
+  separate(d: Device): void {
+    const hit = () => this.host.world.devices.some(o => o !== d && o.ports.some((_, j) => {
+      const q = portRel(o, j);
+      return d.ports.some((__, i) => { const p = portRel(d, i); return Math.abs(d.x + p.x - o.x - q.x) < 20 && Math.abs(d.y + p.y - o.y - q.y) < 20; });
+    }));
+    const y0 = d.y;
+    for (const dir of [1, -1]) {
+      d.y = y0;
+      for (let n = 0; n < 40 && hit(); n++) d.y += dir * 6;
+      this.clampPos(d);
+      if (!hit()) return;
+    }
+    d.y = y0;
+  }
   /** 画面座標 → 机の座標 */
   point(e: { clientX: number; clientY: number }): { x: number; y: number } {
     const m = this.svg.getScreenCTM();
@@ -303,7 +318,12 @@ export class Desk {
       }
     });
     on(window, 'pointerup', (e: PointerEvent) => {
-      if (this.drag) { const moved = this.drag.moved; this.drag = null; if (moved) this.host.onMoved(); return; }
+      if (this.drag) {
+        const moved = this.drag.moved, d = this.dev(this.drag.id);
+        this.drag = null;
+        if (moved) { if (d) { this.separate(d); this.render(); } this.host.onMoved(); }
+        return;
+      }
       if (!this.linkFrom || !this.gesture) return;
       const p = this.point(e), moved = Math.hypot(p.x - this.gesture.x, p.y - this.gesture.y) > 12;
       this.gesture = null;

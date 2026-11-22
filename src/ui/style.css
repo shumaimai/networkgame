@@ -615,3 +615,24 @@ h3 .q:hover { border-color: var(--teal); color: var(--teal); }
 .r-answer section { max-height: none; }
 
 .save-btns { display: flex; gap: 10px; margin-bottom: 10px; }
+
+/* 研修の案内は、机の下に帯として置く(机の上の機器を隠さない) */
+.center:has(> .coach:not(.hidden)) { grid-template-rows: 646px auto 1fr; }
+.coach { position: static; width: auto; border-radius: 0; border-width: 2px 0; box-shadow: none; padding: 8px 18px 8px 12px; max-height: 210px; overflow: auto; grid-template-columns: 76px 1fr; pointer-events: auto; }
+.coach img { width: 76px; height: 76px; }
+.coach p { font-size: 16px; line-height: 1.6; }
+/* 設定パネルの、いまの状態の表示 */
+[data-live]:empty { display: none; }
+/* パレットの「購入」を閉じるボタン */
+h3 .fold { margin-left: auto; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--mute); background: var(--panel2); border: 1px solid var(--line2); border-radius: 8px; padding: 1px 10px; cursor: pointer; }
+h3 .fold:hover { border-color: var(--teal); color: var(--teal); }
+/* ガイドの右上の閉じるボタン */
+.modal.guide { position: relative; }
+.guide-x { position: absolute; top: 14px; right: 18px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line2); background: var(--panel2); color: #dfe8ff; font: inherit; font-size: 24px; line-height: 1; cursor: pointer; z-index: 2; }
+.guide-x:hover { border-color: var(--teal); color: var(--teal); }
+/* 納品の結果: 振り返りがあるときは2列にして、全部を一度に見せる */
+.modal:has(.result.two) { width: 1340px; }
+.result.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 30px; align-items: start; }
+.result.two .modal-btns { grid-column: 1 / -1; }
+.result.two .r-review { margin-top: 0; max-height: 700px; }
+.result.two .xpbar { margin-top: 4px; }

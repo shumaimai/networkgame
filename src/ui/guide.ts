@@ -20,7 +20,7 @@ export function openGuide(app: App, id?: string, onClose?: () => void): void {
   let desk: Desk | null = null, query = '';
   const m = app.modal(`<aside class="guide-nav"><h2>ガイド</h2>
       <input id="guide-q" placeholder="キーワードで探す 例 DNS" spellcheck="false" autocomplete="off"><div id="guide-list"></div></aside>
-    <article class="guide-body"></article>`, { wide: true, cls: 'guide' });
+    <article class="guide-body"></article><button class="guide-x" data-act="close" title="閉じる(Esc キーでも閉じます)">×</button>`, { wide: true, cls: 'guide' });
   const text = (e: Entry) => [e.title, e.lead, ...e.body, ...(e.example ?? []), ...(e.setup ?? []), ...(e.trouble ?? []), ...(e.terms ?? []).flat()].join(' ').toLowerCase();
 
   function body(lines: string[]): string {

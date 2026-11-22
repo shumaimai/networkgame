@@ -2,7 +2,7 @@
 import { evaluate } from './checks';
 import { faultCatalog, faultCatalog2 } from './faults';
 import { Difficulty, Factor, Job, Rng, mulberry, pick, shuffle } from './job';
-import { clone } from './model';
+import { World, clone } from './model';
 
 export interface Industry {
   id: string; label: string; suffix: string[]; groups: string[]; guest?: string;
@@ -31,6 +31,18 @@ export const NAMES: [string, string][] = [
 
 export type Base = Omit<Job, 'difficulty' | 'reward' | 'xp' | 'minutes'>;
 
+// 机の上の状態を、ケーブル1本ごと・設定の項目ごとに並べる(2つの状態の違う場所を調べるために使う)
+function leaves(w: World): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const c of w.cables) m.set(`cable:${c.id}`, `${c.a.dev}:${c.a.port}-${c.b.dev}:${c.b.port}`);
+  const walk = (k: string, v: unknown): void => { if (v && typeof v === 'object') for (const [a, b] of Object.entries(v)) walk(`${k}.${a}`, b); else m.set(k, String(v)); };
+  for (const d of w.devices) walk(`dev:${d.id}`, d.cfg);
+  return m;
+}
+const diffKeys = (a: Map<string, string>, b: Map<string, string>): string[] => [...new Set([...a.keys(), ...b.keys()])].filter(k => a.get(k) !== b.get(k));
+/** 2つの机の上で、違っている場所(ケーブル、設定の項目)の数 */
+export const worldDiff = (a: World, b: World): number => diffKeys(leaves(a), leaves(b)).length;
+
 /** 正解の構成に不具合を入れて、トラブル対応の依頼にする。症状の出る不具合を入れられなければ null */
 export function makeTrouble(base: Base, factors: Factor[], seed: number, cap: number, r: Rng, nameOf: (id: string) => string): Job | null {
   const solution = base.solution, checks = base.checks, rawChecks = checks.map(c => c.check);
@@ -39,7 +51,7 @@ export function makeTrouble(base: Base, factors: Factor[], seed: number, cap: nu
   for (const d of broken.devices) if (d.own === 'bought') { d.own = 'supplied'; d.cost = 0; }
   for (const c of broken.cables) c.free = true;
   const count = Math.min(4, 1 + Math.floor(cap / 3) + (chance(0.4) ? 1 : 0));
-  const picked: { desc: string; weight: number }[] = [];
+  const picked: { desc: string; weight: number }[] = [], touched = new Set<string>();
   const fr = mulberry(seed ^ 0x9e3779b9);
   // 元からある不具合の並び順は変えず、あとから増えた不具合をその間に差し込む
   const order = shuffle(fr, faultCatalog), fr2 = mulberry(seed ^ 0x7f4a7c15);
@@ -50,8 +62,14 @@ export function makeTrouble(base: Base, factors: Factor[], seed: number, cap: nu
     const solo = clone(solution), s1 = mulberry(seed + f.key.length * 977);
     if (!f.apply(solo, s1)) continue;
     if (evaluate(solo, rawChecks, nameOf).every(x => x.ok)) continue;
+    // すでに入れた不具合と同じ場所(同じケーブル、同じ設定項目)を触る不具合は使わない。あとの不具合が前の不具合を消してしまうため
+    const before = clone(broken), b0 = leaves(broken);
     const desc = f.apply(broken, mulberry(seed + f.key.length * 977));
-    if (desc) picked.push({ desc, weight: f.weight });
+    const keys = diffKeys(b0, leaves(broken));
+    // 机の上を何も変えなかった不具合も使わない
+    if (!desc || !keys.length || keys.some(k => touched.has(k))) { broken.devices = before.devices; broken.cables = before.cables; continue; }
+    for (const k of keys) touched.add(k);
+    picked.push({ desc, weight: f.weight });
   }
   if (!picked.length || evaluate(broken, rawChecks, nameOf).every(x => x.ok)) return null;
   // 直す仕事は組み立てより手数が少ないので、規模の点数は半分にする
@@ -64,7 +82,7 @@ export function makeTrouble(base: Base, factors: Factor[], seed: number, cap: nu
   const symptom = evaluate(broken, rawChecks, nameOf).map((x, i) => (x.ok ? '' : checks[i].label)).filter(Boolean);
   return finish({
     ...base, kind: 'trouble', title: siteTitle(troubleTitle(symptom, r), symptom, base), supplied: [], initial: broken, par: 0,
-    brief: `${pick(r, ['先週から', '昨日の模様替えのあとから', '機器を入れ替えてから', '今朝から'])}調子が悪くて困っています。${symptom.length > 1 ? '困っていることは1つではありません。' : ''}${pick(r, ['前に頼んだ業者とは連絡がつきません。', '設定した担当者は先月退職しました。', '自分たちで触ってみましたが、直りませんでした。'])}仕様書のとおりに動くように直してください。`,
+    brief: `${pick(r, ['先週から', '昨日の模様替えのあとから', '機器を入れ替えてから', '今朝から'])}調子が悪くて困っています。${picked.length > 1 ? '困っていることは1つではありません。' : ''}${pick(r, ['前に頼んだ業者とは連絡がつきません。', '設定した担当者は先月退職しました。', '自分たちで触ってみましたが、直りませんでした。'])}仕様書のとおりに動くように直してください。`,
     hints: ['まず検収テストで落ちている項目を見て、どの機器の通信が失敗しているかを絞ります。', '失敗している機器を選び、診断ツールの ping を近い相手から順に打ちます(同じネットワークの機器 → ゲートウェイ → その先)。', '止まった場所の機器の設定と配線を、仕様書と見比べます。'],
     faults: picked.map(p => p.desc),
   }, fs);

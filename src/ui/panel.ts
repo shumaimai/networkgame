@@ -79,6 +79,22 @@ function addHelp(html: string, kind: string, level: number): string {
   });
 }
 
+/** 設定欄が出はじめるレベル(その内容を習うレベル)。それより前でも、すでに使われている設定は出す */
+export const GATE = { gateway: 2, dhcp: 3, lan2: 5, proxy: 6, filter: 6, file: 7, routes: 8, svDhcp: 9, web: 10, forward: 10, mail: 12 } as const;
+export type Gate = keyof typeof GATE;
+/** その機器の設定で使われている内容 */
+export function usedFeatures(d: Device): Set<Gate> {
+  const c = d.cfg, u = new Set<Gate>(), on = (k: Gate, v: unknown) => { if (v) u.add(k); };
+  if (isEndpoint(d.kind)) { on('gateway', c.gw || c.dns); on('proxy', c.proxy); }
+  else if (d.kind === 'server') { on('svDhcp', c.dhcpOn); on('proxy', c.proxyOn); on('web', c.webOn); on('file', c.fileOn); on('mail', c.mailOn); }
+  else if (isGateway(d.kind) && d.kind !== 'cloud') {
+    (c as GwCfg).lan.forEach((l, i) => { on('dhcp', l.dhcpOn); if (i > 0 && d.kind === 'router') on('lan2', l.ip || l.dhcpOn); });
+    on('routes', c.routes?.length); on('forward', c.forwards?.length);
+    if (d.kind === 'router') on('filter', c.rules?.length);
+  }
+  return u;
+}
+
 export function devicePanel(d: Device, ctx: PanelCtx): string {
   return addHelp(panelBody(d, ctx), d.kind, ctx.level);
 }
@@ -111,6 +127,8 @@ function panelBody(d: Device, ctx: PanelCtx): string {
     + addBtn('rules', 'ルールを追加')
     + `<div class="info">${fw ? 'どのルールにも当てはまらない通信は<b>遮断</b>します。' : 'どのルールにも当てはまらない通信は<b>通します</b>。'}戻りの通信は自動で通ります。送信元・宛先は <code>any</code>、IPアドレス、<code>192.168.1.0/24</code> の形で書きます。</div>`;
 
+  const used = usedFeatures(d), open = (k: Gate) => ctx.level >= GATE[k] || used.has(k);
+  const cabled = (port: number) => ctx.cables.some(x => (x.a.dev === d.id && x.a.port === port) || (x.b.dev === d.id && x.b.port === port));
   let h = `<h2>${esc(d.name)}</h2><div class="sub">${m.label} / ${d.own === 'bought' ? '購入品 ' + yen(d.cost) : OWN[d.own]}</div>`;
   if (isHost(d.kind)) h += `<div class="mac">MACアドレス <code>${d.mac}</code></div>`;
 
@@ -125,11 +143,11 @@ function panelBody(d: Device, ctx: PanelCtx): string {
         ? `<div class="lease ok"><b>${esc(e.lease)}</b> から受け取りました<table><tr><td>IPアドレス</td><td>${ipStr(e.ip)} /${e.prefix}</td></tr><tr><td>ゲートウェイ</td><td>${e.gw != null ? ipStr(e.gw) : '(なし)'}</td></tr><tr><td>DNSサーバー</td><td>${e.dns != null ? ipStr(e.dns) : '(なし)'}</td></tr></table></div>`
         : `<div class="lease ng">アドレスを取得できていません<br><small>${esc(e?.note ?? '')}</small></div>`;
     } else {
-      h += field('IPアドレス', 'ip', 'ip', '192.168.1.10') + mask('prefix') + field('ゲートウェイ', 'gw', 'ip', '空欄可');
-      if (d.kind !== 'printer') h += field('DNSサーバー', 'dns', 'ip', '空欄可');
+      h += field('IPアドレス', 'ip', 'ip', '192.168.1.10') + mask('prefix');
+      if (open('gateway')) h += field('ゲートウェイ', 'gw', 'ip', '空欄可') + (d.kind !== 'printer' ? field('DNSサーバー', 'dns', 'ip', '空欄可') : '');
     }
     if (d.kind === 'pc') {
-      h += '<h3>Webプロキシ</h3>' + field('プロキシ', 'proxy', 'proxy', 'アドレス:ポート(空欄=使わない)');
+      if (open('proxy')) h += '<h3>Webプロキシ</h3>' + field('プロキシ', 'proxy', 'proxy', 'アドレス:ポート(空欄=使わない)');
       if (ctx.level >= 18 || c.noProxy) h += field('プロキシを使わない宛先', 'noProxy', '', '例 saas.example.com');
       if (ctx.devices.some(x => x.kind === 'ap')) h += '<h3>無線LAN<small>ケーブルをつないでいないときに使う</small></h3>' + field('SSID', 'wifi.ssid', '', '') + field('暗号化キー', 'wifi.key', '', '');
     }
@@ -141,15 +159,15 @@ function panelBody(d: Device, ctx: PanelCtx): string {
       h += '<h3>DNSサービス</h3>' + toggle('dnsOn', '名前をIPアドレスに変える');
       if (s.dnsOn) h += '<div class="svc">' + pair('records', ['name', 'host', 'printer.example.local'], ['ip', 'ip', 'IPアドレス'], ['名前(レコード)', 'IPアドレス'], 'レコードを追加')
         + field('フォワーダー', 'forwarder', 'ip', `外部の名前の転送先 例 ${PUBLIC_DNS}`) + '</div>';
-      h += '<h3>DHCPサービス</h3>' + toggle('dhcpOn', 'IPアドレスを自動で配る');
+      if (open('svDhcp')) h += '<h3>DHCPサービス</h3>' + toggle('dhcpOn', 'IPアドレスを自動で配る');
       if (s.dhcpOn) h += '<div class="svc">' + s.pools.map((_, i) => `<div class="pool"><div class="pool-h">配布範囲 ${i + 1}${del('pools', i)}</div>
           <div class="row pair">${inp(`pools.${i}.start`, 'ip', '開始')}<span class="arrow">〜</span>${inp(`pools.${i}.end`, 'ip', '終了')}${maskSel(`pools.${i}.prefix`, true)}</div>
           ${field('配るゲートウェイ', `pools.${i}.gw`, 'ip')}${field('配るDNS', `pools.${i}.dns`, 'ip')}</div>`).join('') + addBtn('pools', '配布範囲を追加')
         + '<div class="info">同じネットワークの端末に配ります。別のネットワークへ配るには、L3スイッチのDHCPリレーでこのサーバーを指定し、そのネットワーク用の配布範囲を作ります。</div></div>';
-      h += '<h3>プロキシサービス</h3>' + toggle('proxyOn', 'PCの代わりにWebへアクセスする');
+      if (open('proxy')) h += '<h3>プロキシサービス</h3>' + toggle('proxyOn', 'PCの代わりにWebへアクセスする');
       if (s.proxyOn) h += '<div class="svc">' + num('待受ポート', 'proxyPort') + field('利用を許可', 'proxyAllow', 'list', '空欄=すべて 例 192.168.10.0/24')
         + '<div class="info">このサーバー自身が名前解決(参照DNS)とインターネット接続をできる必要があります。</div></div>';
-      h += '<h3>Webサービス</h3>' + toggle('webOn', 'Webサイトを公開する (80/443)');
+      if (open('web')) h += '<h3>Webサービス</h3>' + toggle('webOn', 'Webサイトを公開する (80/443)');
       if (s.webOn) h += '<div class="svc">' + field('証明書の名前', 'cert', 'cert', 'HTTPSで公開する名前(使わないなら空欄)') + '</div>';
       if (ctx.level >= 17 || s.rpOn) {
         h += '<h3>リバースプロキシ</h3>' + toggle('rpOn', '届いたWebアクセスを、名前ごとに別のサーバーへ転送する');
@@ -158,10 +176,10 @@ function panelBody(d: Device, ctx: PanelCtx): string {
           + '<div class="info">外からのHTTPSはこのサーバーが受けるので、証明書もここに入れます。<code>*.example.jp</code> と書くと、<code>www.example.jp</code> や <code>shop.example.jp</code> のような直下の名前すべてに当てはまります。</div></div>';
       }
     }
-    h += '<h3>ファイル共有</h3>' + toggle('fileOn', '共有フォルダを使えるようにする (445)');
+    if (d.kind === 'nas' || open('file')) h += '<h3>ファイル共有</h3>' + toggle('fileOn', '共有フォルダを使えるようにする (445)');
     if (s.fileOn) h += '<div class="svc">' + field('利用を許可', 'fileAllow', 'list', '空欄=すべて 例 192.168.10.0/24') + '</div>';
     if (d.kind === 'server') {
-      h += '<h3>メールサービス</h3>' + toggle('mailOn', 'メールを受け付ける (25)');
+      if (open('mail')) h += '<h3>メールサービス</h3>' + toggle('mailOn', 'メールを受け付ける (25)');
       if (s.mailOn && (ctx.level >= 18 || s.dkimOn)) {
         h += '<div class="svc">' + toggle('dkimOn', '送るメールにDKIMの署名を付ける');
         if (s.dkimOn) h += field('セレクター', 'dkimSel', '', 's1')
@@ -173,8 +191,8 @@ function panelBody(d: Device, ctx: PanelCtx): string {
         if (s.monOn) {
           const list = String(s.monTargets ?? '').split(/[\s,、]+/).map(x => [x, parseIp(x)] as const).filter(x => x[1] != null);
           h += '<div class="svc">' + field('監視先', 'monTargets', 'list', '例 192.168.1.1, 192.168.1.60')
-            + `<div class="info">${list.length ? list.map(([t, n]) => { const r = reach(ctx.net, d, n!); return r.ok ? `<span class="st-up">○</span> <code>${esc(t)}</code> ${esc(r.end.name)}` : `<span class="st-down">×</span> <code>${esc(t)}</code> 応答なし`; }).join('<br>') : '監視先がまだありません。'}</div>`
-            + '<div class="info">ルーターやL3スイッチ、ほかのサーバーのIPアドレスを、カンマで区切って並べます。入力した結果は、機器を選び直すと更新されます。</div></div>';
+            + `<div class="info" data-live>${list.length ? list.map(([t, n]) => { const r = reach(ctx.net, d, n!); return r.ok ? `<span class="st-up">○</span> <code>${esc(t)}</code> ${esc(r.end.name)}` : `<span class="st-down">×</span> <code>${esc(t)}</code> 応答なし`; }).join('<br>') : '監視先がまだありません。'}</div>`
+            + '<div class="info">ルーターやL3スイッチ、ほかのサーバーのIPアドレスを、カンマで区切って並べます。</div></div>';
         }
       }
     }
@@ -200,27 +218,29 @@ function panelBody(d: Device, ctx: PanelCtx): string {
     h += `<h3>${cl ? 'インターネット側' : d.ports[0] + '(外側)'}</h3>`;
     if (fw) h += `<label class="f"><span>アドレス</span>${sel('wan.mode', [['auto', '回線から自動取得'], ['static', '手動で設定']], true)}</label>`;
     if (cl) h += `<div class="info">契約済みのクラウドです。インターネットには最初からつながっていて、ケーブルは要りません。<br>外側のアドレス: <code>${ipStr(CLOUD_IP)}</code></div>`;
-    else if (g.wan.mode === 'auto') h += `<div class="info">回線につなぐと外側のアドレスを受け取り、外向きの通信はここから出ていきます。<br>${online ? `いまのアドレス: <code>${ipStr(wi!.ip)}/30</code>${wi!.via != null ? `<br>回線の向こう(プロバイダ側)のアドレス: <code>${ipStr(wi!.via)}</code>` : ''}` : 'まだ回線につながっていません。'}</div>`;
+    else if (g.wan.mode === 'auto') h += `<div class="info" data-live>回線につなぐと外側のアドレスを受け取り、外向きの通信はここから出ていきます。<br>${online ? `いまのアドレス: <code>${ipStr(wi!.ip)}/30</code>${wi!.via != null ? `<br>回線の向こう(プロバイダ側)のアドレス: <code>${ipStr(wi!.via)}</code>` : ''}` : 'まだ回線につながっていません。'}</div>`;
     else h += field('IPアドレス', 'wan.ip', 'ip') + mask('wan.prefix') + field('ゲートウェイ', 'wan.gw', 'ip');
     h += toggle('nat', `NAT(${cl ? '仮想ネットワーク' : '社内'}のアドレスを外側のアドレスに書き換える)`);
     g.lan.forEach((l, i) => {
+      // ルーターの2つめ以降のLANは、使うことを習うまで隠す(ケーブルをつないだときは出す)
+      if (i > 0 && d.kind === 'router' && !open('lan2') && !cabled(i + 1)) return;
       const pn = cl ? 'vNET' : d.ports[i + 1];
       h += `<h3>${cl ? 'vNET<small>vNIC につないだ仮想サーバーのネットワーク</small>' : pn}</h3>` + field('IPアドレス', `lan.${i}.ip`, 'ip', i === 0 && !fw ? (cl ? '10.20.0.1' : '192.168.1.1') : '未使用なら空欄') + mask(`lan.${i}.prefix`);
-      if (!cl) h += toggle(`lan.${i}.dhcpOn`, 'DHCPでアドレスを配る');
+      if (!cl && open('dhcp')) h += toggle(`lan.${i}.dhcpOn`, 'DHCPでアドレスを配る');
       if (l.dhcpOn && !cl) h += `<div class="svc"><div class="row pair">${inp(`lan.${i}.dhcpStart`, 'ip', '開始')}<span class="arrow">〜</span>${inp(`lan.${i}.dhcpEnd`, 'ip', '終了')}<span></span></div>${field('配るDNS', `lan.${i}.dhcpDns`, 'ip', `例 ${PUBLIC_DNS}`)}<div class="info">ゲートウェイには、この${pn}のIPアドレスを配ります。仮想IPを設定しているときは、仮想IPアドレスを配ります。</div></div>`;
       if (!cl && (ctx.level >= 21 || l.vip)) {
         const vip = parseIp(l.vip), grp = vip == null ? undefined : ctx.net.vrrp.find(v => v.vip === vip && v.members.includes(d.id));
         h += `<div class="row vr"><span class="vip-l">仮想IP</span>${inp(`lan.${i}.vip`, 'ip', '2台で同じアドレス(冗長化)')}<input type="number" min="1" max="254" data-bind="lan.${i}.prio" data-num value="${esc(l.prio ?? 100)}" title="優先度。大きいほうが、ふだん仮想IPアドレスを受け持つ"></div>`;
-        if (l.vip && !d.off) h += `<div class="info">${!grp ? '仮想IPアドレスが、このポートのネットワークの範囲にありません。' : grp.master === d.id ? `いまは<b>この機器</b>が ${esc(l.vip)} を受け持っています${grp.members.length < 2 ? '(同じ仮想IPアドレスを設定した機器が、ほかにありません)' : ''}。` : `いまは <b>${esc(ctx.devices.find(x => x.id === grp.master)?.name)}</b> が ${esc(l.vip)} を受け持っています。この機器は控えです。`}右の数字は優先度です。</div>`;
+        h += `<div class="info" data-live>${!l.vip || d.off ? '' : (!grp ? '仮想IPアドレスが、このポートのネットワークの範囲にありません。' : grp.master === d.id ? `いまは<b>この機器</b>が ${esc(l.vip)} を受け持っています${grp.members.length < 2 ? '(同じ仮想IPアドレスを設定した機器が、ほかにありません)' : ''}。` : `いまは <b>${esc(ctx.devices.find(x => x.id === grp.master)?.name)}</b> が ${esc(l.vip)} を受け持っています。この機器は控えです。`) + '右の数字は優先度です。'}</div>`;
       }
     });
     if (ctx.level >= 20 || g.tunnels?.length || cl) {
       h += '<h3>拠点間VPN<small>インターネット経由で、ほかの拠点とつなぐ</small></h3>'
         + (g.tunnels ?? []).map((t, i) => {
           const st = tunnelState(ctx.net, d, t);
-          return `<div class="pool tun"><div class="pool-h"><span>相手 ${i + 1} <b class="${st ? 'st-down' : 'st-up'}">${st ? '未接続' : '接続中'}</b></span>${del('tunnels', i)}</div>
+          return `<div class="pool tun"><div class="pool-h"><span>相手 ${i + 1} <b class="${st ? 'st-down' : 'st-up'}" data-live>${st ? '未接続' : '接続中'}</b></span>${del('tunnels', i)}</div>
             ${field('相手の外側のアドレス', `tunnels.${i}.peer`, 'ip', '例 203.0.113.6')}${field('事前共有キー', `tunnels.${i}.key`, '', '両側で同じ文字列')}${field('相手側のネットワーク', `tunnels.${i}.nets`, 'list', '例 192.168.20.0/24')}
-            ${st && t.peer ? `<small class="why">${esc(st)}</small>` : ''}</div>`;
+            <small class="why" data-live>${st && t.peer ? esc(st) : ''}</small></div>`;
         }).join('')
         + addBtn('tunnels', '相手を追加')
         + '<div class="info">相手側のネットワーク宛の通信を、アドレスを書き換えずに相手の機器まで運びます。相手の機器にも、こちらを相手にした設定が要ります。</div>';
@@ -229,14 +249,15 @@ function panelBody(d: Device, ctx: PanelCtx): string {
       h += '<h3>VPN<small>社外の端末を社内に入れる</small></h3>' + toggle('vpn.on', 'リモートアクセスVPNを受け付ける');
       if (g.vpn?.on) h += '<div class="svc">' + field('認証キー', 'vpn.key', '', '') + field('配るアドレス', 'vpn.ip', 'ip', 'LANの範囲の空きアドレス') + '<div class="info">つないできた端末は、このアドレスを持つLANの端末として扱われます。</div></div>';
     }
-    h += routes() + rules(deniesByDefault(d.kind), cl ? 'セキュリティグループ' : 'フィルター')
-      + `<h3>ポート転送<small>外から来た通信を${cl ? '仮想' : '社内の'}サーバーへ送る</small></h3>`
+    if (open('routes')) h += routes();
+    if (fw || cl || open('filter')) h += rules(deniesByDefault(d.kind), cl ? 'セキュリティグループ' : 'フィルター');
+    if (open('forward')) h += `<h3>ポート転送<small>外から来た通信を${cl ? '仮想' : '社内の'}サーバーへ送る</small></h3>`
       + g.forwards.map((_, i) => `<div class="row fwd">${sel(`forwards.${i}.svc`, SVCS.filter(s => s !== 'any' && s !== 'ping').map(s => [s, svcLabel(s)] as [string, string]))}<span class="arrow">→</span>${inp(`forwards.${i}.to`, 'ip', 'サーバーのIP')}${del('forwards', i)}</div>`).join('')
       + addBtn('forwards', '転送を追加');
   } else if (d.kind === 'home') {
     const e = ctx.net.eff.get(d.id);
     h += '<h3>VPN<small>インターネット経由で会社につなぐ</small></h3>' + field('接続先', 'vpn.server', 'ip', '会社の外側のアドレス') + field('認証キー', 'vpn.key', '', '') + field('DNSサーバー', 'dns', 'ip', '空欄可')
-      + (e?.ip != null ? `<div class="lease ok"><b>${esc(e.lease)}</b> に接続しました<table><tr><td>社内でのアドレス</td><td>${ipStr(e.ip)} /${e.prefix}</td></tr></table></div>` : `<div class="lease ng">VPNにつながっていません<br><small>${esc(e?.note ?? '')}</small></div>`);
+      + '<div data-live>' + (e?.ip != null ? `<div class="lease ok"><b>${esc(e.lease)}</b> に接続しました<table><tr><td>社内でのアドレス</td><td>${ipStr(e.ip)} /${e.prefix}</td></tr></table></div>` : `<div class="lease ng">VPNにつながっていません<br><small>${esc(e?.note ?? '')}</small></div>`) + '</div>';
   } else if (d.kind === 'ap') {
     h += '<h3>無線LAN</h3>' + field('SSID', 'ssid', '', 'ネットワーク名') + field('暗号化キー', 'key', '', 'パスワード')
       + '<div class="info">SSIDと暗号化キーが同じPCを、有線LANにつなぎます。</div>';

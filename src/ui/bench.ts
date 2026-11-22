@@ -6,13 +6,13 @@ import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, PortRef, ServerCfg, SVC, Swit
 import { Net, arpTable, browse, build, reach, resolve, traceroute } from '../core/sim';
 import { ReviewItem, review } from '../game/review';
 import { Active, Game, HELP_COST, HelpUse, Outcome } from '../game/state';
-import { Step, TUTORIALS } from '../game/tutorial';
+import { Step, StepCtx, TUTORIALS } from '../game/tutorial';
 import type { App } from './app';
 import { sfx } from './audio';
 import { Desk, Sel } from './desk';
 import { guideChips, openGuide } from './guide';
 import { $, esc, img, nl2br, onAct, stars, yen } from './dom';
-import { COPY_LABEL, ROW_TEMPLATE, VALID, cablePanel, copyKeys, copySource, devicePanel, setPath } from './panel';
+import { COPY_LABEL, PanelCtx, ROW_TEMPLATE, VALID, cablePanel, copyKeys, copySource, devicePanel, setPath } from './panel';
 
 const PORTRAIT: Record<string, string> = { 会計事務所: 'p_office', 不動産店: 'p_shop', 保育園: 'p_school', 図書館: 'p_design', 事務所: 'p_office', 設計事務所: 'p_design', 店舗: 'p_shop', クリニック: 'p_clinic', 学習塾: 'p_school', 宿泊施設: 'p_hotel', 飲食店: 'p_cafe', 工場: 'p_factory' };
 export const portrait = (industry: string): string => img(PORTRAIT[industry] ?? 'p_office');
@@ -63,7 +63,8 @@ export function mountBench(app: App, root: HTMLElement): () => void {
         <h3>お金</h3><div id="b-cost" class="cost"></div>
       </aside>
       <section class="center">
-        <div class="desk-wrap"><svg id="desk" class="desk"></svg><div id="offnote" class="offnote hidden"></div><div id="coach" class="coach hidden"></div></div>
+        <div class="desk-wrap"><svg id="desk" class="desk"></svg><div id="offnote" class="offnote hidden"></div></div>
+        <div id="coach" class="coach hidden"></div>
         <div class="under">
           <div class="pane"><h3>検収テスト <span id="pass"></span></h3><ul id="checks" class="checks"></ul></div>
           <div class="pane"><h3>コンソール</h3><div id="console" class="console"></div></div>
@@ -125,7 +126,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     emptyHint: ['右の機材をここにドラッグして、机の上に並べましょう', '並べたら、ポート(小さな四角)同士をクリックしてLANケーブルでつなぎます'],
     zones: job.zones,
     link, removeCable, log,
-    onSelect: () => { renderPanel(); },
+    onSelect: () => { renderPanel(); updateCoach(); },
     onMoved: () => game.save(),
   });
 
@@ -147,6 +148,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     }
     Object.assign(d, pos ?? desk.autoSpot(d));
     desk.clampPos(d);
+    desk.separate(d);
     world.devices.push(d);
     sfx('place');
     desk.sel = { kind: 'dev', id: d.id };
@@ -179,6 +181,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     renderPalette();
     renderMoney();
     updateCoach();
+    syncLive();
   }
   function renderChecks(): void {
     const showWhy = a.help.reasons || !!tut;
@@ -225,6 +228,8 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     const it = game.s.stock[m], unit = Math.round(it.cost / it.qty), now = game.price(m);
     return `仕入れ値 ${yen(unit)}<br>${unit < now ? `<i class="down">新品より ${yen(now - unit)} 安い</i>` : unit > now ? `<i class="up">新品より ${yen(unit - now)} 高い</i>` : '新品と同じ値段'}`;
   }
+  // 「購入」の一覧は閉じられる。トラブル対応では機材をほとんど買わないので、最初は閉じておく
+  let buyOpen = job.kind !== 'trouble';
   function renderPalette(): void {
     const waiting = suppliedAll.filter(x => !dev(x.id));
     const stock = Object.keys(game.s.stock);
@@ -235,14 +240,30 @@ export function mountBench(app: App, root: HTMLElement): () => void {
         : '<div class="done">すべて机に置いてあります。</div>');
     }
     if (stock.length) h += `<h3>倉庫の在庫<small>仕入れ済み</small></h3><div class="tiles">${stock.map(m => tile('stk:' + m, MODEL[m].kind, `${MODEL[m].short} ×${game.stockQty(m)}`, stockNote(m), 'stk')).join('')}</div>`;
-    h += `<h3>購入<small>今週の価格</small></h3><div class="tiles">${game.catalog.map(m => {
+    h += `<h3>購入<small>${buyOpen ? '今週の価格' : `${game.catalog.length}種類`}</small><button class="fold" data-act="toggle-buy">${buyOpen ? '閉じる' : '開く'}</button></h3>`;
+    if (buyOpen) h += `<div class="tiles">${game.catalog.map(m => {
       const p = game.price(m), mult = game.mult(m);
       return tile('buy:' + m, MODEL[m].kind, MODEL[m].short, `<i class="${mult < 0.95 ? 'down' : mult > 1.05 ? 'up' : ''}">${yen(p)}</i>`, game.s.money < p ? 'poor' : '');
-    }).join('')}</div>
-      <div class="note"><b>LANケーブル</b> ${yen(CABLE_PRICE)}/本${a.spare ? ` ・ <b>お客様のケーブル</b> 残り${a.spare}本(無料)` : ''}</div>`;
+    }).join('')}</div>`;
+    h += `<div class="note"><b>LANケーブル</b> ${yen(CABLE_PRICE)}/本${a.spare ? ` ・ <b>お客様のケーブル</b> 残り${a.spare}本(無料)` : ''}</div>`;
     paletteEl.innerHTML = h;
   }
+  // 「設定を写す」は、DHCPを習う Lv.3 から出す。それまでは、1台ずつ手で入れることが学ぶ内容になっている
+  // トラブル対応では出さない(ボタンに出る項目名で、不具合の場所が分かってしまうため)
+  const panelCtx = (): PanelCtx => ({ net, diagTarget, cables: world.cables, devices: world.devices, level: game.level, assist: !tut && game.level >= 3 && job.kind !== 'trouble' });
+  let panelDev = '';
+  /** 設定パネルの中の「いまの状態」の表示(接続中・未接続、受け取ったアドレスなど)だけを、入力欄はそのままに更新する */
+  function syncLive(): void {
+    const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null;
+    if (!d || d.id !== panelDev) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = devicePanel(d, panelCtx());
+    const cur = panel.querySelectorAll<HTMLElement>('[data-live]'), next = tmp.querySelectorAll<HTMLElement>('[data-live]');
+    if (cur.length !== next.length) return;
+    cur.forEach((el, i) => { if (el.innerHTML !== next[i].innerHTML) el.innerHTML = next[i].innerHTML; if (el.className !== next[i].className) el.className = next[i].className; });
+  }
   function renderPanel(): void {
+    panelDev = '';
     const s: Sel = desk.sel;
     if (!s) { panel.innerHTML = '<div class="empty">机の上の機器やケーブルをクリックすると、ここに設定が出ます。<br><br>ケーブルを外す: ケーブルを選んで Delete キー、または右クリック。</div>'; return; }
     if (s.kind === 'cable') {
@@ -253,8 +274,8 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     const d = dev(s.id);
     if (!d) { panel.innerHTML = ''; return; }
     const top = panel.scrollTop;
-    // 「設定を写す」は、DHCPを習う Lv.3 から出す。それまでは、1台ずつ手で入れることが学ぶ内容になっている
-    panel.innerHTML = devicePanel(d, { net, diagTarget, cables: world.cables, devices: world.devices, level: game.level, assist: !tut && game.level >= 3 });
+    panel.innerHTML = devicePanel(d, panelCtx());
+    panelDev = d.id;
     panel.querySelectorAll<HTMLInputElement>('[data-v]').forEach(validate);
     panel.scrollTop = top;
   }
@@ -329,7 +350,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   const coach = $('#coach', root), ring = $('#ring', root);
   function updateCoach(): void {
     if (!tut) return;
-    const ctx = { world, results, diag: diagDone };
+    const ctx = stepCtx();
     while (stepIdx < tut.steps.length - 1 && tut.steps[stepIdx].done(ctx)) { stepIdx++; sfx('ok'); }
     const step: Step = tut.steps[stepIdx];
     coach.classList.remove('hidden');
@@ -341,9 +362,14 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     placeRing(ringTarget(step));
   }
   // 最後のヒントまで見せたときだけ、答えの場所を光らせる
-  const ringTarget = (st: Step): string | undefined => (hintStep === stepIdx && st.hints && hintLevel >= st.hints.length ? st.hintTarget ?? st.target : st.target);
+  const stepCtx = (): StepCtx => ({ world, results, diag: diagDone, sel: desk.sel?.kind === 'dev' ? desk.sel.id : null });
+  const ringTarget = (st: Step): string | undefined => {
+    const t = typeof st.target === 'function' ? st.target(stepCtx()) : st.target;
+    return hintStep === stepIdx && st.hints && hintLevel >= st.hints.length ? st.hintTarget ?? t : t;
+  };
+  let delivered = false;
   function placeRing(sel?: string): void {
-    const el = sel ? root.querySelector(sel) : null;
+    const el = sel && !delivered ? root.querySelector(sel) : null;
     if (!el) { ring.classList.add('hidden'); return; }
     const r = el.getBoundingClientRect(), s = app.stageRect(), k = app.scale, pad = 8;
     Object.assign(ring.style, { left: `${(r.left - s.left) / k - pad}px`, top: `${(r.top - s.top) / k - pad}px`, width: `${r.width / k + pad * 2}px`, height: `${r.height / k + pad * 2}px` });
@@ -421,6 +447,9 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     if (!out) { log('まだ合格していない検収テストがあります。', 'ng'); sfx('ng'); return; }
     clearInterval(timer);
     desk.stopAnim();
+    // 納品の結果を出している間は、案内の枠を消す
+    delivered = true;
+    ring.classList.add('hidden');
     const notes = review(job, world, par0, a.diag, { stars: out.stars, limit3, answerUsed: a.help.answer });
     // 納品したあとは、模範解答を無料で見られる
     showResult(app, job, out, notes, tut || job.kind === 'trouble' ? '' : answerHtml());
@@ -430,6 +459,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   onAct(root, (act, el) => {
     switch (act) {
       case 'back': sfx('click'); app.show('hub'); break;
+      case 'toggle-buy': buyOpen = !buyOpen; sfx('tab'); renderPalette(); break;
       case 'coach-hint': hintLevel = hintStep === stepIdx ? hintLevel + 1 : 1; hintStep = stepIdx; sfx('open'); updateCoach(); break;
       case 'guide': sfx('open'); openGuide(app); break;
       case 'guide-to': sfx('open'); openGuide(app, el.dataset.id, renderGuides); break;
@@ -461,8 +491,9 @@ export function mountBench(app: App, root: HTMLElement): () => void {
         const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null, from = d ? copySource(d, { devices: world.devices, net }) : null;
         if (!d || !from) break;
         // IPアドレスは機器ごとに違う番号が要るので写さない(同じ番号の機器を増やさないため)
+        const names = copyKeys(d, from, true).map(k => COPY_LABEL[k]).join('・');
         for (const k of copyKeys(d, from)) d.cfg[k] = from.cfg[k];
-        log(`${from.name} の${copyKeys(d, from, true).map(k => COPY_LABEL[k]).join('・')}を ${d.name} に写しました。IPアドレスは写していません。`);
+        log(`${from.name} の${names}を ${d.name} に写しました。IPアドレスは写していません。`);
         sfx('ok');
         changed(); renderPanel();
         panel.querySelector<HTMLInputElement>('[data-bind="ip"]')?.focus();
@@ -582,7 +613,8 @@ export function mountBench(app: App, root: HTMLElement): () => void {
 function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[], answer: string): void {
   const game = app.game, up = out.levelAfter > out.levelBefore;
   const m = app.modal(`
-    <div class="result">
+    <div class="result${notes.length ? ' two' : ''}">
+      <div class="r-main">
       <h2>納品完了</h2>
       <div class="r-client">${esc(job.client)}「${esc(job.title)}」</div>
       <div class="r-stars">${[1, 2, 3].map(i => `<span class="${i <= out.stars ? 'on' : ''}" style="animation-delay:${i * 0.28}s">★</span>`).join('')}</div>
@@ -598,9 +630,10 @@ function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[], answe
         ${out.onTime === true ? '<span class="good">納期内に納品</span>' : out.onTime === false ? '<span class="neg">納期に間に合わず</span>' : ''}
         <span>資金 <b>${yen(out.final)}</b></span>
       </div>
-      ${notes.length ? `<div class="r-review"><h3>振り返り</h3>${notes.map(n => `<div><b>${esc(n.head)}</b><span>${esc(n.body)}</span></div>`).join('')}${answer ? `<details class="r-answer"><summary>模範解答の機器と設定を見る</summary><section>${answer}</section></details>` : ''}</div>` : ''}
       <div class="xpbar"><i style="width:${Math.round(game.xpProgress * 100)}%"></i><span>Lv.${game.level} ${esc(game.levelInfo.title)}</span></div>
       ${up ? `<div class="levelup"><b>レベルアップ! Lv.${out.levelAfter}</b><ul>${out.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><small>機材とガイドのページが増えました。</small></div>` : ''}
+      </div>
+      ${notes.length ? `<div class="r-review"><h3>振り返り</h3>${notes.map(n => `<div><b>${esc(n.head)}</b><span>${esc(n.body)}</span></div>`).join('')}${answer ? `<details class="r-answer"><summary>模範解答の機器と設定を見る</summary><section>${answer}</section></details>` : ''}</div>` : ''}
       <div class="modal-btns"><button class="btn primary big" data-act="hub">受注へ戻る</button></div>
     </div>`, { locked: true });
   sfx('coin');
