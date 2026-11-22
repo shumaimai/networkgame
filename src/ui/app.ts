@@ -6,11 +6,12 @@ import { $, onAct } from './dom';
 import { mountHub } from './hub';
 import { mountShop } from './shop';
 import { mountTitle } from './title';
+import { mountWare } from './ware';
 
 const SAVE_KEY = 'netshop-save';
 export const STAGE_W = 1920, STAGE_H = 1080;
-export type ScreenId = 'title' | 'hub' | 'bench' | 'shop';
-const SCREENS: Record<ScreenId, (app: App, root: HTMLElement) => () => void> = { title: mountTitle, hub: mountHub, bench: mountBench, shop: mountShop };
+export type ScreenId = 'title' | 'hub' | 'bench' | 'shop' | 'ware';
+const SCREENS: Record<ScreenId, (app: App, root: HTMLElement) => () => void> = { title: mountTitle, hub: mountHub, bench: mountBench, shop: mountShop, ware: mountWare };
 
 export class App {
   game!: Game;

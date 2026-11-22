@@ -86,7 +86,7 @@ export interface Model {
   ports: string[];
   /** 定価。0 は購入できない機器(お客様の端末など) */
   price: number;
-  /** 倉庫で占める広さ */
+  /** 倉庫で使うスロットの数 */
   size: number;
   /** 購入できるようになるレベル */
   level: number;

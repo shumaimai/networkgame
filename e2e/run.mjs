@@ -77,8 +77,8 @@ try {
   await page.click('[data-act="use-help"][data-k="plan"]');
   ok(/ルーターのWAN/.test(await txt('.modal')), 'ヘルプ「方針」が出る');
   await page.click('.modal [data-act="close"]');
-  await page.click('[data-act="dict"]');
-  await page.click('.dict-nav [data-id="l2"]');
+  await page.click('[data-act="guide"]');
+  await page.click('.guide-nav [data-id="l2"]');
   await page.waitForTimeout(400);
   ok(await page.locator('#demo .dev').count() === 3, '辞書の図解に機器が出る');
   ok(await page.locator('#demo .packet').count() === 1, '辞書の図解でパケットが流れる');
@@ -100,7 +100,7 @@ try {
   s = await state();
   ok(s.level === 3 && s.done.length === 3 && s.board === 5, `研修を終えるとレベル3でボードが開く ${JSON.stringify(s)}`);
   await page.click('[data-act="hub"]');
-  ok((await txt('.board-head h2')) === '受注ボード' && await page.locator('.card').count() === 5, '受注ボードに5件');
+  ok((await txt('.board-head h2')) === '受注' && await page.locator('.card').count() === 5, '受注ボードに5件');
 
   // ---- 受注(チャレンジ)→ 作業 → 中断 → 再開 → 納品 ----
   const money0 = (await state()).money;
@@ -126,11 +126,16 @@ try {
   // ---- 仕入れと倉庫 ----
   await page.click('[data-act="go-shop"]');
   await page.evaluate(() => { window.app.game.s.money = 200000; });
+  ok((await txt('.board-head h2')) === '仕入れ' && await page.locator('.plan').count() === 0, '仕入れの画面には倉庫の契約が出ない');
+  await page.click('[data-act="go-ware"]');
+  ok((await txt('.board-head h2')) === '倉庫' && /スロット/.test(await txt('.plans')), '倉庫の画面にスロットの契約が出る');
   await page.click('[data-act="plan"][data-id="s"]');
+  await page.click('[data-act="go-shop"]');
   for (let i = 0; i < 2; i++) await page.click('[data-act="inc"][data-m="l2-8"]');
   ok(/まとめ買い −5%/.test(await txt('.shop-row:nth-child(2)')), '3台でまとめ買い割引');
   await page.click('[data-act="buy"][data-m="l2-8"]');
-  ok(/3台/.test(await txt('.stock')), '在庫に入る');
+  await page.click('[data-act="go-ware"]');
+  ok(/3台/.test(await txt('.stock')) && await page.locator('.slots i.on').count() === 3, '倉庫の在庫とスロットに入る');
   await page.click('[data-act="go-hub"]');
   await page.click('.card >> nth=2'); await page.click('[data-act="accept"]');
   ok(await page.locator('[data-pal="stk:l2-8"]').count() === 1, '作業画面のパレットに在庫が出る');

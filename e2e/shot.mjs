@@ -15,7 +15,8 @@ const S = {
   offer: async () => { await S.board(); await page.click('.card >> nth=2'); },
   t1: async () => { await page.click('[data-act="new"]'); await page.click('[data-act="tutorial"]'); },
   shop: async () => { await S.board(); await page.click('[data-act="go-shop"]'); },
-  dict: async () => { await S.board(); await page.click('[data-act="dict"]'); await page.click('[data-id="router"]'); await page.waitForTimeout(700); },
+  guide: async () => { await page.evaluate(() => { const g = window.app.game; g.skipTutorial(); g.s.xp = 13000; window.app.show('hub'); }); await page.click('[data-act="guide"]'); await page.click(`.guide-nav [data-id="${process.argv[3] ?? 'spf'}"]`); await page.waitForTimeout(700); },
+  ware: async () => { await S.board(); await page.evaluate(() => { const g = window.app.game; g.s.money = 300000; g.setPlan('s'); g.buyStock('l2-8', 5); g.buyStock('router', 2); window.app.show('ware'); }); },
   solved: async () => {
     await page.evaluate(() => { const g = window.app.game; g.skipTutorial(); g.s.xp = 4000; g.refreshBoard(); g.accept(g.s.board[4], true); const a = g.s.active; a.world = JSON.parse(JSON.stringify(g.activeJob.solution)); window.app.show('bench'); });
     await page.evaluate(() => { const b = window.__bench; const d = b.world.devices.find(x => x.kind === ('l3')) ?? b.world.devices.find(x => x.kind === 'l3') ?? b.world.devices[1]; b.select(d.id); });

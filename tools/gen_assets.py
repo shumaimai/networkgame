@@ -51,6 +51,10 @@ ASSETS = {
                  'network switches, a router, coiled LAN cables, a small server and a desk lamp, with a large window showing a calm city skyline. '
                  'Flat 2D vector illustration, thick dark navy outlines, soft cel shading, limited palette of deep navy, teal, indigo and warm orange lamp light. '
                  'Leave the upper-left third calm and dark for a title. No text, no letters, no logos.', '16:9', False),
+    'bg_shop': ('Wide background illustration for the title screen of a cozy game: the storefront of a tiny neighborhood network-equipment repair shop at dusk, seen from across a quiet street. '
+                'A warm lit shop window displays routers, switches and coiled LAN cables on shelves; a striped awning; a bicycle leaning nearby; overhead utility poles and cables against a deep teal evening sky with a few stars. '
+                'The shop sits in the lower-middle of the frame; the upper third is open sky. The sign board above the door is completely blank. '
+                'Flat 2D vector illustration, thick dark navy outlines, soft cel shading, limited palette of deep navy, teal, indigo and warm orange window light. No text, no letters, no numbers, no logos, no people.', '16:9', False),
     'bg_office': ('Wide background illustration of a small cozy network-service office interior seen from the front, at dusk: a cork notice board area on the wall (empty), '
                   'shelves with boxed network equipment, a plant, a window. Deep navy and teal tones, low contrast, slightly blurred and dark so that user-interface panels can be placed on top. '
                   'Flat 2D vector illustration, soft cel shading. No text, no letters, no logos, no people.', '16:9', False),

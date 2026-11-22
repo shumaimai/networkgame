@@ -52,7 +52,7 @@ export interface Active {
 export interface StockItem { qty: number; cost: number }
 export type PlanId = 'none' | 's' | 'm' | 'l' | 'custom';
 export const PLANS: Record<Exclude<PlanId, 'custom'>, { label: string; fee: number; cap: number }> = {
-  none: { label: '事務所の棚', fee: 0, cap: 6 },
+  none: { label: '店の棚', fee: 0, cap: 6 },
   s: { label: '小さな倉庫', fee: 1500, cap: 20 },
   m: { label: '中くらいの倉庫', fee: 3500, cap: 60 },
   l: { label: '大きな倉庫', fee: 7000, cap: 150 },
@@ -144,7 +144,7 @@ export class Game {
   buyStock(model: string, qty: number): string | null {
     const q = this.quote(model, qty);
     if (q.total > this.s.money) return '資金が足りません';
-    if (this.stockUsed + MODEL[model].size * qty > this.capacity) return '倉庫に入りきりません';
+    if (this.stockUsed + MODEL[model].size * qty > this.capacity) return '倉庫のスロットが足りません';
     const it = this.s.stock[model] ?? { qty: 0, cost: 0 };
     it.qty += qty; it.cost += q.total;
     this.s.stock[model] = it;
@@ -164,7 +164,7 @@ export class Game {
   }
   setPlan(plan: PlanId, fee = 0): string | null {
     const cap = plan === 'custom' ? Math.floor(fee / CUSTOM_RATE) : PLANS[plan].cap;
-    if (this.stockUsed > cap) return '在庫が入りきりません。先に在庫を減らしてください';
+    if (this.stockUsed > cap) return '在庫がスロットに収まりません。先に在庫を減らしてください';
     this.s.plan = plan; this.s.planFee = plan === 'custom' ? fee : 0;
     this.save();
     return null;

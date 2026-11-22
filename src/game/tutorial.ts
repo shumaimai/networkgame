@@ -53,7 +53,7 @@ export const TUTORIALS: Tutorial[] = [
       { text: '最後はトラブル対応です。すでに組まれたネットワークのどこかが壊れています。まず左の検収テストで、不合格の項目を確かめてください。配線から見ていきます。プリンタのケーブルが抜けているので、スイッチにつなぎ直しましょう。', target: '[data-dev="prn"]', done: c => linked(c, 'prn', 'sw') },
       { text: '印刷は直りました。次に PC-2 を選び、診断ツールで 8.8.8.8 に「tracert」を打ってみてください。通信がどこまで進んだかが分かります。', target: '[data-diag="tracert"]', done: c => [...c.diag].some(x => x.startsWith('tracert')) },
       { text: 'PC-2 はルーターにたどり着けていません。PC-2 の「ゲートウェイ」が、ルーターのLAN1のIPアドレス(192.168.1.1)と違っています。直してください。', target: '[data-dev="pc2"]', done: c => c.results.every(r => r.ok) },
-      { text: '直りました。行き詰まったら、上の「ヘルプ」で手がかりを見られます(使うと報酬が減ります)。機器や用語の説明は「辞書」にあります。では納品しましょう。', target: '[data-act="deliver"]', done: never },
+      { text: '直りました。行き詰まったら、上の「ヘルプ」で手がかりを見られます(使うと報酬が減ります)。機器や用語の説明は「ガイド」にあります。では納品しましょう。', target: '[data-act="deliver"]', done: never },
     ],
   },
 ];

@@ -9,7 +9,7 @@ import { Step, TUTORIALS } from '../game/tutorial';
 import type { App } from './app';
 import { sfx } from './audio';
 import { Desk, Sel } from './desk';
-import { openDict } from './dict';
+import { openGuide } from './guide';
 import { $, esc, img, nl2br, onAct, stars, yen } from './dom';
 import { ROW_TEMPLATE, VALID, cablePanel, devicePanel, setPath } from './panel';
 
@@ -36,12 +36,12 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   root.innerHTML = `
     <div class="bench">
       <header class="bar">
-        <button class="btn ghost" data-act="back">◀ 事務所へ</button>
+        <button class="btn ghost" data-act="back">◀ 受注へ</button>
         <div class="bar-title"><span class="chip ${job.kind}">${job.kind === 'build' ? '構築' : 'トラブル対応'}</span><b>${esc(job.client)}</b><span>${esc(job.title)}</span></div>
         <div class="spacer"></div>
         <div id="timer" class="timer hidden"></div>
         <div id="b-money" class="money"></div>
-        <button class="btn" data-act="dict">辞書</button>
+        <button class="btn" data-act="guide">ガイド</button>
         <button class="btn" data-act="help">ヘルプ</button>
         <button class="btn" data-act="menu">…</button>
         <button class="btn primary big" data-act="deliver" disabled>納品する</button>
@@ -344,11 +344,11 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       ${card('plan')}${a.help.plan ? `<ul class="plain hint">${job.hints.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       ${card('reasons')}${a.help.reasons ? '<p class="hint">検収テストの不合格の項目に、原因を表示しています。</p>' : ''}
       ${card('answer')}${a.help.answer ? answerHtml() : ''}
-      <div class="modal-btns"><button class="btn" data-act="open-dict">辞書を開く(無料)</button><button class="btn primary" data-act="close">閉じる</button></div>`;
+      <div class="modal-btns"><button class="btn" data-act="open-guide">ガイドを開く(無料)</button><button class="btn primary" data-act="close">閉じる</button></div>`;
     const m = app.modal(body(), { wide: true });
     onAct(m, (act, el) => {
       if (act === 'use-help') { game.useHelp(el.dataset.k as keyof HelpUse); sfx('open'); m.innerHTML = body(); renderChecks(); renderMoney(); }
-      if (act === 'open-dict') { app.closeModal(); openDict(app); }
+      if (act === 'open-guide') { app.closeModal(); openGuide(app); }
     });
   }
 
@@ -366,7 +366,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   onAct(root, (act, el) => {
     switch (act) {
       case 'back': sfx('click'); app.show('hub'); break;
-      case 'dict': sfx('open'); openDict(app); break;
+      case 'guide': sfx('open'); openGuide(app); break;
       case 'help': sfx('open'); openHelp(); break;
       case 'deliver': deliver(); break;
       case 'menu': {
@@ -489,8 +489,8 @@ function showResult(app: App, job: Job, out: Outcome): void {
         <span>資金 <b>${yen(out.final)}</b></span>
       </div>
       <div class="xpbar"><i style="width:${Math.round(game.xpProgress * 100)}%"></i><span>Lv.${game.level} ${esc(game.levelInfo.title)}</span></div>
-      ${up ? `<div class="levelup"><b>レベルアップ! Lv.${out.levelAfter}</b><ul>${out.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><small>新しい機材と辞書のページが使えるようになりました。</small></div>` : ''}
-      <div class="modal-btns"><button class="btn primary big" data-act="hub">事務所へ戻る</button></div>
+      ${up ? `<div class="levelup"><b>レベルアップ! Lv.${out.levelAfter}</b><ul>${out.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><small>機材とガイドのページが増えました。</small></div>` : ''}
+      <div class="modal-btns"><button class="btn primary big" data-act="hub">受注へ戻る</button></div>
     </div>`, { locked: true });
   sfx('coin');
   for (let i = 1; i <= out.stars; i++) setTimeout(() => sfx('star'), 250 + i * 280);
