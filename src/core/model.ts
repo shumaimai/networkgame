@@ -133,7 +133,7 @@ export const MODELS: Model[] = [
 
   { id: 'lb', kind: 'lb', label: '負荷分散装置', short: '負荷分散', ports: ['eth0'], price: 40000, size: 2, level: 16, prefix: 'LB', desc: '届いたWebアクセスを、複数のWebサーバーに振り分ける。1台が止まっても、残りで応答を続けられる。' },
   { id: 'vserver', kind: 'server', label: '仮想サーバー', short: '仮想サーバー', ports: ['vNIC'], price: 0, size: 0, level: 1, prefix: 'VS', desc: 'クラウドの中にあるサーバー。クラウドの vNIC にだけつなげる。動かせるサービスは社内のサーバーと同じ。' },
-  { id: 'cloud', kind: 'cloud', label: 'クラウド', short: 'クラウド', ports: ['WAN', 'vNIC1', 'vNIC2', 'vNIC3', 'vNIC4'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのクラウド。仮想ネットワークの出入口で、インターネットには最初からつながっている。' },
+  { id: 'cloud', kind: 'cloud', label: 'クラウド', short: 'クラウド', ports: ['WAN', 'vNIC1', 'vNIC2', 'vNIC3', 'vNIC4'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのクラウド。仮想ネットワークとインターネットをつなぐ機器で、インターネットには最初からつながっている。' },
   { id: 'wan', kind: 'wan', label: '広域イーサネット網', short: '広域イーサ', ports: ['拠点1', '拠点2', '拠点3'], price: 0, size: 0, level: 1, prefix: '', desc: '通信会社の拠点間回線。つないだ拠点同士が、1台のL2スイッチにつないだときと同じように通信できる。' },
   { id: 'home', kind: 'home', label: '自宅PC', short: '自宅PC', ports: [], price: 0, size: 0, level: 1, prefix: '', desc: '社員の自宅にあるPC。インターネットの向こうから、VPNで社内につなぐ。' },
   { id: 'internet', kind: 'internet', label: 'インターネット回線', short: '回線', ports: ['ISP'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのインターネット回線。' },

@@ -1,7 +1,7 @@
 // 検収テスト: 依頼ごとに生成され、すべて通れば納品できる
 import { inCidr, ipStr, parseCidr, parseIp } from './ip';
 import { Kind, Svc, SVC, World } from './model';
-import { Net, WAN_IP, browse, build, certCovers, connect, dkimResult, dmarcResult, ipOf, lbAlive, mailIn, mailOut, monitorResult, reach, resolve, usableProxy, webChain, PUBLIC_DNS, EXTERNAL } from './sim';
+import { Net, WAN_IP, lineIp, browse, build, certCovers, connect, dkimResult, dmarcResult, ipOf, lbAlive, mailIn, mailOut, monitorResult, reach, resolve, usableProxy, webChain, PUBLIC_DNS, EXTERNAL } from './sim';
 
 export type Target =
   | { dev: string }                      // 机の上の機器
@@ -13,7 +13,7 @@ export type Check =
   | { t: 'addr'; devs: string[]; cidr: string }
   | { t: 'dhcp'; devs: string[] }
   /** via: プロキシ経由か直接か。https: 証明書の名前が合うこと。by: そのWebサーバーが応答すること */
-  | { t: 'flow'; from: string[]; to: Target; svc: Svc; expect: 'ok' | 'ng'; via?: 'proxy' | 'direct'; https?: boolean; by?: string }
+  | { t: 'flow'; from: string[]; to: Target; svc: Svc; expect: 'ok' | 'ng'; via?: 'proxy' | 'direct'; https?: boolean; by?: string; /** その回線(0始まり)から出ていくこと */ line?: number }
   | { t: 'mailIn'; domain: string }      // 社外から自社ドメイン宛のメールが届くこと
   | { t: 'mailOut' }                     // 社外へ送ったメールがSPFの検査を通ること
   | { t: 'dkim' }                        // 社外へ送ったメールのDKIM署名を検証できること
@@ -156,6 +156,7 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
             if (!r.ok) return ng(r.reason);
             if (q.via === 'proxy' && r.via !== 'proxy') return ng(`${s.name} にプロキシが設定されていません`);
             if (q.via === 'direct' && r.via !== 'direct') return ng(`${s.name} が ${targetLabel(to, nameOf)} にプロキシ経由でつないでいます(「プロキシを使わない宛先」に登録します)`);
+            if (q.line != null && r.seen !== lineIp(q.line)) return ng(`${s.name} から ${targetLabel(to, nameOf)} への通信が、回線${q.line + 1}ではなく別の回線(${ipStr(r.seen)})から出ています`);
             return cert(r.end);
           }
           const r = connect(net, s, host, q.svc);
@@ -210,6 +211,7 @@ export function describe(q: Check, nameOf: NameOf, group?: string): string {
       switch (q.svc) {
         case 'ping': return `${w} から ${t} に通信できる`;
         case 'web': if (q.by) return `${w} が ${q.https ? 'https://' : ''}${t} を開くと、${nameOf(q.by)} が応答する${q.https ? '(証明書の警告なし)' : ''}`;
+          if (q.line != null) return `${w} が、プロキシを通さず回線${q.line + 1}から直接 ${t} を開ける`;
           if (q.via === 'direct') return `${w} がプロキシを通さずに ${t} を開ける`;
           return q.https ? `${w} が https://${t} を証明書の警告なしで開ける` : q.via === 'proxy' ? `${w} がプロキシ経由で ${t} を開ける` : 'pub' in q.to ? `${w} が公開Webサイトを開ける` : `${w} で ${t} を開ける`;
         case 'print': return `${w} から ${t}${named} で印刷できる`;

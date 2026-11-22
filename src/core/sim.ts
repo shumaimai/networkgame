@@ -590,7 +590,7 @@ function accepts(net: Net, end: Device, svc: Svc, srcSeen: number, host = ''): s
   }
 }
 
-export type ConnOk = { ok: true; end: Device; hops: string[]; ip: number };
+export type ConnOk = { ok: true; end: Device; hops: string[]; ip: number; /** 宛先から見えた送信元アドレス */ seen: number };
 /** 指定のサービスで接続する。host はIPアドレスか名前 */
 export function connect(net: Net, src: Device, host: string | number, svc: Svc, label?: string): ConnOk | Fail {
   let ip = typeof host === 'number' ? host : parseIp(host);
@@ -603,7 +603,7 @@ export function connect(net: Net, src: Device, host: string | number, svc: Svc, 
   const r = reach(net, src, ip, { svc, label });
   if (!r.ok) return fail(r.reason);
   const why = accepts(net, r.end, svc, r.srcSeen, name);
-  return why ? fail(why) : { ok: true, end: r.end, hops: r.hops, ip };
+  return why ? fail(why) : { ok: true, end: r.end, hops: r.hops, ip, seen: r.srcSeen };
 }
 
 // 名前解決。参照DNSを持たず自分でDNSサービスを動かしている機器は、自分に問い合わせる
@@ -645,7 +645,7 @@ function lookupOn(net: Net, server: Device, name: string, depth: number): { ok: 
   return answer(net, f.end, ipStr(fwd), name, depth + 1);
 }
 
-export type BrowseOk = { ok: true; via: 'proxy' | 'direct'; hops: string[]; end: Device };
+export type BrowseOk = { ok: true; via: 'proxy' | 'direct'; hops: string[]; end: Device; /** Webサイトから見えた送信元アドレス */ seen: number };
 /** Web閲覧。PCにプロキシ設定があればプロキシ経由。direct を指定するとプロキシ設定を無視する */
 export function browse(net: Net, src: Device, host: string, direct = false): BrowseOk | Fail {
   // 「プロキシを使わない宛先」に当てはまる名前は、直接つなぐ
@@ -654,7 +654,7 @@ export function browse(net: Net, src: Device, host: string, direct = false): Bro
   const p = direct || skip ? '' : String(src.cfg.proxy ?? '').trim();
   if (!p) {
     const w = connect(net, src, host, 'web', 'Webアクセス');
-    return w.ok ? { ok: true, via: 'direct', hops: w.hops, end: w.end } : w;
+    return w.ok ? { ok: true, via: 'direct', hops: w.hops, end: w.end, seen: w.seen } : w;
   }
   const m = p.match(/^(.+):(\d+)$/);
   if (!m) return fail(`${src.name} のプロキシ設定は「アドレス:ポート」の形式で入力してください`);
@@ -672,7 +672,7 @@ export function browse(net: Net, src: Device, host: string, direct = false): Bro
   if (!proxyAllows(px, r.srcSeen)) return fail(`${px.name} のプロキシが ${ipStr(r.srcSeen)} からの利用を許可していません`);
   const w = connect(net, px, host, 'web', 'Webアクセス(プロキシから)');
   if (!w.ok) return fail(`${px.name} からWebサイトに届きません: ${w.reason}`);
-  return { ok: true, via: 'proxy', hops: r.hops.concat(w.hops.slice(1)), end: w.end };
+  return { ok: true, via: 'proxy', hops: r.hops.concat(w.hops.slice(1)), end: w.end, seen: w.seen };
 }
 
 /** 社外から自社ドメイン宛のメールが届くか: MX → Aレコード → 外側のアドレス → ポート転送 → メールサーバー */

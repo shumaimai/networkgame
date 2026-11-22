@@ -19,7 +19,7 @@ describe('依頼の自動生成', () => {
           // サーバーを2台買わせるのは、DMZに公開サーバーを置く依頼(Lv.10〜)だけ
           if (level < 10) expect(job.solution.devices.filter(d => d.kind === 'server').length, `${job.id} L${level} サーバーの台数`).toBeLessThanOrEqual(1);
           if (kind === 'trouble') expect(job.faults.length).toBeGreaterThan(0);
-          else expect(job.par).toBeGreaterThan(0);
+          else if (job.kind === 'build') expect(job.par).toBeGreaterThan(0); // 構成変更は、設定を変えるだけで済む依頼もある
           expect(job.reward).toBeGreaterThan(job.par);
           for (const d of [...job.solution.devices]) { expect(d.x, `${job.id} ${d.name} x`).toBeGreaterThan(30); expect(d.y).toBeGreaterThan(30); }
           const ds = job.solution.devices;

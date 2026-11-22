@@ -161,7 +161,7 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
     h += `<h3>${cl ? 'インターネット側' : d.ports[0] + '(外側)'}</h3>`;
     if (fw) h += `<label class="f"><span>アドレス</span>${sel('wan.mode', [['auto', '回線から自動取得'], ['static', '手動で設定']], true)}</label>`;
     if (cl) h += `<div class="info">契約済みのクラウドです。インターネットには最初からつながっていて、ケーブルは要りません。<br>外側のアドレス: <code>${ipStr(CLOUD_IP)}</code></div>`;
-    else if (g.wan.mode === 'auto') h += `<div class="info">回線につなぐと外側のアドレスを受け取り、外向きの通信はここから出ていきます。<br>${online ? `いまのアドレス: <code>${ipStr(wi!.ip)}/30</code>` : 'まだ回線につながっていません。'}</div>`;
+    else if (g.wan.mode === 'auto') h += `<div class="info">回線につなぐと外側のアドレスを受け取り、外向きの通信はここから出ていきます。<br>${online ? `いまのアドレス: <code>${ipStr(wi!.ip)}/30</code>${wi!.via != null ? `<br>回線の向こう(プロバイダ側)のアドレス: <code>${ipStr(wi!.via)}</code>` : ''}` : 'まだ回線につながっていません。'}</div>`;
     else h += field('IPアドレス', 'wan.ip', 'ip') + mask('wan.prefix') + field('ゲートウェイ', 'wan.gw', 'ip');
     h += toggle('nat', `NAT(${cl ? '仮想ネットワーク' : '社内'}のアドレスを外側のアドレスに書き換える)`);
     g.lan.forEach((l, i) => {

@@ -547,7 +547,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   if (mail) talk.push('社内のメールサーバーも立ててください。');
   if (wireless.size) talk.push('ノートPCは無線でつなぎたいです。');
   if (homePc) talk.push('自宅からも、社内にいるときと同じように仕事をしたいです。');
-  if (web) talk.push(rp ? 'Webサイトが2つに増えました。外からの入口は1つにまとめて公開したいです。' : pub ? 'ドメインを取ったので、その名前でWebサイトを公開したいです。' : '自社のWebサイトも外に公開したいです。');
+  if (web) talk.push(rp ? 'Webサイトが2つに増えました。外からのアクセスは1台で受けて、それぞれのWebサーバーへ振り分けたいです。' : pub ? 'ドメインを取ったので、その名前でWebサイトを公開したいです。' : '自社のWebサイトも外に公開したいです。');
   if (saasOn) talk.push('経費精算のクラウドサービスだけは、プロキシを通さずにつなぎたいです。');
   if (dkim) talk.push('取引先から、うちのメールが迷惑メールに振り分けられると言われました。対策もお願いします。');
   if (mon) talk.push('機器が止まったらすぐ分かるように、監視もしてほしいです。');
@@ -556,7 +556,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   talk.push(pick(r, ['アドレスなどの条件は仕様書に書きました。', '条件は仕様書のとおりです。', '仕様書を付けておきます。']));
 
   const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed, trunk, redundant, mail, wifi: wireless.size > 0, vpn: !!homePc, pub, spf: extMail, lb: !!lb, rp, dkim, saas: saasOn, mon, termLb });
-  const title = rp ? '2つのWebサイトを1つの入口で公開' : lb ? 'アクセスの多いWebサイトの公開' : extMail ? '自社ドメインでWebとメールを使う' : pub ? '自社ドメインでWebサイトを公開' : homePc && !fw ? '自宅からもつながるネットワーク' : wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
+  const title = rp ? '2つのWebサイトをリバースプロキシで公開' : lb ? 'アクセスの多いWebサイトの公開' : extMail ? '自社ドメインでWebとメールを使う' : pub ? '自社ドメインでWebサイトを公開' : homePc && !fw ? '自宅からもつながるネットワーク' : wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
     : nas ? 'ファイル共有のあるネットワーク' : dns ? '社内DNSのあるネットワーク' : multi ? '2つのネットワークをつなぐ' : dhcp !== 'none' ? 'アドレスを自動で配るLAN'
       : internet ? 'インターネット開通' : 'はじめての社内LAN';
 

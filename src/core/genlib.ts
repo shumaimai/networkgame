@@ -63,11 +63,24 @@ export function makeTrouble(base: Base, factors: Factor[], seed: number, cap: nu
   ];
   const symptom = evaluate(broken, rawChecks, nameOf).map((x, i) => (x.ok ? '' : checks[i].label)).filter(Boolean);
   return finish({
-    ...base, kind: 'trouble', title: troubleTitle(symptom, r), supplied: [], initial: broken, par: 0,
+    ...base, kind: 'trouble', title: siteTitle(troubleTitle(symptom, r), symptom, base), supplied: [], initial: broken, par: 0,
     brief: `${pick(r, ['先週から', '昨日の模様替えのあとから', '機器を入れ替えてから', '今朝から'])}調子が悪くて困っています。${symptom.length > 1 ? '困っていることは1つではありません。' : ''}${pick(r, ['前に頼んだ業者とは連絡がつきません。', '設定した担当者は先月退職しました。', '自分たちで触ってみましたが、直りませんでした。'])}仕様書のとおりに動くように直してください。`,
     hints: ['まず検収テストで落ちている項目を見て、どの機器の通信が失敗しているかを絞ります。', '失敗している機器を選び、診断ツールの ping を近い相手から順に打ちます(同じネットワークの機器 → ゲートウェイ → その先)。', '止まった場所の機器の設定と配線を、仕様書と見比べます。'],
     faults: picked.map(p => p.desc),
   }, fs);
+}
+
+// 拠点が2つ以上ある依頼では、どの拠点で困っているかを題名にする
+function siteTitle(title: string, symptom: string[], base: Base): string {
+  const sites = (base.zones ?? []).filter(z => z.tone !== 'cloud').map(z => z.label);
+  if (sites.length < 2 || !/Web|インターネット|調子|急に/.test(title)) return title;
+  // 拠点をまたぐ ping の項目は、どちらの拠点が原因でも落ちるので、拠点の判定には使わない
+  const cross = (x: string) => /に通信できる$/.test(x);
+  const hit = sites.filter(l => symptom.some(x => !cross(x) && x.startsWith(l)));
+  if (hit.length === 1) return `${hit[0]}だけ通信できない`;
+  if (!hit.length && symptom.some(cross)) return '拠点の間で通信できない';
+  if (hit.length < sites.length) return title;
+  return [title, 'どの拠点でも通信できない', '複数の拠点で不具合が出ている'][symptom.length % 3];
 }
 
 function troubleTitle(symptom: string[], r: Rng): string {
