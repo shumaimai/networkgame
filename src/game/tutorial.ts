@@ -23,7 +23,7 @@ export const TUTORIALS: Tutorial[] = [
   {
     id: 't1', title: 'はじめての配線', summary: 'PC2台をL2スイッチでつなぎ、IPアドレスを設定します。', xp: 180,
     steps: [
-      { text: 'ようこそ。最初の仕事は、PC2台を通信できるようにすることです。右の「お客様の機器」から PC-1 を机の上にドラッグしてください。', target: '[data-pal="sup:pc1"]', done: c => has(c, 'pc1') },
+      { text: '最初の仕事は、PC2台を通信できるようにすることです。右の「お客様の機器」から PC-1 を机の上にドラッグしてください。', target: '[data-pal="sup:pc1"]', done: c => has(c, 'pc1') },
       { text: '同じように PC-2 も机に置きます。', target: '[data-pal="sup:pc2"]', done: c => has(c, 'pc2') },
       { text: 'PC同士をつなぐには L2スイッチ を使います。「購入」の L2スイッチ 5ポート を机に置いてください。代金は資金から引かれます。', target: '[data-pal="buy:l2-5"]', done: c => !!kind(c, 'l2') },
       { text: 'LANケーブルでつなぎます。PC-1 の上にある小さな四角(ポート)をクリックし、続けてスイッチのポートをクリックしてください。', target: '[data-port="pc1:0"]', done: c => linked(c, 'pc1', kind(c, 'l2')?.id) },
@@ -31,7 +31,7 @@ export const TUTORIALS: Tutorial[] = [
       { text: '配線だけでは通信できません。機器には住所にあたる IPアドレス が要ります。PC-1 をクリックし、右下の設定でIPアドレスに 192.168.1.10 と入力してください。', target: '[data-dev="pc1"]', done: c => cfg(c, 'pc1').ip === '192.168.1.10' },
       { text: '次は PC-2 です。クリックして、IPアドレスに 192.168.1.11 と入力します。同じネットワークの機器は、先頭の 192.168.1 までをそろえます。', target: '[data-dev="pc2"]', done: c => cfg(c, 'pc2').ip === '192.168.1.11' },
       { text: '届くか確かめましょう。PC-1 を選び、診断ツールの宛先に 192.168.1.11 と入れて「ping」を押します。通信がケーブルの上を流れます。', target: '[data-diag="ping"]', done: c => c.diag.has('ping:ok') },
-      { text: '左の検収テストがすべて合格になりました。「納品する」を押すと報酬を受け取れます。', target: '[data-act="deliver"]', done: never },
+      { text: '左の検収テストがすべて合格になりました。「納品する」を押すと、契約金の残りを受け取れます。', target: '[data-act="deliver"]', done: never },
     ],
   },
   {
@@ -41,9 +41,9 @@ export const TUTORIALS: Tutorial[] = [
       { text: 'L2スイッチ と ルーター を購入して机に置きます。ルーターは、社内のネットワークとインターネットをつなぐ機器です。', target: '[data-pal="buy:router"]', done: c => !!kind(c, 'l2') && !!kind(c, 'router') },
       { text: 'ルーターの WAN ポート(上側)を、回線の雲のポートにつなぎます。WAN は外側、LAN は内側という意味です。', target: '[data-dev="inet"]', done: c => linked(c, kind(c, 'router')?.id, 'inet', 0) },
       { text: 'ルーターの LAN1 をスイッチへ。PCとプリンタもスイッチへつなぎます。', done: c => linked(c, kind(c, 'router')?.id, kind(c, 'l2')?.id, 1) && ['pc1', 'pc2', 'prn'].every(x => linked(c, x, kind(c, 'l2')?.id)) },
-      { text: 'ルーターをクリックして、LAN1 のIPアドレスに 192.168.10.1 と入力します。これが社内から見た出口(ゲートウェイ)になります。', done: c => kind(c, 'router')?.cfg.lan[0].ip === '192.168.10.1' },
+      { text: 'ルーターをクリックして、LAN1 のIPアドレスに 192.168.10.1 と入力します。社内の機器は、外へ送るデータをこのアドレスに渡します。このアドレスをゲートウェイと呼びます。', done: c => kind(c, 'router')?.cfg.lan[0].ip === '192.168.10.1' },
       { text: 'PCとプリンタに 192.168.10.x のIPアドレスを付けます(例: 192.168.10.11)。さらにPCの「ゲートウェイ」に 192.168.10.1 を入れると、外への通信をルーターに任せられます。', done: c => c.results[2]?.ok === true },
-      { text: 'あと一歩です。Webサイトを名前で開くには、名前をIPアドレスに変えてくれる DNS が要ります。PCの「DNSサーバー」に 8.8.8.8 を入力してください。', done: c => c.results[3]?.ok === true },
+      { text: 'Webサイトを名前で開くには、名前をIPアドレスに変えてくれる DNS が要ります。PCの「DNSサーバー」に 8.8.8.8 を入力してください。', done: c => c.results[3]?.ok === true },
       { text: '検収テストがすべて合格です。「納品する」を押しましょう。機材費を抑えるほど評価(★)が上がります。', target: '[data-act="deliver"]', done: never },
     ],
   },
@@ -53,7 +53,7 @@ export const TUTORIALS: Tutorial[] = [
       { text: '最後はトラブル対応です。すでに組まれたネットワークのどこかが壊れています。まず左の検収テストで、不合格の項目を確かめてください。配線から見ていきます。プリンタのケーブルが抜けているので、スイッチにつなぎ直しましょう。', target: '[data-dev="prn"]', done: c => linked(c, 'prn', 'sw') },
       { text: '印刷は直りました。次に PC-2 を選び、診断ツールで 8.8.8.8 に「tracert」を打ってみてください。通信がどこまで進んだかが分かります。', target: '[data-diag="tracert"]', done: c => [...c.diag].some(x => x.startsWith('tracert')) },
       { text: 'PC-2 はルーターにたどり着けていません。PC-2 の「ゲートウェイ」が、ルーターのLAN1のIPアドレス(192.168.1.1)と違っています。直してください。', target: '[data-dev="pc2"]', done: c => c.results.every(r => r.ok) },
-      { text: '直りました。行き詰まったら、上の「ヘルプ」で手がかりを見られます(使うと報酬が減ります)。機器や用語の説明は「ガイド」にあります。では納品しましょう。', target: '[data-act="deliver"]', done: never },
+      { text: '直りました。行き詰まったら、上の「ヘルプ」で手がかりを見られます。ヘルプを使うと契約金が減ります。機器や用語の説明は「ガイド」にあります。では納品しましょう。', target: '[data-act="deliver"]', done: never },
     ],
   },
 ];

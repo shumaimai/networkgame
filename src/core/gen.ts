@@ -504,7 +504,12 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
 
   const talk: string[] = [];
   const things = [`PC${b.devices.filter(d => d.kind === 'pc').length}台`, printerGroups.length ? 'プリンタ' : '', phones.length ? '電話' : '', cams.length ? '防犯カメラ' : '', b.devices.some(d => d.kind === 'pos') ? 'レジ' : ''].filter(Boolean).join('、');
-  talk.push(`${ind.label}の${things}をネットワークにつなぎたいんです。`);
+  talk.push(pick(r, [
+    `${things}をつないで使えるようにしてください。`,
+    `うちの${ind.label}に${things}があります。これをネットワークにつなぎたいんです。`,
+    `${things}を入れたのですが、配線も設定もまだです。お願いできますか。`,
+    `${things}のネットワークを、一から組んでほしいんです。`,
+  ]));
   if (multi) talk.push(`${groups.map(g => g.label).join('と')}でネットワークを分けてください。`);
   if (internet) talk.push(proxy ? 'Webはプロキシを通したときだけ見られるようにしてください。' : 'インターネットも使えるようにお願いします。');
   if (dhcp !== 'none') talk.push('PCのアドレスは自動で配られるようにしてほしいです。');
@@ -518,7 +523,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   if (web) talk.push(pub ? 'ドメインを取ったので、その名前でWebサイトを公開したいです。' : '自社のWebサイトも外に公開したいです。');
   if (extMail) talk.push('社外とのメールにも同じドメインを使います。');
   if (lb) talk.push('アクセスが増えてきたので、Webサーバーを2台にして振り分けてください。');
-  talk.push('細かい条件は仕様書にまとめました。');
+  talk.push(pick(r, ['アドレスなどの条件は仕様書に書きました。', '条件は仕様書のとおりです。', '仕様書を付けておきます。']));
 
   const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed, trunk, redundant, mail, wifi: wireless.size > 0, vpn: !!homePc, pub, spf: extMail, lb: !!lb });
   const title = lb ? 'アクセスの多いWebサイトの公開' : extMail ? '自社ドメインでWebとメールを使う' : pub ? '自社ドメインでWebサイトを公開' : homePc && !fw ? '自宅からもつながるネットワーク' : wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
@@ -560,7 +565,7 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   const symptom = evaluate(broken, rawChecks, nameOf).map((x, i) => (x.ok ? '' : checks[i].label)).filter(Boolean);
   return finish({
     ...base, kind: 'trouble', title: troubleTitle(symptom, r), supplied: [], initial: broken, par: 0,
-    brief: `${pick(r, ['先週から', '昨日の模様替えのあとから', '機器を入れ替えてから', '今朝から'])}調子が悪くて困っています。${symptom.length > 1 ? 'いくつか不具合が重なっているかもしれません。' : ''}前に頼んだ業者とは連絡がつかなくて…。仕様書のとおりに動くよう直してください。`,
+    brief: `${pick(r, ['先週から', '昨日の模様替えのあとから', '機器を入れ替えてから', '今朝から'])}調子が悪くて困っています。${symptom.length > 1 ? '困っていることは1つではありません。' : ''}${pick(r, ['前に頼んだ業者とは連絡がつきません。', '設定した担当者は先月退職しました。', '自分たちで触ってみましたが、直りませんでした。'])}仕様書のとおりに動くように直してください。`,
     hints: ['まず検収テストで落ちている項目を見て、どの機器の通信が失敗しているかを絞ります。', '失敗している機器を選び、診断ツールの ping を近い相手から順に打ちます(同じネットワークの機器 → ゲートウェイ → その先)。', '止まった場所の機器の設定と配線を、仕様書と見比べます。'],
     faults: picked.map(p => p.desc),
   }, factors);

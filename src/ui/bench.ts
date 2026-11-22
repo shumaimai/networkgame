@@ -338,9 +338,9 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     const card = (k: keyof HelpUse) => {
       const used = a.help[k], [title, desc] = HELP_INFO[k];
       return `<div class="help-card${used ? ' used' : ''}"><div><b>${title}</b><p>${desc}</p></div>
-        ${used ? '<span class="chip">利用中</span>' : `<button class="btn" data-act="use-help" data-k="${k}">報酬 ${yen(-Math.round(reward * HELP_COST[k]))} で使う</button>`}</div>`;
+        ${used ? '<span class="chip">利用中</span>' : `<button class="btn" data-act="use-help" data-k="${k}">契約金 ${yen(-Math.round(reward * HELP_COST[k]))} で使う</button>`}</div>`;
     };
-    const body = () => `<h2>ヘルプ</h2><p class="lead">行き詰まったときに手がかりをもらえます。使うと、この依頼の報酬が減ります。${tut ? '(研修中は無料です)' : ''}</p>
+    const body = () => `<h2>ヘルプ</h2><p class="lead">手がかりを3段階で見られます。使うと、この依頼の契約金が減ります。${tut ? '(研修中は無料です)' : ''}</p>
       ${card('plan')}${a.help.plan ? `<ul class="plain hint">${job.hints.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       ${card('reasons')}${a.help.reasons ? '<p class="hint">検収テストの不合格の項目に、原因を表示しています。</p>' : ''}
       ${card('answer')}${a.help.answer ? answerHtml() : ''}

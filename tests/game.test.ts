@@ -55,7 +55,7 @@ describe('ゲームの進行', () => {
     const g = new Game(newSave(4));
     g.skipTutorial();
     g.s.money = 500000;
-    expect(g.buyStock('l2-8', 7)).toBe('倉庫に入りきりません');
+    expect(g.buyStock('l2-8', 7)).toBe('倉庫のスロットが足りません');
     expect(g.setPlan('custom', 9000)).toBeNull();
     expect(g.capacity).toBe(100);
     const q = g.quote('l2-8', 5);
@@ -103,5 +103,25 @@ describe('バランス', () => {
     expect(g.level).toBe(16);
     expect(minMoney).toBeGreaterThan(0);
     expect(jobs).toBeGreaterThan(30);
+  });
+});
+
+describe('★の基準', () => {
+  it('どの週の相場でも、模範解答どおりに買えば★3になる', () => {
+    const g = new Game(newSave(9));
+    g.skipTutorial();
+    g.s.xp = 45 * 8 * 11;
+    let n = 0;
+    for (let w = 0; w < 150; w++) {
+      g.nextWeek();
+      for (const o of g.s.board) {
+        const j = g.job(o);
+        if (j.kind !== 'build') continue;
+        expect(g.parNow(j), `${j.id} 第${g.s.week}週`).toBeLessThanOrEqual(g.starLimits(j)[0]);
+        expect(g.rewardOf(j)).toBeGreaterThan(g.parNow(j));
+        n++;
+      }
+    }
+    expect(n).toBeGreaterThan(300);
   });
 });
