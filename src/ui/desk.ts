@@ -1,8 +1,8 @@
 // 机の上(SVG): 機器とケーブルの描画、ドラッグ、配線、パケットのアニメーション
 import { ipStr } from '../core/ip';
-import { DESK_H, DESK_W } from '../core/job';
+import { DESK_H, DESK_W, Zone } from '../core/job';
 import { Cable, Device, GwCfg, L3Cfg, PortRef, SwitchCfg, World, isGateway, isHost } from '../core/model';
-import { Net, TraceItem } from '../core/sim';
+import { CLOUD_IP, Net, TraceItem, tunnelsUp } from '../core/sim';
 import { clamp, esc, img } from './dom';
 
 export type Sel = { kind: 'dev'; id: string } | { kind: 'cable'; id: string } | null;
@@ -11,6 +11,8 @@ export interface DeskHost {
   net: Net;
   readOnly?: boolean;
   emptyHint?: [string, string];
+  /** 拠点やクラウドの範囲を示す枠 */
+  zones?: Zone[];
   /** 机の一部だけを映すとき: [x, y, 幅, 高さ] */
   view?: [number, number, number, number];
   /** ケーブルをつなぐ。つなげたら true */
@@ -31,7 +33,7 @@ const pf = (prefix: number): string => (Number(prefix) === 24 ? '' : '/' + prefi
 interface Geo { top: number; bottom: number; half: number; sprite: number; spriteY: number }
 function geo(d: Device): Geo {
   if (isHost(d.kind)) return { top: -66, bottom: 92, half: 56, sprite: 78, spriteY: -4 };
-  if (d.kind === 'internet') return { top: -62, bottom: 74, half: 78, sprite: 124, spriteY: -6 };
+  if (d.kind === 'internet') return { top: -62, bottom: d.ports.length > 1 ? 88 : 74, half: Math.max(78, d.ports.length * 32 + 14), sprite: 124, spriteY: -6 };
   const n = d.ports.length - (isGateway(d.kind) ? 1 : 0);
   const cols = Math.min(12, n), rows = Math.ceil(n / 12);
   const half = Math.max(62, isGateway(d.kind) ? (n * 46) / 2 + 12 : (cols * 22) / 2 + 12);
@@ -39,7 +41,7 @@ function geo(d: Device): Geo {
 }
 export function portRel(d: Device, i: number): { x: number; y: number; dir: number } {
   if (isHost(d.kind)) return { x: 0, y: -54, dir: -1 };
-  if (d.kind === 'internet') return { x: 0, y: 60, dir: 1 };
+  if (d.kind === 'internet') return { x: (i - (d.ports.length - 1) / 2) * 64, y: 60, dir: 1 };
   if (isGateway(d.kind)) {
     if (i === 0) return { x: 0, y: -60, dir: -1 };
     const n = d.ports.length - 1;
@@ -105,7 +107,8 @@ export class Desk {
       : d.kind === 'server' || d.kind === 'nas' ? [[DESK_W - 130, 330, -150], [DESK_W - 130, 480, -150]]
         : isGateway(d.kind) ? [[DESK_W / 2, 210, 240], [260, 210, 240]]
           : d.kind === 'l3' ? [[DESK_W / 2, 350, 330], [300, 350, 330]] : [[DESK_W / 2 - 240, 440, 300], [DESK_W / 2 - 240, 330, 300]];
-    const g = geo(d);
+    const g = geo(d), cloud = this.host.world.devices.find(o => o.kind === 'cloud');
+    if (d.model === 'vserver' && cloud) rows.unshift([cloud.x, cloud.y + 174, -125]);
     for (const [x0, y, step] of rows) {
       for (let x = x0; x >= 80 && x <= DESK_W - 80; x += step) {
         if (this.host.world.devices.every(o => Math.abs(o.x - x) > geo(o).half + g.half + 6 || Math.abs(o.y - y) > 110)) return { x, y };
@@ -117,12 +120,14 @@ export class Desk {
   // ---------- 描画 ----------
   private infoLines(d: Device): string[] {
     if (isGateway(d.kind)) {
-      const c = d.cfg as GwCfg;
-      const l = c.lan.map((x, i) => (x.ip ? `${d.ports[i + 1]} ${x.ip}/${x.prefix}${x.dhcpOn ? ' DHCP' : ''}` : '')).filter(Boolean);
-      return l.length ? l : ['LAN未設定'];
+      const c = d.cfg as GwCfg, cl = d.kind === 'cloud';
+      const l = c.lan.flatMap((x, i) => (x.ip ? [`${cl ? 'vNET' : d.ports[i + 1]} ${x.ip}/${x.prefix}${x.dhcpOn ? ' DHCP' : ''}`, ...(x.vip ? [`　仮想IP ${x.vip}`] : [])] : []));
+      if (cl) l.unshift(`外側 ${ipStr(CLOUD_IP)}`);
+      if (c.tunnels?.length) l.push(`拠点間VPN ${c.tunnels.length}本`);
+      return l.length ? l.slice(0, 6) : ['LAN未設定'];
     }
     if (d.kind === 'l3') {
-      const l = (d.cfg as L3Cfg).svis.filter(s => s.ip).map(s => `VLAN${s.vlan} ${s.ip}/${s.prefix}`);
+      const l = (d.cfg as L3Cfg).svis.filter(s => s.ip).map(s => `VLAN${s.vlan} ${s.ip}/${s.prefix}${s.vip ? ' 仮想 .' + s.vip.split('.').pop() : ''}`);
       return l.length ? l.slice(0, 5) : ['VLAN IFなし'];
     }
     if (d.kind === 'ap') return [d.cfg.ssid ? `SSID ${d.cfg.ssid}` : 'SSID未設定'];
@@ -138,16 +143,18 @@ export class Desk {
       const n = d.ports.length - (isGateway(d.kind) ? 1 : 0), rows = Math.ceil(n / 12);
       h += `<rect class="strip" x="${-g.half + 6}" y="32" width="${g.half * 2 - 12}" height="${rows * 24 + 4}" rx="8"/>`;
     }
-    h += `<image class="sprite" href="${img(d.kind)}" x="${-sprite / 2}" y="${g.spriteY - sprite / 2}" width="${sprite}" height="${sprite}" filter="url(#shadow)"/>`;
+    h += `<image class="sprite" href="${img(d.model === 'vserver' ? 'vserver' : d.kind)}" x="${-sprite / 2}" y="${g.spriteY - sprite / 2}" width="${sprite}" height="${sprite}" filter="url(#shadow)"/>`;
     const sc = d.kind === 'l2m' || d.kind === 'l3' ? (d.cfg as SwitchCfg) : null;
     if (host && !d.ports.length) h += '';
     d.ports.forEach((name, i) => {
+      if (d.kind === 'cloud' && i === 0) return; // クラウドのWANは、ケーブルなしでインターネットにつながっている
       const p = portRel(d, i), used = !!this.cableAt(d.id, i);
       const active = this.linkFrom?.dev === d.id && this.linkFrom.port === i;
       const trunk = sc?.portMode[i] === 'trunk';
       const style = sc ? ` style="--vlan:${trunk ? '#ffffff' : vlanColor(Number(sc.portVlan[i]) || 1)}"` : '';
       h += `<rect class="port${used ? ' used' : ''}${active ? ' active' : ''}${sc ? ' vl' : ''}" data-port="${d.id}:${i}" x="${p.x - 8}" y="${p.y - 8}" width="16" height="16" rx="4"${style}><title>${esc(d.name)} ${esc(name)}${sc ? (trunk ? ' トランク' : ' VLAN' + sc.portVlan[i]) : ''}</title></rect>`;
       if (isGateway(d.kind)) h += i === 0 ? `<text class="plabel start" x="${p.x + 13}" y="${p.y + 4}">${esc(name)}</text>` : `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
+      else if (d.kind === 'internet' && d.ports.length > 1) h += `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
       else if (sc) h += `<text class="plabel in" x="${p.x}" y="${p.y + 3.5}">${trunk ? 'T' : sc.portVlan[i]}</text>`;
     });
     if (host) {
@@ -186,6 +193,14 @@ export class Desk {
     let h = '';
     if (this.host.emptyHint && !w.devices.some(d => d.own !== 'fixed')) {
       h += `<text class="empty-hint" x="${DESK_W / 2}" y="${DESK_H / 2 + 10}">${esc(this.host.emptyHint[0])}</text><text class="empty-sub" x="${DESK_W / 2}" y="${DESK_H / 2 + 44}">${esc(this.host.emptyHint[1])}</text>`;
+    }
+    for (const z of this.host.zones ?? []) h += `<g class="site-zone ${z.tone ?? 'site'}"><rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="20"/><text x="${z.x + 16}" y="${z.y + 27}">${esc(z.label)}</text></g>`;
+    // クラウドとインターネットの間、つながっている拠点間VPN
+    const inet = w.devices.find(x => x.kind === 'internet');
+    for (const d of w.devices) if (d.kind === 'cloud' && inet) h += `<line class="wifi net" x1="${d.x - 40}" y1="${d.y - 20}" x2="${inet.x + 60}" y2="${inet.y}"/>`;
+    for (const [a, b] of tunnelsUp(this.host.net)) {
+      const my = Math.min(a.y, b.y) - 90;
+      h += `<path class="wifi vpn" d="M${a.x},${a.y - 62} Q${(a.x + b.x) / 2},${my - 60} ${b.x},${b.y - 62}"/>`;
     }
     for (const c of w.cables) {
       if (!this.dev(c.a.dev) || !this.dev(c.b.dev)) continue;

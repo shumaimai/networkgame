@@ -315,3 +315,122 @@ export const faultCatalog: Fault[] = [
     return `${s.name} のWebサービスが止まっている`;
   } },
 ];
+
+/** あとから増えた内容の不具合。それまでの依頼の中身を変えないよう、一覧を分けてある */
+export const faultCatalog2: Fault[] = [
+  { key: 'tunnel-key-x', weight: 2, apply: (w, r) => {
+    const g = some(r, gws(w).filter(x => (x.cfg as GwCfg).tunnels?.length));
+    if (!g) return null;
+    const t = pick(r, (g.cfg as GwCfg).tunnels), old = t.key;
+    t.key = old.slice(0, -1) + (old.endsWith('0') ? '1' : '0');
+    return `${g.name} の拠点間VPN(相手 ${t.peer})の事前共有キーが違う(${t.key})。正しくは ${old}`;
+  } },
+  { key: 'tunnel-peer-xx', weight: 3, apply: (w, r) => {
+    const g = some(r, gws(w).filter(x => (x.cfg as GwCfg).tunnels?.length));
+    if (!g) return null;
+    const t = pick(r, (g.cfg as GwCfg).tunnels), old = t.peer;
+    t.peer = bump(old, 8);
+    return `${g.name} の拠点間VPNで、相手の外側のアドレスが違う(${t.peer})。正しくは ${old}`;
+  } },
+  { key: 'tunnel-nets-xxx', weight: 3, apply: (w, r) => {
+    const g = some(r, gws(w).filter(x => (x.cfg as GwCfg).tunnels?.length));
+    if (!g) return null;
+    const t = pick(r, (g.cfg as GwCfg).tunnels), old = t.nets, list = old.split(/,\s*/);
+    // 1つしか書いていなければ別のネットワークに書き換え、複数あれば最後の1つを消す
+    t.nets = list.length > 1 ? list.slice(0, -1).join(', ') : bump(list[0].split('/')[0], 256 * 5) + '/24';
+    return `${g.name} の拠点間VPN(相手 ${t.peer})で、相手側のネットワークが足りないか違っている(${t.nets})。正しくは ${old}`;
+  } },
+  { key: 'tunnel-missing-x', weight: 3, apply: (w, r) => {
+    const g = some(r, gws(w).filter(x => (x.cfg as GwCfg).tunnels?.length));
+    if (!g) return null;
+    const ts = (g.cfg as GwCfg).tunnels, gone = ts.splice(Math.floor(r() * ts.length), 1)[0];
+    return `${g.name} に、相手 ${gone.peer} との拠点間VPNの設定がない(相手側のネットワークは ${gone.nets})`;
+  } },
+  { key: 'vrrp-vip-mismatch', weight: 3, apply: (w, r) => {
+    const list: { d: Device; o: { vip?: string } }[] = [];
+    for (const d of w.devices) for (const o of [...((d.cfg.lan ?? []) as { vip?: string }[]), ...((d.cfg.svis ?? []) as { vip?: string }[])]) if (o.vip) list.push({ d, o });
+    const x = some(r, list);
+    if (!x) return null;
+    const old = x.o.vip!;
+    x.o.vip = bump(old, /\.1$/.test(old) ? 4 : -4);
+    return `${x.d.name} の仮想IPアドレスが、もう1台と違う(${x.o.vip})。正しくは ${old}`;
+  } },
+  { key: 'vrrp-gw-real-ip', weight: 3, apply: (w, r) => {
+    const pairs: [string, string][] = [];
+    for (const d of w.devices) for (const o of [...((d.cfg.lan ?? []) as { vip?: string; ip: string }[]), ...((d.cfg.svis ?? []) as { vip?: string; ip: string }[])]) if (o.vip && o.ip) pairs.push([o.vip, o.ip]);
+    const h = some(r, w.devices.filter(d => (isEndpoint(d.kind) || d.kind === 'server') && d.cfg.mode !== 'dhcp' && pairs.some(p => p[0] === d.cfg.gw)));
+    if (!h) return null;
+    const old = h.cfg.gw;
+    h.cfg.gw = pairs.find(p => p[0] === old)![1];
+    return `${h.name} のゲートウェイが、仮想IPアドレスではなく1台の機器のアドレス(${h.cfg.gw})になっている。正しくは ${old}`;
+  } },
+  { key: 'rp-rule-swap', weight: 3, apply: w => {
+    const s = servers(w, c => c.rpOn && c.rpRules.length > 1)[0];
+    if (!s) return null;
+    const [a, b] = (s.cfg as ServerCfg).rpRules;
+    [a.to, b.to] = [b.to, a.to];
+    return `${s.name} のリバースプロキシで、${a.host} と ${b.host} の転送先が入れ替わっている`;
+  } },
+  { key: 'rp-host-typo', weight: 2, apply: (w, r) => {
+    const s = servers(w, c => c.rpOn && c.rpRules.length > 0)[0];
+    if (!s) return null;
+    const rule = pick(r, (s.cfg as ServerCfg).rpRules), old = rule.host;
+    rule.host = old.replace(/^([a-z]+)\./, '$1s.');
+    return `${s.name} のリバースプロキシに登録した名前が違う(${rule.host})。正しくは ${old}`;
+  } },
+  { key: 'cert-not-wildcard', weight: 3, apply: w => {
+    const s = servers(w, c => c.rpOn && String(c.cert).startsWith('*.'))[0];
+    if (!s) return null;
+    const old = s.cfg.cert;
+    s.cfg.cert = old.replace('*.', 'www.');
+    return `${s.name} の証明書の名前が ${s.cfg.cert} だけで、もう1つのサイトの名前に当てはまらない。正しくは ${old}`;
+  } },
+  { key: 'lb-cert-name-x', weight: 2, apply: w => {
+    const l = w.devices.find(d => d.kind === 'lb' && d.cfg.cert);
+    if (!l) return null;
+    const old = l.cfg.cert;
+    l.cfg.cert = old.replace(/^www\./, 'web.');
+    return `${l.name} の証明書の名前が違う(${l.cfg.cert})。正しくは ${old}`;
+  } },
+  { key: 'dkim-off-xx', weight: 2, apply: w => {
+    const s = servers(w, c => c.mailOn && c.dkimOn)[0];
+    if (!s) return null;
+    s.cfg.dkimOn = false;
+    return `${s.name} が、送るメールにDKIMの署名を付けていない`;
+  } },
+  { key: 'dkim-selector', weight: 3, apply: w => {
+    const s = servers(w, c => c.mailOn && c.dkimOn)[0];
+    if (!s) return null;
+    const old = s.cfg.dkimSel;
+    s.cfg.dkimSel = old + '2';
+    return `${s.name} のDKIMのセレクター(${s.cfg.dkimSel})が、公開DNSのレコードの名前と合っていない。正しくは ${old}`;
+  } },
+  { key: 'dkim-key-wrong-x', weight: 3, apply: w => {
+    const t = zone(w)?.zone.find(x => x.type === 'TXT' && /_domainkey/.test(x.name));
+    if (!t) return null;
+    const old = t.value;
+    t.value = old.replace(/p=\S+/, 'p=MIGfOLDKEY00');
+    return `公開DNSのDKIMのレコードに、古い公開鍵が登録されている。正しくは ${old}`;
+  } },
+  { key: 'dmarc-none-xxxx', weight: 2, apply: w => {
+    const t = zone(w)?.zone.find(x => x.type === 'TXT' && /^_dmarc/.test(x.name));
+    if (!t) return null;
+    const old = t.value;
+    t.value = 'v=DMARC1; p=none';
+    return `DMARCのレコードが p=none になっていて、認証に失敗したメールもそのまま届く。正しくは ${old}`;
+  } },
+  { key: 'monitor-target', weight: 2, apply: w => {
+    const s = servers(w, c => c.monOn && !!c.monTargets)[0];
+    if (!s) return null;
+    const list = String(s.cfg.monTargets).split(/,\s*/), gone = list.pop();
+    s.cfg.monTargets = list.join(', ');
+    return `${s.name} の監視先から ${gone} が抜けている`;
+  } },
+  { key: 'no-proxy-missing', weight: 2, apply: (w, r) => {
+    const d = some(r, pcs(w).filter(x => x.cfg.noProxy));
+    if (!d) return null;
+    const old = d.cfg.noProxy;
+    d.cfg.noProxy = '';
+    return `${d.name} の「プロキシを使わない宛先」が空になっている。正しくは ${old}`;
+  } },
+];

@@ -3,11 +3,16 @@
 // L3: ホストのゲートウェイ、経路表、NAT、ポート転送、フィルタールールを評価する
 // サービス: DHCP、DNS(レコード・フォワーダー)、プロキシ、Web、ファイル共有など
 import { inCidr, inNet, ipStr, isHostAddr, isPrivate, parseCidr, parseCidrList, parseIp } from './ip';
-import { Cable, Device, GwCfg, InetCfg, L3Cfg, Pool, Rule, ServerCfg, Svc, SVC, SwitchCfg, isGateway, isHost, isRouting } from './model';
+import { Cable, Device, GwCfg, InetCfg, L3Cfg, Pool, Rule, ServerCfg, Svc, SVC, SwitchCfg, Tunnel, deniesByDefault, dkimKey, isGateway, isHost, isRouting } from './model';
 
 export const WAN_IP = parseIp('203.0.113.2')!;
 export const ISP_IP = parseIp('203.0.113.1')!;
 export const WAN_PREFIX = 30;
+/** k本目(0始まり)の回線で、契約者に割り当てられる外側のアドレス */
+export const lineIp = (k: number): number => WAN_IP + 4 * k;
+/** クラウドの外側のアドレス */
+export const CLOUD_IP = parseIp('198.51.100.10')!;
+const CLOUD_GW = parseIp('198.51.100.9')!;
 export const PUBLIC_DNS = '8.8.8.8';
 /** インターネット側から接続してくる利用者のアドレス(公開サーバーの確認に使う) */
 export const REMOTE_IP = parseIp('198.51.100.200')!;
@@ -15,6 +20,7 @@ export const EXTERNAL: Record<string, string> = {
   'www.example.com': '93.184.216.34',
   'mail.example.net': '198.51.100.25',
   'update.example.org': '198.51.100.80',
+  'saas.example.com': '198.51.100.90',
 };
 
 export interface Eff {
@@ -27,7 +33,8 @@ export interface Eff {
   /** 無線でつながっているアクセスポイント */
   ap?: string;
 }
-export interface Iface { dev: Device; name: string; ip: number; prefix: number; node: string; seg: string; wan?: boolean }
+export interface Iface { dev: Device; name: string; ip: number; prefix: number; node: string; seg: string; wan?: boolean; /** WAN側の次の中継先(回線の向こう側) */ via?: number; /** VRRPの仮想IPアドレス */ virtual?: boolean }
+export interface VrrpGroup { vip: number; master: string; members: string[] }
 export interface Seg { cable: string; rev: boolean }
 export interface TraceItem { label: string; kind: Svc; ok: boolean; hops: string[]; path: Seg[]; back: Seg[]; failAt?: string }
 interface Edge { to: string; cable: string | null; rev: boolean }
@@ -40,6 +47,8 @@ export interface Net {
   trace: TraceItem[] | null;
   /** ループで通信できなくなっている区画 */
   storm: Set<string>;
+  /** VRRPの組と、いまマスターになっている機器 */
+  vrrp: VrrpGroup[];
 }
 export type Fail = { ok: false; reason: string };
 const fail = <T extends object>(reason: string, extra?: T): Fail & T => ({ ok: false, reason, ...(extra as T) });
@@ -103,6 +112,7 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
     edge(b, { to: a, cable, rev: true });
   };
   const byId = new Map(devices.map(d => [d.id, d]));
+  const inet = devices.find(d => d.kind === 'internet');
   const cabled = new Set<string>();
 
   // フレームに付くタグ: 'u'(タグなし) と、使われているVLAN番号
@@ -122,7 +132,7 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
     for (const t of tags) link(w(c.a.dev, c.a.port, t), w(c.b.dev, c.b.port, t), c.id);
   }
   for (const d of devices) {
-    if (d.kind === 'l2' || d.kind === 'ap') {
+    if (d.kind === 'l2' || d.kind === 'ap' || d.kind === 'wan') {
       d.ports.forEach((_, i) => { for (const t of tags) link(w(d.id, i, t), sw(d.id, t)); });
     } else if (d.kind === 'l2m' || d.kind === 'l3') {
       const c = d.cfg as SwitchCfg;
@@ -132,6 +142,10 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
           link(w(d.id, i, 'u'), sw(d.id, 1));
         } else link(w(d.id, i, 'u'), sw(d.id, Number(c.portVlan[i]) || 1));
       });
+    } else if (d.kind === 'cloud') {
+      // vNIC はすべて同じ仮想ネットワーク。WANは、ケーブルなしでインターネットにつながっている
+      d.ports.forEach((_, i) => { if (i > 0) link(w(d.id, i, 'u'), sw(d.id, 'u')); });
+      if (inet) link(w(d.id, 0, 'u'), `cl:${inet.id}`);
     }
   }
 
@@ -157,31 +171,38 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
   }
 
   const ifaces: Iface[] = [];
-  const add = (dev: Device, name: string, node: string, ip: number | null, prefix: number, wan = false) => {
+  const add = (dev: Device, name: string, node: string, ip: number | null, prefix: number, wan = false, via?: number) => {
     if (ip == null) return;
-    ifaces.push({ dev, name, ip, prefix: Number(prefix), node, seg: find(node), wan: wan || undefined });
+    ifaces.push({ dev, name, ip, prefix: Number(prefix), node, seg: find(node), wan: wan || undefined, via });
   };
+  const lanName = (d: Device, i: number): string => (d.kind === 'cloud' ? 'vNET' : d.ports[i + 1]);
   for (const d of devices) {
     if (d.kind === 'home') continue;
     if (isHost(d.kind)) { const e = eff.get(d.id)!; if (!e.dhcp) add(d, 'eth0', hostNode.get(d.id)!, e.ip, e.prefix); }
-    else if (d.kind === 'internet') add(d, 'ISP', w(d.id, 0, 'u'), ISP_IP, WAN_PREFIX);
-    else if (isGateway(d.kind)) {
-      const c = d.cfg as GwCfg;
-      if (c.wan.mode === 'auto') add(d, d.ports[0], w(d.id, 0, 'u'), WAN_IP, WAN_PREFIX, true);
-      else add(d, d.ports[0], w(d.id, 0, 'u'), parseIp(c.wan.ip), c.wan.prefix, true);
-      c.lan.forEach((l, i) => add(d, d.ports[i + 1], w(d.id, i + 1, 'u'), parseIp(l.ip), l.prefix));
+    else if (d.kind === 'internet') {
+      d.ports.forEach((p, i) => add(d, p, w(d.id, i, 'u'), ISP_IP + 4 * i, WAN_PREFIX));
+      if (devices.some(x => x.kind === 'cloud')) add(d, 'クラウド', `cl:${d.id}`, CLOUD_GW, WAN_PREFIX);
+    } else if (isGateway(d.kind)) {
+      const c = d.cfg as GwCfg, wn = w(d.id, 0, 'u');
+      if (d.kind === 'cloud') add(d, d.ports[0], wn, CLOUD_IP, WAN_PREFIX, true, CLOUD_GW);
+      else if (c.wan.mode === 'auto') {
+        // つないだ回線ごとに、外側のアドレスが決まる。どの回線にもつながっていなければ1本目の扱い
+        const k = Math.max(0, inet ? inet.ports.findIndex((_, i) => find(wn) === find(w(inet.id, i, 'u'))) : 0);
+        add(d, d.ports[0], wn, lineIp(k), WAN_PREFIX, true, ISP_IP + 4 * k);
+      } else add(d, d.ports[0], wn, parseIp(c.wan.ip), c.wan.prefix, true, parseIp(c.wan.gw) ?? undefined);
+      c.lan.forEach((l, i) => add(d, lanName(d, i), d.kind === 'cloud' ? sw(d.id, 'u') : w(d.id, i + 1, 'u'), parseIp(l.ip), l.prefix));
     } else if (d.kind === 'l3') {
       for (const s of (d.cfg as L3Cfg).svis) add(d, 'VLAN' + s.vlan, sw(d.id, Number(s.vlan) || 1), parseIp(s.ip), s.prefix);
     }
   }
 
   // VPN: 自宅PCは、接続先と認証キーが合えば、VPN装置のLANにいる端末として扱う
-  const isp = ifaces.find(i => i.dev.kind === 'internet');
+  const lineSegs = new Set(ifaces.filter(i => i.dev.kind === 'internet').map(i => i.seg));
   for (const d of devices) {
     if (d.kind !== 'home') continue;
     const e = eff.get(d.id)!, target = parseIp(d.cfg.vpn?.server);
     if (target == null) continue;
-    const wan = ifaces.find(i => i.wan && i.ip === target && isp && i.seg === isp.seg);
+    const wan = ifaces.find(i => i.wan && i.ip === target && lineSegs.has(i.seg));
     const v = wan ? (wan.dev.cfg as GwCfg).vpn : undefined;
     if (!wan) { e.note = `接続先 ${ipStr(target)} に応答する機器がありません`; continue; }
     if (!v?.on) { e.note = `${wan.dev.name} でVPNが動いていません`; continue; }
@@ -192,6 +213,25 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
     link(node, lan.node);
     e.ip = vip; e.prefix = lan.prefix; e.gw = lan.ip; e.note = undefined; e.lease = wan.dev.name;
     add(d, 'vpn', node, vip, lan.prefix);
+  }
+
+  // VRRP: 同じ区画で同じ仮想IPアドレスを設定した機器のうち、優先度がいちばん高い1台がそのアドレスを受け持つ
+  const cands = new Map<string, { i: Iface; prio: number; vip: number }[]>();
+  const vadd = (dev: Device, name: string, vipStr: unknown, prio: unknown) => {
+    const vip = parseIp(vipStr), i = ifaces.find(x => x.dev === dev && x.name === name);
+    if (vip == null || !i || !inNet(vip, i.ip, i.prefix)) return;
+    const key = `${i.seg}|${vip}`;
+    cands.set(key, [...(cands.get(key) ?? []), { i, prio: Number(prio) || 100, vip }]);
+  };
+  for (const d of devices) {
+    if (isGateway(d.kind)) (d.cfg as GwCfg).lan.forEach((l, k) => vadd(d, lanName(d, k), l.vip, l.prio));
+    else if (d.kind === 'l3') for (const s of (d.cfg as L3Cfg).svis) vadd(d, 'VLAN' + s.vlan, s.vip, s.prio);
+  }
+  const vrrp: VrrpGroup[] = [];
+  for (const list of cands.values()) {
+    const m = list.reduce((a, b) => (b.prio > a.prio || (b.prio === a.prio && b.i.ip > a.i.ip) ? b : a));
+    vrrp.push({ vip: m.vip, master: m.i.dev.id, members: list.map(x => x.i.dev.id) });
+    if (m.i.ip !== m.vip) ifaces.push({ ...m.i, name: m.i.name + ' VRRP', ip: m.vip, wan: undefined, via: undefined, virtual: true });
   }
 
   // DHCP: 同じ区画にいるDHCPサーバー(またはリレー先)からアドレスを受け取る
@@ -210,8 +250,9 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
       }
     } else if (isGateway(d.kind)) {
       (d.cfg as GwCfg).lan.forEach((l, i) => {
-        const li = ifaces.find(x => x.dev === d && x.name === d.ports[i + 1]);
-        if (li && l.dhcpOn) offer(li.seg, d.name, { start: l.dhcpStart, end: l.dhcpEnd, prefix: l.prefix, gw: l.ip, dns: l.dhcpDns });
+        const li = ifaces.find(x => x.dev === d && x.name === lanName(d, i));
+        // VRRPを組んでいるLANでは、仮想IPアドレスをゲートウェイとして配る
+        if (li && l.dhcpOn) offer(li.seg, d.name, { start: l.dhcpStart, end: l.dhcpEnd, prefix: l.prefix, gw: parseIp(l.vip) != null ? l.vip : l.ip, dns: l.dhcpDns });
       });
     } else if (d.kind === 'l3') {
       for (const s of (d.cfg as L3Cfg).svis) {
@@ -256,7 +297,7 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
   }
   const storm = new Set<string>();
   for (const id of deg.keys()) if (byId.get(id)!.kind === 'l2') for (const t of tags) storm.add(find(sw(id, t)));
-  return { devices, byId, ifaces, eff, adj, trace: opts.trace ? [] : null, storm };
+  return { devices, byId, ifaces, eff, adj, trace: opts.trace ? [] : null, storm, vrrp };
 }
 
 const ifs = (net: Net, dev: Device): Iface[] => net.ifaces.filter(i => i.dev === dev);
@@ -282,7 +323,7 @@ function physPath(net: Net, a: Iface, b: Iface): Seg[] {
   return [];
 }
 
-type Hop = { iface: Iface; hop: number; direct?: boolean; wan?: boolean } | { err: string };
+type Hop = { iface: Iface; hop: number; direct?: boolean; wan?: boolean; tunnel?: Tunnel } | { err: string };
 
 // dev から dst へ送るときの出力インターフェースと次の中継先を決める
 function lookup(net: Net, dev: Device, dst: number): Hop {
@@ -305,8 +346,13 @@ function lookup(net: Net, dev: Device, dst: number): Hop {
     if (out) cand(c.prefix, { iface: out, hop: via });
   }
   if (isGateway(dev.kind)) {
-    const c = dev.cfg as GwCfg, wi = list.find(i => i.wan), gw = c.wan.mode === 'auto' ? ISP_IP : parseIp(c.wan.gw);
-    if (wi && gw != null) cand(-1, { iface: wi, hop: gw, wan: true });
+    const c = dev.cfg as GwCfg, wi = list.find(i => i.wan);
+    if (wi && wi.via != null) cand(-1, { iface: wi, hop: wi.via, wan: true });
+    // 拠点間VPN: 相手側のネットワーク宛は、トンネルに入れる
+    if (wi) for (const t of c.tunnels ?? []) {
+      const peer = parseIp(t.peer);
+      if (peer != null) for (const n of parseCidrList(t.nets)) if (inCidr(dst, n)) cand(n.prefix + 0.25, { iface: wi, hop: peer, tunnel: t });
+    }
   }
   return best ?? { err: `${dev.name} に ${ipStr(dst)} への経路がありません` };
 }
@@ -320,7 +366,39 @@ function filter(dev: Device, src: number, dst: number, svc: Svc): string | null 
     if (r.svc !== 'any' && r.svc !== svc) continue;
     return r.action === 'allow' ? null : `${dev.name} のフィルター(ルール${i + 1})で遮断されました`;
   }
-  return dev.kind === 'fw' ? `${dev.name} に許可ルールがないため遮断されました(ファイアウォールは許可した通信だけを通します)` : null;
+  if (!deniesByDefault(dev.kind)) return null;
+  return dev.kind === 'cloud' ? `${dev.name} のセキュリティグループに許可ルールがないため遮断されました` : `${dev.name} に許可ルールがないため遮断されました(ファイアウォールは許可した通信だけを通します)`;
+}
+
+const lineOf = (net: Net, i: Iface): Iface | undefined => net.ifaces.find(x => x.dev.kind === 'internet' && x.seg === i.seg);
+/** 拠点間VPNのトンネルを張れるか。張れるときは相手のWAN側インターフェースと、通るケーブルを返す */
+function openTunnel(net: Net, dev: Device, t: Tunnel): { peer: Iface; path: Seg[] } | string {
+  const mine = ifs(net, dev).find(i => i.wan), myLine = mine && lineOf(net, mine);
+  if (!mine || !myLine) return `${dev.name} の${dev.ports[0]}が回線につながっていないため、拠点間VPNを張れません`;
+  const peerIp = parseIp(t.peer);
+  const peer = net.ifaces.find(i => i.wan && i.ip === peerIp && i.dev !== dev && lineOf(net, i));
+  if (!peer) return `拠点間VPNの相手 ${t.peer} が応答しません(相手の外側のアドレスを確認)`;
+  const back = ((peer.dev.cfg as GwCfg).tunnels ?? []).find(x => parseIp(x.peer) === mine.ip);
+  if (!back) return `${peer.dev.name} に、${dev.name} (${ipStr(mine.ip)}) を相手にした拠点間VPNの設定がありません`;
+  if (!t.key || t.key !== back.key) return `${dev.name} と ${peer.dev.name} の事前共有キーが合っていません`;
+  return { peer, path: [...physPath(net, mine, myLine), ...physPath(net, lineOf(net, peer)!, peer)] };
+}
+/** 拠点間VPNの状態。つながっていれば null、つながっていなければ理由 */
+export function tunnelState(net: Net, dev: Device, t: Tunnel): string | null {
+  const r = openTunnel(net, dev, t);
+  return typeof r === 'string' ? r : null;
+}
+/** いまつながっている拠点間VPNの両端(机の上に線を引くのに使う) */
+export function tunnelsUp(net: Net): [Device, Device][] {
+  const out: [Device, Device][] = [];
+  for (const d of net.devices) {
+    if (!isGateway(d.kind)) continue;
+    for (const t of (d.cfg as GwCfg).tunnels ?? []) {
+      const r = openTunnel(net, d, t);
+      if (typeof r !== 'string' && d.id < r.peer.dev.id) out.push([d, r.peer.dev]);
+    }
+  }
+  return out;
 }
 
 interface SendOk {
@@ -339,20 +417,21 @@ type SendNg = Fail & { hops: string[]; path: Seg[]; at: string };
 // 片方向にパケットを送る
 function send(net: Net, src: Device, srcIp: number, dst: number, svc: Svc, back = false): SendOk | SendNg {
   const hops = [src.name], path: Seg[] = [], nats: SendOk['nats'] = [], wanOut: Device[] = [];
-  let cur = src, curSrc = srcIp, inIf: Iface | null = null, dnat: Device | undefined;
+  let cur = src, curSrc = srcIp, inIf: Iface | null = null, dnat: Device | undefined, fromTunnel = false;
   const stop = (reason: string): SendNg => fail(reason, { hops, path, at: cur.id });
   const done = (): SendOk => ({ ok: true, end: cur, hops, path, nats, dnat, wanOut, srcSeen: curSrc });
   for (let ttl = 0; ttl < 24; ttl++) {
     let forwarded = false;
+    const viaTunnel = fromTunnel;
+    fromTunnel = false;
     if (owns(net, cur, dst)) {
-      const fwd = !back && cur !== src && isGateway(cur.kind) && inIf?.wan
+      const fwd = !back && !viaTunnel && cur !== src && isGateway(cur.kind) && inIf?.wan
         ? (cur.cfg as GwCfg).forwards.find(f => f.svc === svc && parseIp(f.to) != null) : undefined;
       if (!fwd) return done();
       dst = parseIp(fwd.to)!; dnat = cur; forwarded = true;
     }
     if (cur.kind === 'internet') {
-      const ii = ifs(net, cur)[0];
-      if (!inNet(dst, ii.ip, ii.prefix)) {
+      if (!ifs(net, cur).some(ii => inNet(dst, ii.ip, ii.prefix))) {
         if (isPrivate(dst)) return stop('インターネット上ではプライベートアドレス宛の通信は破棄されます(NATが必要)');
         return done();
       }
@@ -363,6 +442,17 @@ function send(net: Net, src: Device, srcIp: number, dst: number, svc: Svc, back 
     }
     const r = lookup(net, cur, dst);
     if ('err' in r) return stop(r.err);
+    if (r.tunnel) {
+      // トンネルの中は書き換えなしで相手の機器まで運ばれる
+      const t = openTunnel(net, cur, r.tunnel);
+      if (typeof t === 'string') return stop(t);
+      path.push(...t.path);
+      inIf = t.peer;
+      cur = t.peer.dev;
+      hops.push(cur.name);
+      fromTunnel = true;
+      continue;
+    }
     if (isGateway(cur.kind) && r.iface.wan) {
       wanOut.push(cur);
       if (!back && (cur.cfg as GwCfg).nat) { nats.push({ dev: cur, ip: r.iface.ip }); curSrc = r.iface.ip; }
@@ -409,19 +499,20 @@ export function reach(net: Net, src: Device, dst: number, opts: FlowOpts = {}): 
     const f = send(net, src, srcIp, dst, svc);
     if (!f.ok) return fail(f.reason, { hops: f.hops, path: f.path, back: [], failAt: f.at });
     // 戻り: アドレスを書き換えた機器を外側から順にたどり、最後に送信元へ
-    const back: Seg[] = [];
+    const back: Seg[] = [], wanOut: Device[] = [];
     let node = f.end;
     const ng = (b: SendNg): ReachNg => fail(`行きは届きますが、戻りの通信が失敗: ${b.reason}`, { hops: f.hops, path: f.path, back: back.concat(b.path), failAt: b.at });
     for (let i = f.nats.length - 1; i >= 0; i--) {
       const b = send(net, node, 0, f.nats[i].ip, svc, true);
       if (!b.ok) return ng(b);
       back.push(...b.path);
+      wanOut.push(...b.wanOut);
       node = f.nats[i].dev;
     }
     const b = send(net, node, 0, srcIp, svc, true);
     if (!b.ok) return ng(b);
     back.push(...b.path);
-    if (f.dnat && !b.wanOut.includes(f.dnat)) {
+    if (f.dnat && !wanOut.concat(b.wanOut).includes(f.dnat)) {
       return fail(`行きは届きますが、${f.end.name} からの返事が ${f.dnat.name} を通らずに出ていきます(ゲートウェイを確認)`, { hops: f.hops, path: f.path, back, failAt: f.end.id });
     }
     return { ok: true, end: f.end, hops: f.hops, path: f.path, back, srcSeen: f.srcSeen };
@@ -449,16 +540,43 @@ export function lbAlive(net: Net, lb: Device): { all: number; alive: Device[] } 
   }
   return { all: ips.length, alive };
 }
-/** そのアクセスに実際に応答するWebサーバー */
-export function webServers(net: Net, end: Device): Device[] { return end.kind === 'lb' ? lbAlive(net, end).alive : [end]; }
+/** 証明書に書かれた名前が、アクセス先の名前に当てはまるか。*.example.jp は、その直下の名前すべてに当てはまる */
+export function certCovers(cert: unknown, name: string): boolean {
+  const n = name.toLowerCase();
+  return String(cert ?? '').toLowerCase().split(/[\s,、]+/).filter(Boolean)
+    .some(c => c === n || (c.startsWith('*.') && n.includes('.') && n.slice(n.indexOf('.') + 1) === c.slice(2)));
+}
+export type WebChain = { ok: true; /** 証明書を見せる機器 */ tls: Device[]; /** 実際に応答するWebサーバー */ served: Device[] };
+/** Webアクセスが届いた機器から先(負荷分散装置の振り分け先、リバースプロキシの転送先)をたどる */
+export function webChain(net: Net, end: Device, host = '', depth = 0): WebChain | Fail {
+  if (end.kind === 'internet') return { ok: true, tls: [], served: [end] };
+  if (end.kind === 'lb') {
+    const a = lbAlive(net, end);
+    if (!a.alive.length) return fail(`${end.name} の振り分け先に、応答できるWebサーバーがありません`);
+    return { ok: true, tls: String(end.cfg.cert ?? '').trim() ? [end] : a.alive, served: a.alive };
+  }
+  if (end.kind === 'server' && end.cfg.rpOn) {
+    const h = host.toLowerCase();
+    const rule = ((end.cfg as ServerCfg).rpRules ?? []).find(r => { const x = String(r.host).trim().toLowerCase(); return !!h && (x === h || x === '*'); });
+    if (rule) {
+      const to = parseIp(rule.to);
+      if (to == null || depth > 2) return fail(`${end.name} のリバースプロキシで、${host} の転送先が正しくありません`);
+      const r = reach(net, end, to, { svc: 'web', label: 'リバースプロキシから' });
+      if (!r.ok) return fail(`${end.name} から転送先 ${rule.to} に届きません: ${r.reason}`);
+      if (r.end === end) return fail(`${end.name} のリバースプロキシが、${host} を自分自身に転送しています`);
+      const next = webChain(net, r.end, host, depth + 1);
+      return next.ok ? { ok: true, tls: [end], served: next.served } : next;
+    }
+    if (!end.cfg.webOn) return fail(h ? `${end.name} のリバースプロキシに、${host} の転送先がありません` : `${end.name} はリバースプロキシです。IPアドレスではなく名前でアクセスします`);
+  }
+  if (end.kind === 'server' && end.cfg.webOn) return { ok: true, tls: [end], served: [end] };
+  return fail(`${end.name} ではWebサービスが動いていません`);
+}
 
-function accepts(net: Net, end: Device, svc: Svc, srcSeen: number): string | null {
+function accepts(net: Net, end: Device, svc: Svc, srcSeen: number, host = ''): string | null {
   switch (svc) {
     case 'ping': return null;
-    case 'web':
-      if (end.kind === 'lb') return lbAlive(net, end).alive.length ? null : `${end.name} の振り分け先に、応答できるWebサーバーがありません`;
-      if (end.kind === 'internet' || (end.kind === 'server' && end.cfg.webOn)) return null;
-      return `${end.name} ではWebサービスが動いていません`;
+    case 'web': { const c = webChain(net, end, host); return c.ok ? null : c.reason; }
     case 'file': {
       if (!((end.kind === 'server' || end.kind === 'nas') && end.cfg.fileOn)) return `${end.name} ではファイル共有が動いていません`;
       const l = parseCidrList(end.cfg.fileAllow);
@@ -476,6 +594,7 @@ export type ConnOk = { ok: true; end: Device; hops: string[]; ip: number };
 /** 指定のサービスで接続する。host はIPアドレスか名前 */
 export function connect(net: Net, src: Device, host: string | number, svc: Svc, label?: string): ConnOk | Fail {
   let ip = typeof host === 'number' ? host : parseIp(host);
+  const name = ip == null ? String(host).trim() : '';
   if (ip == null) {
     const d = resolve(net, src, String(host));
     if (!d.ok) return d;
@@ -483,7 +602,7 @@ export function connect(net: Net, src: Device, host: string | number, svc: Svc, 
   }
   const r = reach(net, src, ip, { svc, label });
   if (!r.ok) return fail(r.reason);
-  const why = accepts(net, r.end, svc, r.srcSeen);
+  const why = accepts(net, r.end, svc, r.srcSeen, name);
   return why ? fail(why) : { ok: true, end: r.end, hops: r.hops, ip };
 }
 
@@ -529,7 +648,10 @@ function lookupOn(net: Net, server: Device, name: string, depth: number): { ok: 
 export type BrowseOk = { ok: true; via: 'proxy' | 'direct'; hops: string[]; end: Device };
 /** Web閲覧。PCにプロキシ設定があればプロキシ経由。direct を指定するとプロキシ設定を無視する */
 export function browse(net: Net, src: Device, host: string, direct = false): BrowseOk | Fail {
-  const p = direct ? '' : String(src.cfg.proxy ?? '').trim();
+  // 「プロキシを使わない宛先」に当てはまる名前は、直接つなぐ
+  const h = String(host).trim().toLowerCase();
+  const skip = String(src.cfg.noProxy ?? '').toLowerCase().split(/[\s,、]+/).filter(Boolean).some(x => h === x || h.endsWith('.' + x.replace(/^\*?\./, '')));
+  const p = direct || skip ? '' : String(src.cfg.proxy ?? '').trim();
   if (!p) {
     const w = connect(net, src, host, 'web', 'Webアクセス');
     return w.ok ? { ok: true, via: 'direct', hops: w.hops, end: w.end } : w;
@@ -566,7 +688,7 @@ export function mailIn(net: Net): { ok: true } | Fail {
 }
 /** 社内のメールサーバーから社外へ送ったメールが、SPFの検査を通って届くか */
 export function mailOut(net: Net): { ok: true } | Fail {
-  const sv = net.devices.find(d => d.kind === 'server' && d.cfg.mailOn);
+  const sv = mailServer(net);
   if (!sv) return fail('メールサービスを動かしているサーバーがありません');
   const d = resolve(net, sv, EXT_MAIL);
   if (!d.ok) return fail(`${sv.name} が送り先(${EXT_MAIL})の名前を引けません: ${d.reason}`);
@@ -575,6 +697,48 @@ export function mailOut(net: Net): { ok: true } | Fail {
   const mine = spfResult(net, r.srcSeen);
   if (mine.res !== 'pass') return fail(`受信側がなりすましと判定します: ${mine.why || `SPFレコードに送信元 ${ipStr(r.srcSeen)} が載っていません`}`);
   if (spfResult(net, REMOTE_IP).res === 'pass') return fail('SPFレコードが、よその送信元まで認めています(+all は使いません)');
+  return { ok: true };
+}
+
+const mailServer = (net: Net): Device | undefined => net.devices.find(d => d.kind === 'server' && d.cfg.mailOn);
+const txtAt = (net: Net, name: string) => { const z = zoneOf(net); return z.zone.filter(r => r.type === 'TXT' && fqdn(r.name, z.domain) === name); };
+/** 社外へ送るメールのDKIM署名を、受信側が公開DNSの公開鍵で検証できるか */
+export function dkimResult(net: Net): { ok: true } | Fail {
+  const sv = mailServer(net), z = zoneOf(net);
+  if (!sv) return fail('メールサービスを動かしているサーバーがありません');
+  if (!sv.cfg.dkimOn) return fail(`${sv.name} が、送るメールにDKIMの署名を付けていません`);
+  const sel = String(sv.cfg.dkimSel ?? '').trim().toLowerCase();
+  if (!sel) return fail(`${sv.name} のDKIMのセレクターが未設定です`);
+  const name = `${sel}._domainkey.${z.domain}`, rec = txtAt(net, name)[0];
+  if (!rec) return fail(`公開DNSに ${name} のTXTレコードがなく、受信側が公開鍵を取り出せません`);
+  const m = rec.value.match(/(?:^|;)\s*p=([^;\s]+)/i);
+  if (!/^v=DKIM1(;|\s|$)/i.test(rec.value.trim()) || !m) return fail(`${name} のレコードは v=DKIM1; p=公開鍵 の形で書きます`);
+  return m[1] === dkimKey(sv) ? { ok: true } : fail(`${name} の公開鍵が、${sv.name} の署名に使う鍵と合っていません`);
+}
+/** DMARCのレコードで、認証に失敗したメールの扱いを受信側に示しているか */
+export function dmarcResult(net: Net): { ok: true } | Fail {
+  const z = zoneOf(net), name = `_dmarc.${z.domain}`, rec = txtAt(net, name)[0];
+  if (!rec) return fail(`公開DNSに ${name} のTXTレコードがありません`);
+  const m = rec.value.match(/(?:^|;)\s*p=([a-z]+)/i);
+  if (!/^v=DMARC1(;|\s|$)/i.test(rec.value.trim()) || !m) return fail(`${name} のレコードは v=DMARC1; p=reject の形で書きます`);
+  const pol = m[1].toLowerCase();
+  if (pol === 'none') return fail('p=none では、認証に失敗したメールもそのまま届きます。quarantine か reject にします');
+  return pol === 'quarantine' || pol === 'reject' ? { ok: true } : fail(`DMARCの p= に使えるのは none・quarantine・reject です(${m[1]})`);
+}
+
+const MONITORED = ['l3', 'server', 'nas', 'lb'];
+/** 監視サーバーが、ネットワーク機器とサーバーのすべてに ping で応答を確認できるか */
+export function monitorResult(net: Net): { ok: true } | Fail {
+  const mon = net.devices.find(d => d.kind === 'server' && d.cfg.monOn);
+  if (!mon) return fail('監視サービスを動かしているサーバーがありません');
+  const targets = String(mon.cfg.monTargets ?? '').split(/[\s,、]+/).map(parseIp).filter((x): x is number => x != null);
+  for (const d of net.devices) {
+    if (d === mon || !(isGateway(d.kind) || MONITORED.includes(d.kind))) continue;
+    const t = targets.find(x => owns(net, d, x));
+    if (t == null) return fail(`${mon.name} の監視先に ${d.name} のIPアドレスが入っていません`);
+    const r = reach(net, mon, t, { svc: 'ping', label: '監視' });
+    if (!r.ok) return fail(`${mon.name} から ${d.name} (${ipStr(t)}) の応答を確認できません: ${r.reason}`);
+  }
   return { ok: true };
 }
 

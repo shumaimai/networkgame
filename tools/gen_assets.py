@@ -36,6 +36,9 @@ ASSETS = {
     'lb': (ICON + 'a network load balancer appliance box with a simple emblem on its front: one arrow splitting into three arrows, orange accent, no cables.', '1:1', True),
     'home': (ICON + 'an open laptop computer with a small simple house symbol shown on its screen.', '1:1', True),
     'internet': (ICON + 'a fluffy white-blue cloud with a small globe grid pattern inside, representing the internet.', '1:1', True),
+    'cloud': (ICON + 'a cloud computing data center symbol: one big rounded cloud shape with two small stacked server rack units sitting in front of it, teal and indigo, orange indicator lights.', '1:1', True),
+    'wan': (ICON + 'a telecom carrier network node: a wide flat rack cabinet with a simple emblem on its front showing three dots joined by lines into a triangle, indigo with orange accent, no cables.', '1:1', True),
+    'vserver': (ICON + 'a virtual server: a tower server computer drawn in light translucent sky-blue with a dashed outline feel and a small cloud emblem on its front panel.', '1:1', True),
     # 依頼主
     'p_office': (PORTRAIT + 'an office worker in a shirt and tie holding a folder.', '1:1', True),
     'p_design': (PORTRAIT + 'an architect with round glasses and a pencil behind the ear.', '1:1', True),

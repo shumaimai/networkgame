@@ -7,12 +7,16 @@ export interface JobCheck { check: Check; label: string }
 export interface Factor { label: string; pts: number }
 export interface Difficulty { stars: number; score: number; factors: Factor[] }
 export interface SpecRow { head: string; body: string }
+/** 机の上に描く枠(拠点やクラウドの範囲)。見た目だけで、判定には使わない */
+export interface Zone { label: string; x: number; y: number; w: number; h: number; tone?: 'site' | 'cloud' }
 
 export interface Job {
   id: string;
   seed: number;
-  kind: 'build' | 'trouble';
+  /** build: 空の机から組む / trouble: 壊れたネットワークを直す / migrate: 動いているネットワークを作り替える */
+  kind: 'build' | 'trouble' | 'migrate';
   tutorial?: string;
+  zones?: Zone[];
   client: string;
   industry: string;
   person: string;
@@ -37,6 +41,8 @@ export interface Job {
   /** トラブル対応で仕込んだ不具合(ヘルプ「答え」で見せる) */
   faults: string[];
 }
+
+export const KIND_LABEL: Record<Job['kind'], string> = { build: '構築', trouble: 'トラブル対応', migrate: '構成変更' };
 
 export const DESK_W = 1400;
 export const DESK_H = 800;

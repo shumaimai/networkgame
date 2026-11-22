@@ -5,6 +5,8 @@ export type Kind =
   | 'server' | 'nas' | 'lb'                         // サービスを動かす機器
   | 'l2' | 'l2m' | 'l3' | 'router' | 'fw' | 'ap'    // ネットワーク機器
   | 'home'                                          // 社外(自宅)からVPNでつなぐPC
+  | 'cloud'                                         // クラウド(仮想ネットワークの出入口)
+  | 'wan'                                           // 広域イーサネット網
   | 'internet';
 
 export type Svc = 'ping' | 'dns' | 'web' | 'proxy' | 'file' | 'print' | 'mail' | 'voice';
@@ -29,6 +31,8 @@ export interface HostCfg {
   mode: 'static' | 'dhcp';
   ip: string; prefix: number; gw: string; dns: string;
   proxy: string;
+  /** プロキシを通さずに直接つなぐ宛先(名前をカンマ区切り) */
+  noProxy: string;
   wifi: Wifi;
 }
 export interface ServerCfg extends HostCfg {
@@ -38,9 +42,18 @@ export interface ServerCfg extends HostCfg {
   webOn: boolean;
   fileOn: boolean; fileAllow: string;
   mailOn: boolean;
-  /** HTTPSのサーバー証明書に書かれた名前 */
+  /** HTTPSのサーバー証明書に書かれた名前(カンマ区切り。*.example.jp の形も使える) */
   cert: string;
+  /** リバースプロキシ: 名前ごとの振り分け先 */
+  rpOn: boolean; rpRules: RpRule[];
+  /** DKIM: 送るメールに署名を付ける。セレクターは公開鍵を探すための名前 */
+  dkimOn: boolean; dkimSel: string;
+  /** 監視: 登録した宛先に定期的に ping を打つ */
+  monOn: boolean; monTargets: string;
 }
+export interface RpRule { host: string; to: string }
+/** 拠点間VPN: 相手の外側のアドレス、事前共有キー、相手側のネットワーク */
+export interface Tunnel { peer: string; key: string; nets: string }
 export interface ZoneRec { type: 'A' | 'MX' | 'TXT'; name: string; value: string }
 /** 回線(プロバイダ)側の設定: 契約しているドメインと、その公開DNSのレコード */
 export interface InetCfg { domain: string; zone: ZoneRec[] }
@@ -48,9 +61,9 @@ export interface SwitchCfg {
   portMode: ('access' | 'trunk')[];
   portVlan: number[];
 }
-export interface Svi { vlan: number; ip: string; prefix: number; relay: string }
+export interface Svi { vlan: number; ip: string; prefix: number; relay: string; /** VRRPの仮想IPアドレスと優先度 */ vip?: string; prio?: number }
 export interface L3Cfg extends SwitchCfg { svis: Svi[]; routes: Route[]; rules: Rule[] }
-export interface LanIf { ip: string; prefix: number; dhcpOn: boolean; dhcpStart: string; dhcpEnd: string; dhcpDns: string }
+export interface LanIf { ip: string; prefix: number; dhcpOn: boolean; dhcpStart: string; dhcpEnd: string; dhcpDns: string; /** VRRPの仮想IPアドレスと優先度 */ vip: string; prio: number }
 export interface GwCfg {
   wan: { mode: 'auto' | 'static'; ip: string; prefix: number; gw: string };
   nat: boolean;
@@ -60,6 +73,7 @@ export interface GwCfg {
   forwards: { svc: Svc; to: string }[];
   /** リモートアクセスVPN: 認証キーと、つないできた端末に配るアドレス */
   vpn: { on: boolean; key: string; ip: string };
+  tunnels: Tunnel[];
 }
 export interface ApCfg { ssid: string; key: string }
 
@@ -107,6 +121,7 @@ export const MODELS: Model[] = [
   { id: 'l2-8', kind: 'l2', label: 'L2スイッチ 8ポート', short: 'L2 8p', ports: nums(8), price: 7000, size: 1, level: 1, prefix: 'SW', desc: 'スイッチングハブ。つないだ機器を同じネットワークにまとめる。設定不要。' },
   { id: 'l2-16', kind: 'l2', label: 'L2スイッチ 16ポート', short: 'L2 16p', ports: nums(16), price: 13000, size: 2, level: 3, prefix: 'SW', desc: '端末の多いフロア向けのスイッチングハブ。設定不要。' },
   { id: 'router', kind: 'router', label: 'ルーター', short: 'ルーター', ports: ['WAN', 'LAN1', 'LAN2'], price: 20000, size: 1, level: 2, prefix: 'RT', desc: 'ネットワーク同士をつなぐ。インターネット接続(NAT)、DHCP、パケットフィルターを備える。' },
+  { id: 'router-4', kind: 'router', label: '業務用ルーター 4LAN', short: 'ルーター 4LAN', ports: ['WAN', 'LAN1', 'LAN2', 'LAN3', 'LAN4'], price: 42000, size: 2, level: 19, prefix: 'RT', desc: 'LAN側のポートが4つあるルーター。社内のネットワーク、サーバー用のネットワーク、拠点間の回線を1台でつなげる。' },
   { id: 'server', kind: 'server', label: 'サーバー', short: 'サーバー', ports: ['eth0'], price: 25000, size: 3, level: 4, prefix: 'SV', desc: 'DNS、DHCP、プロキシ、Web、ファイル共有、メールの各サービスを動かせる。' },
   { id: 'nas', kind: 'nas', label: 'NAS', short: 'NAS', ports: ['eth0'], price: 14000, size: 2, level: 6, prefix: 'NAS', desc: 'ファイル共有専用の機器。サーバーより安い。' },
   { id: 'l2m-8', kind: 'l2m', label: 'VLAN対応スイッチ 8ポート', short: 'VLAN SW 8p', ports: nums(8), price: 16000, size: 1, level: 8, prefix: 'MSW', desc: 'ポートごとにVLANを割り当てられるL2スイッチ。トランクポートで複数のVLANを1本にまとめて運べる。' },
@@ -117,8 +132,13 @@ export const MODELS: Model[] = [
   { id: 'ap', kind: 'ap', label: '無線アクセスポイント', short: '無線AP', ports: ['eth0'], price: 12000, size: 1, level: 13, prefix: 'AP', desc: '無線LANの親機。SSIDと暗号化キーが合う端末を有線LANにつなぐ。' },
 
   { id: 'lb', kind: 'lb', label: '負荷分散装置', short: '負荷分散', ports: ['eth0'], price: 40000, size: 2, level: 16, prefix: 'LB', desc: '届いたWebアクセスを、複数のWebサーバーに振り分ける。1台が止まっても、残りで応答を続けられる。' },
+  { id: 'vserver', kind: 'server', label: '仮想サーバー', short: '仮想サーバー', ports: ['vNIC'], price: 0, size: 0, level: 1, prefix: 'VS', desc: 'クラウドの中にあるサーバー。クラウドの vNIC にだけつなげる。動かせるサービスは社内のサーバーと同じ。' },
+  { id: 'cloud', kind: 'cloud', label: 'クラウド', short: 'クラウド', ports: ['WAN', 'vNIC1', 'vNIC2', 'vNIC3', 'vNIC4'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのクラウド。仮想ネットワークの出入口で、インターネットには最初からつながっている。' },
+  { id: 'wan', kind: 'wan', label: '広域イーサネット網', short: '広域イーサ', ports: ['拠点1', '拠点2', '拠点3'], price: 0, size: 0, level: 1, prefix: '', desc: '通信会社の拠点間回線。つないだ拠点同士が、1台のL2スイッチにつないだときと同じように通信できる。' },
   { id: 'home', kind: 'home', label: '自宅PC', short: '自宅PC', ports: [], price: 0, size: 0, level: 1, prefix: '', desc: '社員の自宅にあるPC。インターネットの向こうから、VPNで社内につなぐ。' },
   { id: 'internet', kind: 'internet', label: 'インターネット回線', short: '回線', ports: ['ISP'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのインターネット回線。' },
+  { id: 'internet-2', kind: 'internet', label: 'インターネット回線(2契約)', short: '回線', ports: ['回線1', '回線2'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのインターネット回線が2本ある。' },
+  { id: 'internet-3', kind: 'internet', label: 'インターネット回線(3契約)', short: '回線', ports: ['回線1', '回線2', '回線3'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのインターネット回線が3本ある。' },
 ];
 export const MODEL: Record<string, Model> = Object.fromEntries(MODELS.map(m => [m.id, m]));
 export const CABLE_PRICE = 500;
@@ -126,12 +146,14 @@ export const CABLE_PRICE = 500;
 export const isEndpoint = (k: Kind): boolean => k === 'pc' || k === 'printer' || k === 'phone' || k === 'camera' || k === 'pos';
 /** 自分のIPアドレスを1つ持ち、ゲートウェイ経由で通信する機器 */
 export const isHost = (k: Kind): boolean => isEndpoint(k) || k === 'server' || k === 'nas' || k === 'lb' || k === 'home';
-export const isGateway = (k: Kind): boolean => k === 'router' || k === 'fw';
+export const isGateway = (k: Kind): boolean => k === 'router' || k === 'fw' || k === 'cloud';
+/** 許可ルールに当てはまらない通信を遮断する機器 */
+export const deniesByDefault = (k: Kind): boolean => k === 'fw' || k === 'cloud';
 export const isManaged = (k: Kind): boolean => k === 'l2m' || k === 'l3';
 export const isRouting = (k: Kind): boolean => isGateway(k) || k === 'l3' || k === 'internet';
 
-const hostCfg = (): HostCfg => ({ mode: 'static', ip: '', prefix: 24, gw: '', dns: '', proxy: '', wifi: { ssid: '', key: '' } });
-const lanIf = (): LanIf => ({ ip: '', prefix: 24, dhcpOn: false, dhcpStart: '', dhcpEnd: '', dhcpDns: '' });
+const hostCfg = (): HostCfg => ({ mode: 'static', ip: '', prefix: 24, gw: '', dns: '', proxy: '', noProxy: '', wifi: { ssid: '', key: '' } });
+const lanIf = (): LanIf => ({ ip: '', prefix: 24, dhcpOn: false, dhcpStart: '', dhcpEnd: '', dhcpDns: '', vip: '', prio: 100 });
 
 export function defaultCfg(m: Model): any {
   switch (m.kind) {
@@ -146,6 +168,7 @@ export function defaultCfg(m: Model): any {
         webOn: false,
         fileOn: m.kind === 'nas', fileAllow: '',
         mailOn: false, cert: '',
+        rpOn: false, rpRules: [], dkimOn: false, dkimSel: 's1', monOn: false, monTargets: '',
       };
       return c;
     }
@@ -155,9 +178,11 @@ export function defaultCfg(m: Model): any {
       return { portMode: m.ports.map(() => 'access'), portVlan: m.ports.map(() => 1), svis: [], routes: [], rules: [] } satisfies L3Cfg;
     case 'router':
     case 'fw':
-      return { wan: { mode: 'auto', ip: '', prefix: 30, gw: '' }, nat: true, lan: m.ports.slice(1).map(lanIf), routes: [], rules: [], forwards: [], vpn: { on: false, key: '', ip: '' } } satisfies GwCfg;
+    case 'cloud':
+      // クラウドは vNIC がすべて同じ仮想ネットワークなので、LAN側のインターフェースは1つ
+      return { wan: { mode: 'auto', ip: '', prefix: 30, gw: '' }, nat: true, lan: (m.kind === 'cloud' ? ['vNET'] : m.ports.slice(1)).map(lanIf), routes: [], rules: [], forwards: [], vpn: { on: false, key: '', ip: '' }, tunnels: [] } satisfies GwCfg;
     case 'lb':
-      return { ...hostCfg(), backends: '' };
+      return { ...hostCfg(), backends: '', cert: '' };
     case 'internet':
       return { domain: '', zone: [] } satisfies InetCfg;
     case 'home':
@@ -184,6 +209,31 @@ export function makeDevice(model: string, id: string, name: string, own: Own, x 
 }
 
 export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
+
+/** 古いセーブの機器に、あとから増えた設定項目を補う */
+export function fillCfg(d: Device): void {
+  const def = defaultCfg(MODEL[d.model]);
+  for (const k of Object.keys(def)) if (d.cfg[k] === undefined) d.cfg[k] = def[k];
+  for (const l of (d.cfg.lan ?? []) as LanIf[]) { l.vip ??= ''; l.prio ??= 100; }
+  for (const s of (d.cfg.svis ?? []) as Svi[]) { s.vip ??= ''; s.prio ??= 100; }
+}
+
+/** その2つのポートをケーブルでつなげるか。つなげないときは理由を返す */
+export function linkError(a: Device, pa: number, b: Device, pb: number): string | null {
+  for (const [x, px, y] of [[a, pa, b], [b, pb, a]] as [Device, number, Device][]) {
+    if (x.kind === 'cloud' && px === 0) return 'クラウドは最初からインターネットにつながっています。WANにケーブルは要りません。';
+    if (x.kind === 'cloud' && y.model !== 'vserver') return 'クラウドの vNIC には、仮想サーバーだけをつなげます。';
+    if (x.model === 'vserver' && y.kind !== 'cloud') return '仮想サーバーはクラウドの中にあります。クラウドの vNIC につなぎます。';
+  }
+  return null;
+}
+
+/** DKIMの公開鍵(機器ごとに決まる短い文字列)。公開DNSのTXTレコードに p= として登録する */
+export function dkimKey(d: Device): string {
+  let h = 2166136261;
+  for (const ch of 'dkim' + d.id + d.mac) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  return 'MIGf' + h.toString(36).toUpperCase().padStart(7, '0');
+}
 
 /** 机の上の状態(機器とケーブル) */
 export interface World { devices: Device[]; cables: Cable[] }

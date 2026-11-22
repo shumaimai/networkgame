@@ -1,8 +1,8 @@
 // 作業画面: 机の上でネットワークを組み、検収テストを通して納品する
 import { CheckResult, evaluate } from '../core/checks';
 import { ipStr, parseIp } from '../core/ip';
-import { Job, worldCost } from '../core/job';
-import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, PortRef, ServerCfg, SVC, SwitchCfg, isGateway, isHost, makeDevice } from '../core/model';
+import { Job, KIND_LABEL, worldCost } from '../core/job';
+import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, PortRef, ServerCfg, SVC, SwitchCfg, dkimKey, fillCfg, isGateway, isHost, linkError, makeDevice } from '../core/model';
 import { Net, arpTable, browse, build, reach, resolve, traceroute } from '../core/sim';
 import { Active, Game, HELP_COST, HelpUse, Outcome } from '../game/state';
 import { Step, TUTORIALS } from '../game/tutorial';
@@ -27,7 +27,10 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   const game: Game = app.game, a: Active = game.s.active!, job: Job = game.activeJob!;
   const world = a.world;
   const tut = job.tutorial ? TUTORIALS.find(t => t.id === job.tutorial)! : null;
+  for (const d of world.devices) fillCfg(d);
   let net: Net = build(world.devices, world.cables);
+  // 机に置けるお客様の機器。最初から机の上にあるものも、片付けたあとで置き直せる
+  const suppliedAll = [...job.supplied, ...job.initial.devices.filter(d => d.own === 'supplied' && !job.supplied.some(x => x.id === d.id)).map(d => ({ id: d.id, model: d.model, name: d.name }))];
   let results: CheckResult[] = [];
   let diagTarget = '', stepIdx = 0, pal: { key: string; label: string; kind: string; x0: number; y0: number; moved: boolean } | null = null;
   const diagDone = new Set<string>();
@@ -37,7 +40,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     <div class="bench">
       <header class="bar">
         <button class="btn ghost" data-act="back">◀ 受注へ</button>
-        <div class="bar-title"><span class="chip ${job.kind}">${job.kind === 'build' ? '構築' : 'トラブル対応'}</span><b>${esc(job.client)}</b><span>${esc(job.title)}</span></div>
+        <div class="bar-title"><span class="chip ${job.kind}">${KIND_LABEL[job.kind]}</span><b>${esc(job.client)}</b><span>${esc(job.title)}</span></div>
         <div class="spacer"></div>
         <div id="timer" class="timer hidden"></div>
         <div id="b-money" class="money"></div>
@@ -84,10 +87,15 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     if (!da || !db) return false;
     if (pa.dev === pb.dev) { log('同じ機器のポート同士はつなげません。', 'ng'); sfx('ng'); return false; }
     if (cableAt(pa.dev, pa.port) || cableAt(pb.dev, pb.port)) { log('そのポートは使用中です。', 'ng'); sfx('ng'); return false; }
+    const err = linkError(da, pa.port, db, pb.port);
+    if (err) { log(err, 'ng'); sfx('ng'); return false; }
     const free = a.spare > 0;
     if (!free && !game.payCable()) { log('資金が足りません(LANケーブル)。', 'ng'); sfx('ng'); return false; }
     if (free) a.spare--;
-    world.cables.push({ id: 'c' + a.seq++, a: { ...pa }, b: { ...pb }, free: free || undefined });
+    // 既設のケーブルと番号が重ならないようにする
+    let id = 'c' + a.seq++;
+    while (world.cables.some(c => c.id === id)) id = 'c' + a.seq++;
+    world.cables.push({ id, a: { ...pa }, b: { ...pb }, free: free || undefined });
     log(`配線: ${da.name} [${da.ports[pa.port]}] ⇔ ${db.name} [${db.ports[pb.port]}]${free ? '(お客様のケーブル)' : ''}`);
     sfx('plug');
     changed();
@@ -108,6 +116,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     get world() { return world; },
     get net() { return net; },
     emptyHint: ['右の機材をここにドラッグして、机の上に並べましょう', '並べたら、ポート(小さな四角)同士をクリックしてLANケーブルでつなぎます'],
+    zones: job.zones,
     link, removeCable, log,
     onSelect: () => { renderPanel(); },
     onMoved: () => game.save(),
@@ -118,7 +127,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     const [kind, ref] = key.split(':');
     let d: Device;
     if (kind === 'sup') {
-      const def = job.supplied.find(x => x.id === ref);
+      const def = suppliedAll.find(x => x.id === ref);
       if (!def || dev(ref)) return;
       d = makeDevice(def.model, def.id, def.name, 'supplied');
       if (a.shelf[ref]) { d.cfg = a.shelf[ref]; delete a.shelf[ref]; }
@@ -189,10 +198,10 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   const tile = (key: string, kind: string, name: string, sub: string, cls = '') =>
     `<div class="tile ${cls}" data-pal="${key}" data-kind="${kind}" data-label="${esc(name)}"><img src="${img(kind)}" alt="" draggable="false"><div><b>${esc(name)}</b><span>${sub}</span></div></div>`;
   function renderPalette(): void {
-    const waiting = job.supplied.filter(x => !dev(x.id));
+    const waiting = suppliedAll.filter(x => !dev(x.id));
     const stock = Object.keys(game.s.stock);
     let h = '';
-    if (job.supplied.length) {
+    if (job.supplied.length || waiting.length) {
       h += `<h3>お客様の機器<small>机に置く</small></h3>` + (waiting.length
         ? `<div class="tiles">${waiting.map(x => tile('sup:' + x.id, MODEL[x.model].kind, x.name, MODEL[x.model].short)).join('')}</div>`
         : '<div class="done">すべて机に置いてあります。</div>');
@@ -216,7 +225,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     const d = dev(s.id);
     if (!d) { panel.innerHTML = ''; return; }
     const top = panel.scrollTop;
-    panel.innerHTML = devicePanel(d, { net, diagTarget, cables: world.cables, devices: world.devices });
+    panel.innerHTML = devicePanel(d, { net, diagTarget, cables: world.cables, devices: world.devices, level: game.level });
     panel.querySelectorAll<HTMLInputElement>('[data-v]').forEach(validate);
     panel.scrollTop = top;
   }
@@ -312,16 +321,28 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       if (s.dnsOn) out.push(`DNS: ${s.records.map(r => `${r.name} → ${r.ip}`).join('、') || 'レコードなし'} ・ フォワーダー ${s.forwarder}`);
       if (s.dhcpOn) for (const p of s.pools) out.push(`DHCP: ${p.start}〜${p.end} /${p.prefix} ・ GW ${p.gw || 'なし'} ・ DNS ${p.dns || 'なし'}`);
       if (s.proxyOn) out.push(`プロキシ: ポート ${s.proxyPort}${s.proxyAllow ? ` ・ 許可 ${s.proxyAllow}` : ''}`);
-      if (s.webOn) out.push('Webサービス: オン');
+      if (c.noProxy) out.push(`プロキシを使わない宛先 ${c.noProxy}`);
+      if (d.kind === 'lb') out.push(`振り分け先 ${c.backends}${c.cert ? ` ・ 証明書 ${c.cert}` : ''}`);
+      if (s.webOn) out.push(`Webサービス: オン${s.cert ? ` ・ 証明書 ${s.cert}` : ''}`);
+      if (s.rpOn) out.push(`リバースプロキシ: ${s.rpRules.map(r => `${r.host} → ${r.to}`).join('、')} ・ 証明書 ${s.cert}`);
+      if (s.mailOn) out.push(`メールサービス: オン${s.dkimOn ? ` ・ DKIM セレクター ${s.dkimSel}(公開鍵は、置いたサーバーの設定画面に出る値を使う。この模範解答では ${dkimKey(d)})` : ''}`);
+      if (s.monOn) out.push(`監視: ${s.monTargets}`);
       if (s.fileOn) out.push(`ファイル共有: オン${s.fileAllow ? ` ・ 許可 ${s.fileAllow}` : ''}`);
     } else if (isGateway(d.kind)) {
       const g = c as GwCfg;
-      g.lan.forEach((l, i) => { if (l.ip) out.push(`${d.ports[i + 1]}: ${l.ip} /${l.prefix}${l.dhcpOn ? ` ・ DHCP ${l.dhcpStart}〜${l.dhcpEnd}(DNS ${l.dhcpDns || 'なし'})` : ''}`); });
+      if (!g.nat) out.push('NAT: オフ');
+      for (const t of g.tunnels ?? []) out.push(`拠点間VPN: 相手 ${t.peer} ・ キー ${t.key} ・ 相手側のネットワーク ${t.nets}`);
+      if (g.vpn?.on) out.push(`リモートアクセスVPN: キー ${g.vpn.key} ・ 配るアドレス ${g.vpn.ip}`);
+      g.lan.forEach((l, i) => { if (l.ip) out.push(`${d.kind === 'cloud' ? 'vNET' : d.ports[i + 1]}: ${l.ip} /${l.prefix}${l.vip ? ` ・ 仮想IP ${l.vip}(優先度 ${l.prio})` : ''}${l.dhcpOn ? ` ・ DHCP ${l.dhcpStart}〜${l.dhcpEnd}(DNS ${l.dhcpDns || 'なし'})` : ''}`); });
       for (const f of g.forwards) out.push(`ポート転送: ${SVC[f.svc].label} → ${f.to}`);
     } else if (d.kind === 'l3' || d.kind === 'l2m') {
       const s = c as SwitchCfg;
       out.push('ポートのVLAN: ' + s.portVlan.map((v, i) => `${i + 1}=${s.portMode[i] === 'trunk' ? 'T' : v}`).join(' '));
-      if (d.kind === 'l3') for (const v of (c as L3Cfg).svis) out.push(`VLAN${v.vlan}: ${v.ip} /${v.prefix}${v.relay ? ` ・ DHCPリレー ${v.relay}` : ''}`);
+      if (d.kind === 'l3') for (const v of (c as L3Cfg).svis) out.push(`VLAN${v.vlan}: ${v.ip} /${v.prefix}${v.vip ? ` ・ 仮想IP ${v.vip}(優先度 ${v.prio})` : ''}${v.relay ? ` ・ DHCPリレー ${v.relay}` : ''}`);
+    } else if (d.kind === 'internet') {
+      for (const z of (c.zone ?? []) as { type: string; name: string; value: string }[]) out.push(`公開DNS: ${z.type} ${z.name} → ${z.value}`);
+    } else if (d.kind === 'ap') {
+      out.push(`SSID ${c.ssid} ・ 暗号化キー ${c.key}`);
     }
     for (const r of (c.routes ?? []) as { dest: string; via: string }[]) out.push(`ルート: ${r.dest} → ${r.via}`);
     (c.rules ?? []).forEach((r: any, i: number) => out.push(`ルール${i + 1}: ${r.action === 'allow' ? '許可' : '拒否'} ${r.src} → ${r.dst}(${r.svc === 'any' ? 'すべて' : SVC[r.svc as keyof typeof SVC].label})`));
@@ -330,7 +351,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   function answerHtml(): string {
     if (job.kind === 'trouble') return `<h3>仕込まれていた不具合</h3><ul class="plain">${job.faults.map(f => `<li>${esc(f)}</li>`).join('')}</ul>`;
     const s = job.solution, n = (id: string) => s.devices.find(d => d.id === id)!;
-    return `<h3>模範解答の機器と設定</h3><div class="answer">${s.devices.filter(d => d.kind !== 'internet').map(d => `<div><b>${esc(d.name)}</b> <small>${MODEL[d.model].label}</small><br>${cfgLines(d).map(esc).join('<br>') || '設定なし'}</div>`).join('')}</div>
+    return `<h3>模範解答の機器と設定</h3><div class="answer">${s.devices.filter(d => d.kind !== 'wan' && (d.kind !== 'internet' || d.cfg.zone?.length)).map(d => `<div><b>${esc(d.name)}</b> <small>${MODEL[d.model].label}</small><br>${cfgLines(d).map(esc).join('<br>') || '設定なし'}</div>`).join('')}</div>
       <h3>配線</h3><div class="answer wires">${s.cables.map(c => `<span>${esc(n(c.a.dev).name)} [${n(c.a.dev).ports[c.a.port]}] ⇔ ${esc(n(c.b.dev).name)} [${n(c.b.dev).ports[c.b.port]}]</span>`).join('')}</div>`;
   }
   function openHelp(): void {
@@ -386,7 +407,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       case 'diag': diag(el.dataset.diag!); break;
       case 'add': case 'del': case 'up': {
         if (desk.sel?.kind !== 'dev') break;
-        const list = dev(desk.sel.id)!.cfg[el.dataset.key!] as any[], i = Number(el.dataset.i);
+        const cfg = dev(desk.sel.id)!.cfg, list = (cfg[el.dataset.key!] ??= []) as any[], i = Number(el.dataset.i);
         if (act === 'add') list.push(ROW_TEMPLATE[el.dataset.key!]());
         if (act === 'del') list.splice(i, 1);
         if (act === 'up' && i > 0) [list[i - 1], list[i]] = [list[i], list[i - 1]];
@@ -454,8 +475,9 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   const timer = window.setInterval(tick, 1000);
   if (a.challenge) { a.elapsed -= 1000; tick(); }
 
-  log(`【${job.kind === 'build' ? '構築' : 'トラブル対応'}】${job.client}「${job.title}」`);
+  log(`【${KIND_LABEL[job.kind]}】${job.client}「${job.title}」`);
   if (job.kind === 'trouble') log('既設のネットワークに不具合があります。診断ツールで原因を探して直しましょう。');
+  if (job.kind === 'migrate') log('机の上は、いま動いているネットワークです。仕様書の「変更内容」のとおりに作り替えます。不合格の検収テストが、これから変える部分です。');
   changed();
   renderPanel();
   (window as any).__bench = { place, link, removeDevice, removeCable, diag, changed, desk, world, job, get results() { return results; }, select: (id: string) => desk.select({ kind: 'dev', id }) };

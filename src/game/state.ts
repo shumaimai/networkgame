@@ -5,7 +5,7 @@ import { Job, mulberry, worldCost } from '../core/job';
 import { CABLE_PRICE, Device, MODEL, MODELS, World, clone, makeDevice } from '../core/model';
 import { TUTORIALS, tutorialJob } from './tutorial';
 
-export const MAX_LEVEL = 16;
+export const MAX_LEVEL = 24;
 export const START_MONEY = 30000;
 /** レベル n になるのに必要な累計経験値 */
 export const xpFor = (n: number): number => 45 * (n - 1) * (n + 2);
@@ -28,6 +28,14 @@ export const LEVELS: LevelInfo[] = [
   { level: 14, title: '匠', unlocks: ['VPN(テレワーク)'] },
   { level: 15, title: '名人', unlocks: ['公開DNS(A・MX・TXTレコード)', 'HTTPSと証明書', 'SPF(メールの送信元の証明)'] },
   { level: 16, title: '名人', unlocks: ['負荷分散装置'] },
+  { level: 17, title: '達人', unlocks: ['リバースプロキシ', 'ワイルドカード証明書、TLSの終端'] },
+  { level: 18, title: '達人', unlocks: ['送信ドメイン認証(DKIM・DMARC)', 'プロキシを使わない宛先'] },
+  { level: 19, title: '設計者', unlocks: ['広域イーサネット(本店と支店)', '業務用ルーター 4LAN', '構成変更の依頼'] },
+  { level: 20, title: '設計者', unlocks: ['回線の複数契約', '拠点間VPN'] },
+  { level: 21, title: '主任設計者', unlocks: ['ゲートウェイの冗長化(VRRP)', 'DHCPサーバーの二重化'] },
+  { level: 22, title: '主任設計者', unlocks: ['クラウド、仮想サーバー', 'セキュリティグループ、クラウドへの移行'] },
+  { level: 23, title: '統括', unlocks: ['監視サービス', 'L3スイッチの二重化'] },
+  { level: 24, title: '統括', unlocks: ['複数の拠点とクラウドをまたぐ総合案件'] },
 ];
 
 export interface Offer { id: string; seed: number; level: number; kind: 'build' | 'trouble'; ease: number }

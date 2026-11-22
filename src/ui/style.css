@@ -460,3 +460,21 @@ svg.desk text { font-family: var(--sans); fill: var(--text); text-anchor: middle
 .guide-body dd { margin: 0; }
 .ex { background: var(--panel2); border-left: 4px solid var(--orange); border-radius: 0 12px 12px 0; padding: 10px 16px; }
 .ex b { color: var(--orange); margin-right: 12px; }
+
+/* 構成変更の依頼、拠点とクラウドの枠、拠点間VPN、冗長化 */
+.chip.migrate { background: #4f3f12; color: #ffe08a; }
+.row.vr { grid-template-columns: 62px 1fr 68px; }
+.vip-l { font-size: 12px; color: var(--dim); }
+.row.svi .vip-l + input { grid-column: 2 / 3; }
+.row.svi .vip-l + input + input { grid-column: 3 / 5; }
+.pool.tun label.f { grid-template-columns: 150px 1fr; }
+.pool .why { display: block; color: #ffc2c2; font-size: 12px; margin-top: 3px; line-height: 1.5; }
+.st-up { color: #7ee2a8; }
+.st-down { color: #ff9b9b; }
+.site-zone { pointer-events: none; }
+.site-zone rect { fill: rgba(120, 150, 220, .05); stroke: #3a4c78; stroke-width: 2; stroke-dasharray: 10 8; }
+.site-zone.cloud rect { fill: rgba(110, 200, 220, .06); stroke: #3f7f93; }
+.site-zone text { fill: #7f93c2; font-size: 17px; font-weight: 700; }
+.site-zone.cloud text { fill: #7fbccd; }
+.wifi.net { stroke: #6f86b8; stroke-dasharray: 2 9; }
+path.wifi { fill: none; }

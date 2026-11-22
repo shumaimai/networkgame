@@ -3,36 +3,13 @@
 // トラブル対応は、正解の構成に不具合を入れて壊したものを初期状態にする
 import { Check, Target, describe, evaluate } from './checks';
 import { cidrStr, ipStr, parseIp } from './ip';
-import { Builder, DESK_W, Difficulty, Factor, Job, JobCheck, Rng, SpecRow, mulberry, pick, randInt, shuffle, worldCost } from './job';
-import { Device, GwCfg, InetCfg, L3Cfg, Rule, ServerCfg, clone, isEndpoint, makeDevice } from './model';
-import { faultCatalog } from './faults';
+import { Builder, DESK_W, Factor, Job, JobCheck, SpecRow, mulberry, pick, randInt, worldCost } from './job';
+import { Device, GwCfg, InetCfg, L3Cfg, Rule, ServerCfg, dkimKey, isEndpoint, isGateway, makeDevice } from './model';
+import { scenario } from './scen';
+import { EXTERNAL } from './sim';
+import { Base, INDUSTRIES, NAMES, finish, makeTrouble } from './genlib';
 
 const ip = (s: string): number => parseIp(s)!;
-
-interface Industry {
-  id: string; label: string; suffix: string[]; groups: string[]; guest?: string;
-  extra: ('printer' | 'phone' | 'pos' | 'camera')[];
-  person: string[];
-}
-const INDUSTRIES: Industry[] = [
-  { id: 'office', label: '事務所', suffix: ['商事', '税理士事務所', '企画', '法律事務所'], groups: ['総務部', '営業部', '経理部'], extra: ['printer', 'phone'], person: ['総務の担当者', '社長', '所長'] },
-  { id: 'design', label: '設計事務所', suffix: ['設計事務所', 'デザイン', '建築工房'], groups: ['設計室', '営業部'], extra: ['printer'], person: ['所長', '設計主任'] },
-  { id: 'shop', label: '店舗', suffix: ['マート', '書店', 'ベーカリー', '薬局'], groups: ['事務室', '売り場'], extra: ['printer', 'pos', 'camera'], person: ['店長', 'オーナー'] },
-  { id: 'clinic', label: 'クリニック', suffix: ['クリニック', '歯科', '動物病院'], groups: ['受付', '診察室'], extra: ['printer', 'phone'], person: ['院長', '事務長'] },
-  { id: 'school', label: '学習塾', suffix: ['学習塾', 'ゼミナール', '英会話教室'], groups: ['職員室'], guest: '教室', extra: ['printer'], person: ['塾長', '教室長'] },
-  { id: 'hotel', label: '宿泊施設', suffix: ['ホテル', '旅館', 'ゲストハウス'], groups: ['事務所'], guest: 'ロビー', extra: ['printer', 'phone'], person: ['支配人', '女将'] },
-  { id: 'cafe', label: '飲食店', suffix: ['カフェ', '珈琲店', '食堂'], groups: ['事務室'], guest: '客席', extra: ['printer', 'pos'], person: ['店長', 'マスター'] },
-  { id: 'account', label: '会計事務所', suffix: ['会計事務所', '社労士事務所', '行政書士事務所'], groups: ['業務室', '受付'], extra: ['printer', 'phone'], person: ['所長', '事務の担当者'] },
-  { id: 'estate', label: '不動産店', suffix: ['不動産', 'ホーム', '住宅販売'], groups: ['営業部', '管理部'], extra: ['printer', 'phone', 'camera'], person: ['店長', '営業の担当者'] },
-  { id: 'nursery', label: '保育園', suffix: ['保育園', 'こども園', '幼稚園'], groups: ['職員室'], guest: '保護者ルーム', extra: ['printer', 'camera'], person: ['園長', '主任'] },
-  { id: 'library', label: '図書館', suffix: ['図書館', '市民センター', '資料館'], groups: ['事務室', 'カウンター'], guest: '閲覧室', extra: ['printer'], person: ['館長', '司書'] },
-  { id: 'factory', label: '工場', suffix: ['製作所', '工業', '食品'], groups: ['事務所', '製造ライン'], extra: ['printer', 'camera'], person: ['工場長', '総務の担当者'] },
-];
-const NAMES: [string, string][] = [
-  ['みどり', 'midori'], ['あおば', 'aoba'], ['北斗', 'hokuto'], ['さくら', 'sakura'], ['つばめ', 'tsubame'], ['ひまわり', 'himawari'],
-  ['白樺', 'shirakaba'], ['ポラリス', 'polaris'], ['かもめ', 'kamome'], ['こだま', 'kodama'], ['すばる', 'subaru'], ['やまびこ', 'yamabiko'],
-  ['あさひ', 'asahi'], ['しらゆり', 'shirayuri'], ['三日月', 'mikazuki'], ['はやぶさ', 'hayabusa'], ['もみじ', 'momiji'], ['わかば', 'wakaba'],
-];
 
 interface Group {
   key: string; label: string; short: string; role: 'staff' | 'guest';
@@ -62,7 +39,9 @@ export interface GenOpts { kind?: 'build' | 'trouble'; ease?: number }
 
 export function generate(seed: number, level: number, opts: GenOpts = {}): Job {
   for (let k = 0; k < 60; k++) {
-    const j = attempt((seed + k * 104729) >>> 0, seed, level, opts);
+    const s = (seed + k * 104729) >>> 0;
+    // Lv.19 からは、拠点やクラウドをまたぐ依頼(scen.ts)も混ざる
+    const j = (level >= 19 ? scenario(s, seed, level, opts) : null) ?? attempt(s, seed, level, opts);
     if (j) return j;
   }
   throw new Error(`依頼を生成できませんでした (seed=${seed}, level=${level})`);
@@ -77,18 +56,25 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   const want = (lv: number, p: number) => cap >= lv && (cap === lv ? chance(0.8) : chance(p));
 
   // ---- 1) 要件を決める ----
-  const internet = cap >= 2 && (cap === 2 || chance(0.88));
-  const dns = internet && want(4, 0.55);
-  const proxy = dns && want(6, 0.4);
+  // あとから増えた内容(Lv.17〜)は別の乱数で決める。それまでのレベルの依頼の中身を変えないため
+  // これらを出すと決めたら、前提になる内容(インターネット、DNS、ファイアウォールなど)も入れる
+  const r2 = mulberry(seed ^ 0x5bd1e995);
+  const want2 = (lv: number, p: number) => cap >= lv && (cap === lv ? r2() < 0.8 : r2() < p);
+  const rp = want2(17, 0.3), saas = want2(18, 0.3), dkimWanted = want2(18, 0.3), monWanted = want2(23, 0.35);
+  const lbTls = cap >= 17 && r2() < 0.6;
+  const internet = (cap >= 2 && (cap === 2 || chance(0.88))) || rp || saas || dkimWanted;
+  const dns = internet && (want(4, 0.55) || saas || dkimWanted || monWanted);
+  const proxy = dns && (want(6, 0.4) || saas);
   const nasWanted = want(7, 0.45);
-  const fw = internet && want(10, 0.4);
+  const fw = internet && (want(10, 0.4) || rp || dkimWanted);
   const vlan = want(8, 0.55);
   const subnet = !vlan && want(5, 0.35);
   const trunk = vlan && want(11, 0.45);
   const redundant = trunk && want(12, 0.5);
-  const pub = fw && want(15, 0.55);
-  const lbOn = fw && want(16, 0.5);
-  const mail = dns && (want(12, 0.35) || (pub && chance(0.7)));
+  const pub = fw && (want(15, 0.55) || rp || dkimWanted);
+  const lbOn = fw && want(16, 0.5) && !rp;
+  const termLb = lbOn && lbTls && pub;
+  const mail = dns && (want(12, 0.35) || (pub && chance(0.7)) || dkimWanted);
   const wifi = want(13, 0.45);
   const vpnWanted = internet && !vlan && !lbOn && want(14, 0.5);
   let dhcp: 'none' | 'router' | 'server' = 'none';
@@ -186,7 +172,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   if (inet && gwDev) b.link(inet, 0, gwDev, 0);
   // テレワーク: 自宅PCがVPNで社内に入る
   const vpnKey = `vpn-${romaji.slice(0, 4)}${randInt(r, 10, 99)}`;
-  const homePc = vpnWanted && gwDev && (nasWanted || staff[0].printer) ? b.add('home', 'home', '自宅PC', 'fixed') : null;
+  const homePc = vpnWanted && !rp && gwDev && (nasWanted || staff[0].printer) ? b.add('home', 'home', '自宅PC', 'fixed') : null;
   if (homePc && gwDev) {
     const h = staff[0];
     (gwDev.cfg as GwCfg).vpn = { on: true, key: vpnKey, ip: ipStr(h.net + (h.prefix === 24 ? 240 : size(h) - 2)) };
@@ -286,6 +272,8 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   if (nas) { nasIp = take(srvGroup, 'nas'); hostCfg(nas, srvGroup, nasIp); if (nasBought) records.push({ name: `nas.${dom}`, ip: nasIp }); }
   const pubDom = `${romaji}.example.jp`;
   let lb: Device | null = null, dmzSw: Device | null = null, dmzHosts: Device[] = [];
+  let rpSites: { name: string; dev: Device }[] = [];
+  const dkim = dkimWanted && pub && mail && !!server && !!web;
   if (web && gwDev) {
     const g = gwDev.cfg as GwCfg, gwIp = ipStr(dmzNet + 1);
     webIp = ipStr(dmzNet + 80);
@@ -301,15 +289,33 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
       for (const d of [...webs, lb]) b.plug(d, dmzSw);
       Object.assign(lb.cfg, { ip: webIp, prefix: 24, gw: gwIp, backends: webs.map((_, i) => ipStr(dmzNet + 81 + i)).join(', ') });
       dmzHosts = [...webs, lb];
+    } else if (rp) {
+      // リバースプロキシが外からのアクセスを受け、名前ごとにお客様のWebサーバーへ転送する
+      web.name = 'リバースプロキシ';
+      const apps = [b.add('server', 'app1', 'Webサーバー-1', 'supplied'), b.add('server', 'app2', 'Webサーバー-2', 'supplied')];
+      dmzSw = b.add('l2-5', 'swdmz', 'DMZスイッチ');
+      b.link(gwDev, 1, dmzSw, 0);
+      for (const d of [web, ...apps]) b.plug(d, dmzSw);
+      rpSites = [{ name: 'www', dev: apps[0] }, { name: pick(r2, ['shop', 'blog', 'recruit', 'support']), dev: apps[1] }];
+      apps.forEach((a, i) => Object.assign(a.cfg, { ip: ipStr(dmzNet + 81 + i), prefix: 24, gw: gwIp, webOn: true }));
+      Object.assign(web.cfg, { ip: webIp, prefix: 24, gw: gwIp, rpOn: true, cert: `*.${pubDom}`, rpRules: rpSites.map((x, i) => ({ host: `${x.name}.${pubDom}`, to: ipStr(dmzNet + 81 + i) })) });
+      dmzHosts = [web, ...apps];
     } else b.link(web, 0, gwDev, 1);
-    webs.forEach((w, i) => Object.assign(w.cfg, { ip: lbOn ? ipStr(dmzNet + 81 + i) : webIp, prefix: 24, gw: gwIp, webOn: true, cert: pub ? `www.${pubDom}` : '' }));
+    // 負荷分散装置に証明書を入れる(TLSの終端)依頼では、Webサーバー側の証明書は要らない
+    if (!rp) webs.forEach((w, i) => Object.assign(w.cfg, { ip: lbOn ? ipStr(dmzNet + 81 + i) : webIp, prefix: 24, gw: gwIp, webOn: true, cert: pub && !termLb ? `www.${pubDom}` : '' }));
+    if (termLb) lb!.cfg.cert = `www.${pubDom}`;
     g.forwards.push({ svc: 'web', to: webIp });
-    if (dns) records.push({ name: `www.${dom}`, ip: webIp });
+    if (dns && !rp) records.push({ name: `www.${dom}`, ip: webIp });
     if (pub && inet) {
       // 契約済みのドメイン。公開DNSのレコードは回線(プロバイダ)側に登録する
       const z = inet.cfg as InetCfg;
       z.domain = pubDom;
       z.zone.push({ type: 'A', name: 'www', value: '203.0.113.2' });
+      for (const x of rpSites.slice(1)) z.zone.push({ type: 'A', name: x.name, value: '203.0.113.2' });
+      if (dkim && server) {
+        Object.assign(server.cfg, { dkimOn: true, dkimSel: 's1' });
+        z.zone.push({ type: 'TXT', name: 's1._domainkey', value: `v=DKIM1; k=rsa; p=${dkimKey(server)}` }, { type: 'TXT', name: '_dmarc', value: 'v=DMARC1; p=reject' });
+      }
       if (mail && server) {
         z.zone.push({ type: 'A', name: 'mail', value: '203.0.113.2' }, { type: 'MX', name: '@', value: 'mail' }, { type: 'TXT', name: '@', value: 'v=spf1 ip4:203.0.113.2 -all' });
         g.forwards.push({ svc: 'mail', to: serverIp });
@@ -319,6 +325,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   const extMail = pub && mail && !!server && !!web;
 
   // 端末の設定
+  const SAAS = 'saas.example.com', saasOn = saas && proxy;
   const dnsFor = (g: Group) => (dns && g.role === 'staff' ? serverIp : internet ? '8.8.8.8' : '');
   for (const g of groups) {
     const [ds, de] = dhcpRange(g);
@@ -328,7 +335,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
         hostCfg(h, g, take(g, h.kind === 'pc' ? 'pc' : h.kind === 'printer' ? 'printer' : 'misc'));
         h.cfg.dns = h.kind === 'printer' ? '' : dnsFor(g);
       }
-      if (proxy && h.kind === 'pc' && g.role === 'staff') h.cfg.proxy = `${serverIp}:8080`;
+      if (proxy && h.kind === 'pc' && g.role === 'staff') { h.cfg.proxy = `${serverIp}:8080`; if (saasOn) h.cfg.noProxy = SAAS; }
     }
     if (g.printer && dns) records.push({ name: `printer${staff.filter(x => x.printer).length > 1 ? staff.indexOf(g) + 1 : ''}.${dom}`, ip: g.printer.cfg.ip });
     if (!g.dhcp) continue;
@@ -357,6 +364,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
       if (proxy) {
         rules.push({ action: 'allow', src: serverIp, dst: 'any', svc: 'any' });
         for (const g of staff) rules.push({ action: 'allow', src: cidr(g), dst: cidrStr(dmzNet, 24), svc: 'any' });
+        if (saasOn) for (const g of staff) rules.push({ action: 'allow', src: cidr(g), dst: EXTERNAL[SAAS], svc: 'web' });
         for (const g of guests) rules.push({ action: 'allow', src: cidr(g), dst: 'any', svc: 'any' });
       } else for (const g of inner) rules.push({ action: 'allow', src: cidr(g), dst: 'any', svc: 'any' });
     } else {
@@ -364,10 +372,18 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
       if (proxy) {
         rules.push({ action: 'allow', src: serverIp, dst: 'any', svc: 'web' });
         for (const g of guests) rules.push({ action: 'allow', src: cidr(g), dst: 'any', svc: 'web' });
+        if (saasOn) for (const g of staff) rules.push({ action: 'allow', src: cidr(g), dst: EXTERNAL[SAAS], svc: 'web' });
         rules.push({ action: 'deny', src: 'any', dst: 'any', svc: 'web' });
       }
     }
     c.rules = rules;
+  }
+
+  // 監視: サーバーから、IPアドレスを持つ機材すべてに ping を打つ
+  const mon = monWanted && !!server;
+  if (mon && server) {
+    const first = (d: Device): string => (isGateway(d.kind) ? (d.cfg as GwCfg).lan.find(l => l.ip)?.ip : d.kind === 'l3' ? (d.cfg as L3Cfg).svis[0]?.ip : d.cfg.ip) ?? '';
+    Object.assign(server.cfg, { monOn: true, monTargets: b.devices.filter(d => d !== server && (isGateway(d.kind) || ['l3', 'server', 'nas', 'lb'].includes(d.kind))).map(first).join(', ') });
   }
 
   // ---- 3) 検収テスト ----
@@ -399,6 +415,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
       if (!viaProxy) add({ t: 'flow', from: ids(g.pcs), to: { ext: '8.8.8.8' }, svc: 'ping', expect: 'ok' }, whoPc(g));
       add({ t: 'flow', from: ids(g.pcs), to: { ext: 'www.example.com' }, svc: 'web', expect: 'ok', via: viaProxy ? 'proxy' : undefined }, whoPc(g));
       if (viaProxy) { add({ t: 'directWeb', from: ids(g.pcs) }, whoPc(g)); restrict.push('direct'); }
+      if (viaProxy && saasOn) add({ t: 'flow', from: ids(g.pcs), to: { ext: SAAS }, svc: 'web', expect: 'ok', via: 'direct' }, whoPc(g));
     }
     const pos = b.devices.filter(d => d.kind === 'pos');
     if (pos.length && !proxy) add({ t: 'flow', from: ids(pos), to: { ext: 'update.example.org' }, svc: 'web', expect: 'ok' }, 'レジ');
@@ -420,11 +437,13 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     if (proxy) add({ t: 'noProxy', from: ids(g.pcs) }, whoPc(g));
   }
   if (web) {
-    if (pub) add({ t: 'flow', from: ['inet'], to: { name: `www.${pubDom}` }, svc: 'web', expect: 'ok', https: true });
+    if (rpSites.length) for (const x of rpSites) add({ t: 'flow', from: ['inet'], to: { name: `${x.name}.${pubDom}` }, svc: 'web', expect: 'ok', https: true, by: x.dev.id });
+    else if (pub) add({ t: 'flow', from: ['inet'], to: { name: `www.${pubDom}` }, svc: 'web', expect: 'ok', https: true });
     else add({ t: 'flow', from: ['inet'], to: { pub: true }, svc: 'web', expect: 'ok' });
     if (lb) add({ t: 'lb', min: 2 });
     if (extMail) { add({ t: 'mailIn', domain: pubDom }); add({ t: 'mailOut' }); }
-    if (dns) add({ t: 'flow', from: ids(home.pcs), to: { name: `www.${dom}` }, svc: 'web', expect: 'ok', via: proxy ? 'proxy' : undefined }, whoPc(home));
+    if (dkim) { add({ t: 'dkim' }); add({ t: 'dmarc' }); }
+    if (dns && !rp) add({ t: 'flow', from: ids(home.pcs), to: { name: `www.${dom}` }, svc: 'web', expect: 'ok', via: proxy ? 'proxy' : undefined }, whoPc(home));
     add({ t: 'flow', from: ['inet'], to: { pub: true }, svc: 'file', expect: 'ng' });
     restrict.push('dmz');
   }
@@ -436,6 +455,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   }
   if (mail) add({ t: 'flow', from: ids(home.pcs), to: { name: `mail.${dom}` }, svc: 'mail', expect: 'ok' }, whoPc(home));
   if (wireless.size) add({ t: 'wifi', devs: ids([...wireless]) });
+  if (mon) add({ t: 'monitor' });
   if (redundant) {
     const sub: Check[] = [];
     for (const g of staff) for (const o of staff) if (g !== o) sub.push({ t: 'flow', from: [g.pcs[0].id], to: { dev: o.pcs[0].id }, svc: 'ping', expect: 'ok' });
@@ -443,7 +463,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     add({ t: 'redundant', checks: sub });
   }
   // ---- 4) 確かめる ----
-  layout(b, { groups: floors ?? groups, inet, gwDev, l3, side: [server, nas].filter((x): x is Device => !!x), web: lb ? null : web, dmzSw, dmzHosts });
+  layout(b, { groups: floors ?? groups, inet, gwDev, l3, side: [server, nas].filter((x): x is Device => !!x), web: lb || rp ? null : web, dmzSw, dmzHosts });
   if (homePc && inet) { homePc.x = inet.x - 330; homePc.y = inet.y + 24; }
   if (ap) {
     const ws = [...wireless];
@@ -486,20 +506,27 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   know(pub, '公開DNS', 6);
   know(extMail, 'SPF', 8);
   know(!!lb, '負荷分散', 8);
+  know(rp, 'リバースプロキシ', 9);
+  know(dkim, '送信ドメイン認証', 8);
+  know(saasOn, 'プロキシの例外', 5);
+  know(mon, '監視', 4);
   if (restrict.length) { tags.push('通信制限'); factors.push({ label: `通信の制限(${new Set(restrict).size}種類)`, pts: new Set(restrict).size * 3 }); }
 
   const person = pick(r, ind.person);
   const spec: SpecRow[] = [];
   spec.push({ head: 'アドレス', body: groups.map(g => `${multi ? g.label + ': ' : ''}${cidr(g)}${g.dhcp ? '(PCはDHCPで自動取得)' : ''}`).join('\n') });
-  if (internet) spec.push({ head: 'インターネット', body: proxy ? '社員のPCはプロキシ経由でだけWebを見られること' : `回線は契約済み。公開DNSは 8.8.8.8` });
+  if (internet) spec.push({ head: 'インターネット', body: proxy ? '社員のPCはプロキシ経由でだけWebを見られること' + (saasOn ? `\nクラウドサービス ${SAAS} だけは、プロキシを通さず直接つなぐ` : '') : `回線は契約済み。公開DNSは 8.8.8.8` });
   if (records.length) spec.push({ head: '名前', body: records.map(x => `${x.name} → ${nameOf(b.devices.find(d => d.cfg.ip === x.ip)!.id)}`).join('\n') });
   if (nas) spec.push({ head: 'ファイル共有', body: `${nasBought ? 'NASを新しく用意する' : 'お客様のNASを使う'}。使えるのは ${nasGroups.map(g => (multi ? g.label : '社内のPC')).join('・')}${cams.length ? ' とカメラ' : ''}` });
   if (guests.length) spec.push({ head: 'ゲスト用', body: `${guests[0].label}のPCはインターネットだけ使える。社内の機器には届かないこと` });
   if (floors) spec.push({ head: 'フロア', body: floors.map((f, i) => `${i + 1}階(${f.sw!.name}): ${f.hosts.map(h => h.name).join('、')}`).join('\n') + '\n各階の機器は、その階のVLAN対応スイッチ(お客様の既設)につなぐ' + (redundant ? '\nスイッチ同士のケーブルが1本切れても止まらないこと' : '') });
   if (wireless.size) spec.push({ head: '無線LAN', body: `SSID: ${ssid} / 暗号化キー: ${wifiKey}\n${[...wireless].map(d => d.name).join('・')} は無線でつなぐ` });
   if (homePc) spec.push({ head: 'テレワーク', body: `自宅PCからVPNで社内につなぐ。認証キー: ${vpnKey}\n会社の外側のアドレスは 203.0.113.2` });
-  if (pub) spec.push({ head: 'ドメイン', body: `${pubDom}(契約済み。回線の「公開DNS」にレコードを登録する)\n会社の外側のアドレスは 203.0.113.2\nWebサイトは https://www.${pubDom} で公開する` + (extMail ? `\nメールは mail.${pubDom} で受け取る。SPFレコードで送信元を示す` : '') });
-  if (lb) spec.push({ head: '負荷分散', body: 'Webサーバーを2台用意し、負荷分散装置で振り分ける\n外から届いたWebアクセスは負荷分散装置へ送る' });
+  if (pub) spec.push({ head: 'ドメイン', body: `${pubDom}(契約済み。回線の「公開DNS」にレコードを登録する)\n会社の外側のアドレスは 203.0.113.2\n` + (rp ? `公開するWebサイト: ${rpSites.map(x => `https://${x.name}.${pubDom}`).join('、')}` : `Webサイトは https://www.${pubDom} で公開する`) + (extMail ? `\nメールは mail.${pubDom} で受け取る。SPFレコードで送信元を示す` : '')
+    + (dkim ? '\nDKIMの署名を付け、公開鍵を s1._domainkey のTXTレコードに登録する\nDMARCのレコード(_dmarc)で、認証に失敗したメールを拒否するよう示す' : '') });
+  if (rp) spec.push({ head: 'リバースプロキシ', body: rpSites.map(x => `${x.name}.${pubDom} → ${x.dev.name}`).join('\n') + '\n外から届いたWebアクセスはリバースプロキシが受け、名前を見てWebサーバーへ転送する\n証明書はリバースプロキシに入れる(2つの名前の両方に当てはまるもの)\nWebサーバー2台はお客様の機器を使う' });
+  if (lb) spec.push({ head: '負荷分散', body: 'Webサーバーを2台用意し、負荷分散装置で振り分ける\n外から届いたWebアクセスは負荷分散装置へ送る' + (termLb ? '\n証明書は負荷分散装置に入れる' : '') });
+  if (mon) spec.push({ head: '監視', body: 'サーバーで監視サービスを動かす\n監視先: ルーター、ファイアウォール、L3スイッチ、サーバー、NASなど、IPアドレスを持つ機材すべて' });
   if (web) spec.push({ head: '公開サーバー', body: 'Webサーバーをインターネットに公開する。公開サーバーから社内には入れないこと' });
 
   const talk: string[] = [];
@@ -520,76 +547,32 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   if (mail) talk.push('社内のメールサーバーも立ててください。');
   if (wireless.size) talk.push('ノートPCは無線でつなぎたいです。');
   if (homePc) talk.push('自宅からも、社内にいるときと同じように仕事をしたいです。');
-  if (web) talk.push(pub ? 'ドメインを取ったので、その名前でWebサイトを公開したいです。' : '自社のWebサイトも外に公開したいです。');
+  if (web) talk.push(rp ? 'Webサイトが2つに増えました。外からの入口は1つにまとめて公開したいです。' : pub ? 'ドメインを取ったので、その名前でWebサイトを公開したいです。' : '自社のWebサイトも外に公開したいです。');
+  if (saasOn) talk.push('経費精算のクラウドサービスだけは、プロキシを通さずにつなぎたいです。');
+  if (dkim) talk.push('取引先から、うちのメールが迷惑メールに振り分けられると言われました。対策もお願いします。');
+  if (mon) talk.push('機器が止まったらすぐ分かるように、監視もしてほしいです。');
   if (extMail) talk.push('社外とのメールにも同じドメインを使います。');
   if (lb) talk.push('アクセスが増えてきたので、Webサーバーを2台にして振り分けてください。');
   talk.push(pick(r, ['アドレスなどの条件は仕様書に書きました。', '条件は仕様書のとおりです。', '仕様書を付けておきます。']));
 
-  const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed, trunk, redundant, mail, wifi: wireless.size > 0, vpn: !!homePc, pub, spf: extMail, lb: !!lb });
-  const title = lb ? 'アクセスの多いWebサイトの公開' : extMail ? '自社ドメインでWebとメールを使う' : pub ? '自社ドメインでWebサイトを公開' : homePc && !fw ? '自宅からもつながるネットワーク' : wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
+  const hints = planHints({ internet, dhcp, dns, proxy, nas: !!nas, vlan, fw, subnet, guest: guests.length > 0, multi, routed, trunk, redundant, mail, wifi: wireless.size > 0, vpn: !!homePc, pub, spf: extMail, lb: !!lb, rp, dkim, saas: saasOn, mon, termLb });
+  const title = rp ? '2つのWebサイトを1つの入口で公開' : lb ? 'アクセスの多いWebサイトの公開' : extMail ? '自社ドメインでWebとメールを使う' : pub ? '自社ドメインでWebサイトを公開' : homePc && !fw ? '自宅からもつながるネットワーク' : wireless.size && !fw && !vlan ? '無線LANのあるネットワーク' : redundant ? '止まらない社内ネットワーク' : trunk ? '2つの階にまたがるネットワーク' : fw ? '公開サーバーのある社内ネットワーク' : vlan ? '部署ごとに分けたネットワーク' : proxy ? 'プロキシ経由のインターネット接続'
     : nas ? 'ファイル共有のあるネットワーク' : dns ? '社内DNSのあるネットワーク' : multi ? '2つのネットワークをつなぐ' : dhcp !== 'none' ? 'アドレスを自動で配るLAN'
       : internet ? 'インターネット開通' : 'はじめての社内LAN';
 
   const supplied = b.devices.filter(d => d.own === 'supplied').map(d => ({ id: d.id, model: d.model, name: d.name }));
   const par = worldCost(solution);
-  const base: Omit<Job, 'difficulty' | 'reward' | 'xp' | 'minutes'> = {
+  const base: Base = {
     id: `j${id}`, seed: id, kind: 'build', client, industry: ind.label, person, title, brief: talk.join(''), spec, tags,
     supplied, checks, initial: { devices: b.devices.filter(d => d.own === 'fixed').map(d => { const n = makeDevice(d.model, d.id, d.name, 'fixed', d.x, d.y); if (d.kind === 'internet') n.cfg.domain = d.cfg.domain; return n; }), cables: [] }, solution, par, hints, faults: [],
   };
 
   if ((opts.kind ?? 'build') === 'build') return finish(base, factors);
 
-  // ---- トラブル対応: 正解を壊す ----
-  const broken = clone(solution);
-  for (const d of broken.devices) if (d.own === 'bought') { d.own = 'supplied'; d.cost = 0; }
-  for (const c of broken.cables) c.free = true;
-  const count = Math.min(4, 1 + Math.floor(cap / 3) + (chance(0.4) ? 1 : 0));
-  const picked: { desc: string; weight: number }[] = [];
-  const fr = mulberry(seed ^ 0x9e3779b9);
-  for (const f of shuffle(fr, faultCatalog)) {
-    if (picked.length >= count) break;
-    // 単独で入れたときに、検収テストが1つ以上落ちる不具合だけを使う
-    const solo = clone(solution), s1 = mulberry(seed + f.key.length * 977);
-    if (!f.apply(solo, s1)) continue;
-    if (evaluate(solo, rawChecks, nameOf).every(x => x.ok)) continue;
-    const desc = f.apply(broken, mulberry(seed + f.key.length * 977));
-    if (desc) picked.push({ desc, weight: f.weight });
-  }
-  if (!picked.length || evaluate(broken, rawChecks, nameOf).every(x => x.ok)) return null;
-  // 直す仕事は組み立てより手数が少ないので、規模の点数は半分にする
-  const scale = Math.round(factors.reduce((t, f) => t + f.pts, 0) * 0.4);
-  factors.length = 0;
-  factors.push({ label: 'ネットワークの規模と内容', pts: scale });
-  factors.push({ label: `不具合の数(${picked.length})`, pts: picked.length * 3 });
-  factors.push({ label: '不具合の見つけにくさ', pts: picked.reduce((s, p) => s + p.weight, 0) });
-  const symptom = evaluate(broken, rawChecks, nameOf).map((x, i) => (x.ok ? '' : checks[i].label)).filter(Boolean);
-  return finish({
-    ...base, kind: 'trouble', title: troubleTitle(symptom, r), supplied: [], initial: broken, par: 0,
-    brief: `${pick(r, ['先週から', '昨日の模様替えのあとから', '機器を入れ替えてから', '今朝から'])}調子が悪くて困っています。${symptom.length > 1 ? '困っていることは1つではありません。' : ''}${pick(r, ['前に頼んだ業者とは連絡がつきません。', '設定した担当者は先月退職しました。', '自分たちで触ってみましたが、直りませんでした。'])}仕様書のとおりに動くように直してください。`,
-    hints: ['まず検収テストで落ちている項目を見て、どの機器の通信が失敗しているかを絞ります。', '失敗している機器を選び、診断ツールの ping を近い相手から順に打ちます(同じネットワークの機器 → ゲートウェイ → その先)。', '止まった場所の機器の設定と配線を、仕様書と見比べます。'],
-    faults: picked.map(p => p.desc),
-  }, factors);
+  return makeTrouble(base, factors, seed, cap, r, nameOf);
 }
 
-function troubleTitle(symptom: string[], r: Rng): string {
-  const s = symptom.join(' ');
-  if (/印刷/.test(s) && symptom.length === 1) return '印刷できない';
-  if (/Web|開ける|インターネット/.test(s)) return pick(r, ['インターネットにつながらない', 'Webが見られない']);
-  if (/共有/.test(s)) return '共有フォルダが開けない';
-  if (/通信できない|出られない|使えない/.test(s)) return '見えてはいけないものが見えている';
-  return pick(r, ['ネットワークの調子が悪い', '急につながらなくなった']);
-}
-
-function finish(base: Omit<Job, 'difficulty' | 'reward' | 'xp' | 'minutes'>, factors: Factor[]): Job {
-  const score = factors.reduce((s, f) => s + f.pts, 0);
-  const stars = score < 9 ? 1 : score < 18 ? 2 : score < 30 ? 3 : score < 45 ? 4 : 5;
-  const difficulty: Difficulty = { stars, score, factors };
-  const labor = 5000 + score * 800;
-  const reward = Math.round((base.par * 1.12 + labor) / 500) * 500;
-  return { ...base, difficulty, reward, xp: 20 + score * 6, minutes: Math.round(4 + score * 0.45) };
-}
-
-interface Feats { internet: boolean; dhcp: string; dns: boolean; proxy: boolean; nas: boolean; vlan: boolean; fw: boolean; subnet: boolean; guest: boolean; multi: boolean; routed: boolean; trunk: boolean; redundant: boolean; mail: boolean; wifi: boolean; vpn: boolean; pub: boolean; spf: boolean; lb: boolean }
+interface Feats { internet: boolean; dhcp: string; dns: boolean; proxy: boolean; nas: boolean; vlan: boolean; fw: boolean; subnet: boolean; guest: boolean; multi: boolean; routed: boolean; trunk: boolean; redundant: boolean; mail: boolean; wifi: boolean; vpn: boolean; pub: boolean; spf: boolean; lb: boolean; rp: boolean; dkim: boolean; saas: boolean; mon: boolean; termLb: boolean }
 function planHints(f: Feats): string[] {
   const h: string[] = [];
   if (f.dns || f.proxy || f.dhcp === 'server') h.push('サーバーは1台で足ります。DNS・DHCP・プロキシなどのサービスは同じサーバーで一緒に動かせます。別のネットワークのPCも、ルーターやL3スイッチを通して同じサーバーを使えます。');
@@ -612,6 +595,11 @@ function planHints(f: Feats): string[] {
   if (f.vpn) h.push('ルーター(またはファイアウォール)でVPNをオンにし、認証キーと、自宅PCに配る社内のアドレスを決めます。自宅PCには、会社の外側のアドレスと同じ認証キーを入れます。');
   if (f.pub) h.push('机の奥の回線(雲)をクリックすると、契約したドメインの公開DNSを編集できます。www のAレコードに会社の外側のアドレス(203.0.113.2)を登録し、Webサーバーの証明書の名前を公開する名前に合わせます。');
   if (f.spf) h.push('社外からメールを受け取るには、MXレコードでメールサーバーの名前を示し、その名前のAレコードを外側のアドレスにして、ファイアウォールでメール(25)をサーバーへ転送します。社外へ送るメールのために、TXTレコードに v=spf1 ip4:203.0.113.2 -all を登録します。');
+  if (f.rp) h.push('DMZのスイッチに、リバースプロキシにするサーバーとWebサーバー2台をつなぎます。サーバーの「リバースプロキシ」をオンにして、名前ごとの転送先にWebサーバーのIPアドレスを書きます。ファイアウォールのポート転送の宛先は、リバースプロキシにします。証明書の名前を「*.ドメイン名」にすると、2つの名前の両方に当てはまります。公開DNSには、2つの名前のAレコードを両方登録します。');
+  if (f.dkim) h.push('メールサーバーでDKIMをオンにすると、設定画面に公開鍵が出ます。公開DNSに s1._domainkey のTXTレコードを作り、v=DKIM1; k=rsa; p=公開鍵 を登録します。_dmarc のTXTレコードには v=DMARC1; p=reject を登録します。');
+  if (f.saas) h.push('PCの「プロキシを使わない宛先」に saas.example.com を入れます。ルーターやファイアウォールのルールでは、社員のネットワークから 198.51.100.90 へのWebを、拒否ルールより上で許可します。');
+  if (f.mon) h.push('サーバーで監視をオンにし、監視先にルーター、L3スイッチ、ほかのサーバーやNASのIPアドレスを並べます。ルーターやファイアウォールは、LAN側のアドレスを書きます。');
+  if (f.termLb) h.push('証明書は負荷分散装置の設定に入れます。Webサーバー側の証明書は空欄でかまいません。');
   if (f.lb) h.push('負荷分散装置とWebサーバー2台をDMZのスイッチにつなぎ、装置の「振り分け先」に2台のIPアドレスを書きます。ポート転送の宛先は負荷分散装置にします。');
   if (f.fw) h.push('WebサーバーはDMZにつなぎ、ファイアウォールの「ポート転送」でWebをサーバーへ送ります。DMZから社内への許可ルールは作りません。');
   return h;

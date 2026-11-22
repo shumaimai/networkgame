@@ -1,5 +1,5 @@
 // 受注: 研修と、今週の依頼の一覧
-import { Job } from '../core/job';
+import { Job, KIND_LABEL } from '../core/job';
 import { Game, LEVELS, MAX_LEVEL, Offer, xpFor } from '../game/state';
 import { TUTORIALS, tutorialJob } from '../game/tutorial';
 import type { App } from './app';
@@ -44,7 +44,7 @@ export function barAct(app: App, act: string): boolean {
 }
 
 const diffStars = (n: number) => `<span class="diff d${n}">${stars(n, 5)}</span>`;
-const kindChip = (j: Job) => `<span class="chip ${j.kind}">${j.kind === 'build' ? '構築' : 'トラブル対応'}</span>`;
+const kindChip = (j: Job) => `<span class="chip ${j.kind}">${KIND_LABEL[j.kind]}</span>`;
 
 // 依頼カードに出す規模
 function summary(j: Job): string {
@@ -87,7 +87,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
             <h3>${esc(j.title)}</h3>
             <p class="card-sum">${summary(j)}</p>
             <div class="tags">${j.tags.slice(0, 8).map(t => `<i>${esc(t)}</i>`).join('')}</div>
-            <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind === 'build' ? `<span>機材費の目安 ${yen(game.parNow(j))}</span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
+            <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind !== 'trouble' ? `<span>機材費の目安 ${yen(game.parNow(j))}</span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
         }).join('')}</div>`;
     }
     root.innerHTML = `<div class="hub">${statusBar(game, 'hub')}<div class="hub-main">${main}</div></div>`;
@@ -108,7 +108,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
             <small class="mute">合計が8点までは★1、17点まで★2、29点まで★3、44点まで★4、45点以上は★5です。</small>
             <h3>お金</h3>
             <div class="cost"><div><span>契約金</span><b>${yen(reward)}</b></div><div><span>前金(受注したときに受け取る)</span><b>${yen(Math.round(reward / 2 / 500) * 500)}</b></div>
-              ${j.kind === 'build' ? `<div><span>機材費の目安(今週の値段)</span><b>${yen(game.parNow(j))}</b></div><div><span>★3になる機材費</span><b>${yen(l3)} 以下</b></div>` : ''}<div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div></div>
+              ${j.kind !== 'trouble' ? `<div><span>機材費の目安(今週の値段)</span><b>${yen(game.parNow(j))}</b></div><div><span>★3になる機材費</span><b>${yen(l3)} 以下</b></div>` : ''}<div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div></div>
             <label class="toggle challenge"><input type="checkbox" id="challenge"${challenge ? ' checked' : ''}><i></i><span><b>チャレンジモード</b>納期は${j.minutes}分です。間に合うと契約金が30%、経験値が20%増えます。遅れると評判が下がります。</span></label>
           </div>
         </div>
