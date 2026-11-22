@@ -300,3 +300,46 @@ describe('プレイの記録', () => {
     expect(review(j, j.solution, j.par, {}, { stars: 3, limit3: j.par + 1000 })[0].head).toBe('機材費');
   });
 });
+
+describe('プレイで見つかった不具合', () => {
+  it('前に納品した机から始まる依頼で先に機器を買っても、既設の機器とIDが重ならない', () => {
+    const g = new Game(newSave(31));
+    g.startTutorial('t1');
+    const d = g.buyDevice('l2-5');
+    if (typeof d === 'string') throw new Error(d);
+    expect(d.id).toBe('b1');
+    const w = clone(tutorialJob('t1').solution);
+    w.devices.find(x => x.kind === 'l2')!.id = d.id;
+    for (const c of w.cables) for (const e of [c.a, c.b]) if (e.dev === 'sw') e.dev = d.id;
+    g.s.active!.world = w;
+    expect(g.deliver(evaluate(w, tutorialJob('t1').checks.map(c => c.check)))).not.toBeNull();
+    g.skipTutorial(); g.nextWeek(); g.nextWeek();
+    g.accept(g.s.board.find(o => o.special)!, false);
+    expect(g.s.active!.world.devices.some(x => x.id === 'b1')).toBe(true);
+    const n = g.buyDevice('l2-5');
+    if (typeof n === 'string') throw new Error(n);
+    expect(n.id).not.toBe('b1');
+    // 片付けて棚にある機器のIDとも重ならない
+    g.s.active!.shelf[n.id === 'b2' ? 'b3' : 'b2'] = {};
+    const m = g.buyDevice('l2-5');
+    if (typeof m === 'string') throw new Error(m);
+    expect(new Set(['b1', n.id, m.id, ...Object.keys(g.s.active!.shelf)]).size).toBe(4);
+  });
+  it('納品した件数は、一覧の上限(50件)を超えても数え続ける', () => {
+    const g = new Game(newSave(32));
+    g.skipTutorial();
+    for (let i = 0; i < 60; i++) {
+      const o = g.s.board.find(x => !x.special)!;
+      g.accept(o, false);
+      const a = g.s.active!, job = g.activeJob!;
+      a.world = clone(job.solution);
+      if (job.kind === 'trouble') for (const c of a.world.cables) c.free = true;
+      expect(g.deliver(evaluate(a.world, job.checks.map(c => c.check)))).not.toBeNull();
+    }
+    expect(g.s.history.length).toBe(50);
+    expect(g.totals.n).toBe(60);
+    // 数え方を入れる前のセーブ: 記録(CSVのもと)に残っている件数を使う
+    delete g.s.totals;
+    expect(g.totals.n).toBe(60);
+  });
+});

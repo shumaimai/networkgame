@@ -180,9 +180,9 @@ export function mountHub(app: App, root: HTMLElement): () => void {
 
 export function openHistory(app: App): void {
   const g = app.game, h = g.s.history;
-  const total = h.reduce((t, x) => t + x.profit, 0), next = LEVELS[g.level];
+  const t = g.totals, next = LEVELS[g.level];
   const m = app.modal(`<h2>実績</h2>
-    <div class="stats"><div><small>納品した依頼</small><b>${h.length}件</b></div><div><small>利益の合計</small><b>${yen(total)}</b></div><div><small>★3の納品</small><b>${h.filter(x => x.stars === 3).length}件</b></div><div><small>レベル</small><b>${g.level}</b></div></div>
+    <div class="stats"><div><small>納品した依頼</small><b>${t.n}件</b></div><div><small>利益の合計</small><b>${yen(t.profit)}</b></div><div><small>★3の納品</small><b>${t.star3}件</b></div><div><small>レベル</small><b>${g.level}</b></div></div>
     ${next ? `<h3>次のレベル(Lv.${next.level})で増えるもの</h3><div class="unlocks"><div>${next.unlocks.map(esc).join(' / ')}</div></div>` : ''}
     <h3>これまでに増えたもの</h3><div class="unlocks">${LEVELS.filter(l => l.level <= g.level).map(l => `<div><b>Lv.${l.level}</b>${l.unlocks.map(esc).join(' / ')}</div>`).join('')}</div>
     <h3>最近の納品</h3>

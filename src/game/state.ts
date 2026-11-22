@@ -109,6 +109,8 @@ export interface Save {
   /** 納品し終えた常連の依頼 */
   regularDone?: string[];
   log?: PlayLog[];
+  /** 納品した件数、利益の合計、★3の件数 */
+  totals?: { n: number; profit: number; star3: number };
   settings: { sfx: number; bgm: number };
 }
 
@@ -147,6 +149,12 @@ export class Game {
     const n = this.level;
     if (n >= MAX_LEVEL) return 1;
     return (this.s.xp - xpFor(n)) / (xpFor(n + 1) - xpFor(n));
+  }
+  /** 納品の合計。この数え方を入れる前のセーブでは、残っている一覧と記録から求める(利益は一覧に残っている分だけ) */
+  get totals(): { n: number; profit: number; star3: number } {
+    if (this.s.totals) return this.s.totals;
+    const h = this.s.history, done = (this.s.log ?? []).filter(x => x.result === 'delivered');
+    return { n: Math.max(h.length, done.length), profit: h.reduce((t, x) => t + x.profit, 0), star3: Math.max(h.filter(x => x.stars === 3).length, done.filter(x => x.stars === 3).length) };
   }
   get tutorialFinished(): boolean { return this.s.tutorialSkipped || TUTORIALS.every(t => this.s.tutorialDone.includes(t.id)); }
   get nextTutorial(): string | null { return this.tutorialFinished ? null : TUTORIALS.find(t => !this.s.tutorialDone.includes(t.id))!.id; }
@@ -357,7 +365,13 @@ export class Game {
   }
 
   // ---- 作業中の売り買い ----
-  private nextId(): string { return 'b' + this.s.active!.seq++; }
+  // 机の上にすでにある機器と重ならないIDにする(前に納品した机から始まる依頼では、そのときの購入品のIDが残っている)
+  private nextId(): string {
+    const a = this.s.active!, used = new Set([...a.world.devices.map(d => d.id), ...Object.keys(a.shelf)]);
+    let id = 'b' + a.seq++;
+    while (used.has(id)) id = 'b' + a.seq++;
+    return id;
+  }
   private nameFor(model: string): string {
     const m = MODEL[model], ds = this.s.active!.world.devices;
     let n = 1;
@@ -418,6 +432,9 @@ export class Game {
     this.s.money += reward - a.advance;
     this.s.xp += xp;
     this.s.rep = Math.max(0, Math.min(100, this.s.rep + repDelta));
+    // 件数と利益の合計は、一覧(50件まで)とは別に数える
+    const t = this.totals;
+    this.s.totals = { n: t.n + 1, profit: t.profit + reward - cost, star3: t.star3 + (stars === 3 ? 1 : 0) };
     this.s.history.unshift({ client: job.client, title: job.title, kind: job.kind, stars, profit: reward - cost, week: this.s.week });
     this.s.history.length = Math.min(this.s.history.length, 50);
     if (a.tutorial) { if (!this.s.tutorialDone.includes(a.tutorial)) this.s.tutorialDone.push(a.tutorial); }
