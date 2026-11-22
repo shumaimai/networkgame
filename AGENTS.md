@@ -11,6 +11,8 @@
 - `node e2e/shot.mjs <title|hub|board|offer|t1|shop|ware|guide [項目id]|solved|trouble|adv [タグか題名の一部] [機器の種類]|adv0 ...>` 画面を `shots/` に撮る(adv は模範解答を置いた状態、adv0 は受注した直後)
 - `npm run build` → `dist/` / `npm run app` デスクトップアプリで起動 / `npm run package` → `release/`(確認は `node e2e/app.mjs`。シェルに ELECTRON_RUN_AS_NODE があると起動しないので unset する)
 - `node e2e/extra.mjs` ガイドへの近道、故障テスト、コピーと設定を写すボタン、常連の依頼、仕入れの画面
+- Webでの公開(Cloudflare Pages): `npm run build` で作った `dist/` を、そのまま配信する。ビルドコマンドは `npm run build`、出力先は `dist`、Node.js の版は `.node-version`(22)。`public/_headers` が配信時のHTTPヘッダーを決める。難読化はしない
+- 画面の通しテストは、環境変数 `GAME_URL` で別のURLに向けられる。公開用のビルドを確かめるときは、`npm run build` のあと `npx vite preview --port 4173 --strictPort --host 127.0.0.1` を立てて `GAME_URL=http://127.0.0.1:4173/ node e2e/run.mjs` のように回す
 - `npm run trial` Webで公開するお試し版(Lv.5 まで)を `trial/index.html` に作る。画像・フォント・プログラムを全部埋め込んだ、1つのHTMLファイルになる。作ったあとは `node e2e/trial.mjs` で確かめる(ファイルを直接開く場合と、Webサーバーに置く場合の両方)
 - `node e2e/mode.mjs` プレイグラウンドと、ハードモードの連続成功
 - `node e2e/view.mjs` 机の拡大・縮小と移動(ボタン、何もない場所のドラッグ、ホイール、拡大したままの操作)

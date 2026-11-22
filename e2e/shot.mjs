@@ -6,7 +6,7 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-await page.goto('http://127.0.0.1:5173/');
+await page.goto((process.env.GAME_URL ?? 'http://127.0.0.1:5173/'));
 await page.waitForSelector('.title');
 const S = {
   title: async () => {},

@@ -17,7 +17,7 @@ const solve = () => page.evaluate(() => {
 });
 
 try {
-  await page.goto('http://127.0.0.1:5173/');
+  await page.goto((process.env.GAME_URL ?? 'http://127.0.0.1:5173/'));
   await page.evaluate(() => localStorage.clear());
   await page.reload(); await page.waitForSelector('.title');
 

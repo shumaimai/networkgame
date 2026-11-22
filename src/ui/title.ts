@@ -5,6 +5,9 @@ import { sfx } from './audio';
 import { onAct, yen } from './dom';
 import { openSettings } from './hub';
 
+// ブラウザで開いているとき(デスクトップアプリではないとき)は、PC向けであることを知らせる
+const WEB = !/Electron/.test(navigator.userAgent);
+
 export function mountTitle(app: App, root: HTMLElement): () => void {
   const g = app.game, s = g.s;
   const has = app.hasSave() && (s.xp > 0 || s.tutorialSkipped || !!s.active);
@@ -27,7 +30,7 @@ export function mountTitle(app: App, root: HTMLElement): () => void {
         ${item('new', 'はじめから', has ? 'いまのセーブデータは消えます' : '研修から始めます')}
         ${item('settings', '設定')}
       </nav>
-      <div class="title-foot">${TRIAL ? 'お試し版 ・ PCのブラウザ(マウスとキーボード)向けです ・ ' : ''}ver 0.2</div>
+      <div class="title-foot">${TRIAL ? 'お試し版 ・ ' : ''}${WEB ? 'PCのブラウザ(マウスとキーボード)向けです ・ ' : ''}ver 0.2</div>
     </div>`;
   root.addEventListener('pointerover', e => { if ((e.target as HTMLElement).closest('.menu-item')) sfx('tick'); });
   onAct(root, act => {

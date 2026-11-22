@@ -27,6 +27,12 @@ Node.js が必要です。
     npm run package    # release/NetworkShop-win32-x64/NetworkShop.exe を作る
     npm run trial      # Webで公開するお試し版(Lv.5 まで)を trial/index.html に作る
 
+## Webで公開する(Cloudflare Pages)
+`npm run build` で作った `dist/` を配信します。サーバー側の処理はなく、セーブは遊ぶ人のブラウザに入ります。
+
+- GitHub とつなぐ場合: Cloudflare のダッシュボードで Pages のプロジェクトを作り、このリポジトリを選びます。ビルドコマンドに `npm run build`、出力先に `dist` を入れます。main に push するたびに公開されます。
+- 手元から上げる場合: `npm run build` のあと、`npx wrangler pages deploy dist --project-name <プロジェクト名>` を実行します(最初に `npx wrangler login` が要ります)。
+
 ## テスト
     npm run typecheck
     npm test           # シミュレータ、依頼の自動生成、ゲームの進行

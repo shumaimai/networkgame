@@ -9,7 +9,7 @@ const ok = (c, m) => { count++; if (!c) { failed++; console.log('FAIL ' + m); } 
 const cfg = kind => page.evaluate(k => window.__bench.world.devices.find(d => d.kind === k).cfg, kind);
 const buy = async model => { await page.click(`[data-pal="buy:${model}"]`); };
 try {
-  await page.goto('http://127.0.0.1:5173/');
+  await page.goto((process.env.GAME_URL ?? 'http://127.0.0.1:5173/'));
   await page.evaluate(() => { localStorage.clear(); });
   await page.reload(); await page.waitForSelector('.title');
   await page.evaluate(() => { const g = window.app.game; g.skipTutorial(); g.s.xp = 9000; g.s.money = 900000; g.refreshBoard(); g.accept(g.s.board.find(o => o.kind === 'build'), false); window.app.show('bench'); });

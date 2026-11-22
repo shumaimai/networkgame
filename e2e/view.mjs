@@ -22,7 +22,7 @@ const emptySpot = () => page.evaluate(() => {
 const selId = () => page.evaluate(() => window.__bench.desk?.sel?.id ?? document.querySelector('#desk .dev.sel')?.dataset.dev ?? null);
 
 try {
-  await page.goto('http://127.0.0.1:5173/');
+  await page.goto((process.env.GAME_URL ?? 'http://127.0.0.1:5173/'));
   await page.evaluate(() => localStorage.clear());
   await page.reload(); await page.waitForSelector('.title');
   await page.evaluate(() => {

@@ -20,7 +20,7 @@ const WANT = [
 ];
 
 try {
-  await page.goto('http://127.0.0.1:5173/');
+  await page.goto((process.env.GAME_URL ?? 'http://127.0.0.1:5173/'));
   await page.evaluate(() => { localStorage.clear(); });
   await page.reload(); await page.waitForSelector('.title');
   await page.evaluate(() => { const g = window.app.game; g.skipTutorial(); g.s.xp = 30000; g.s.money = 5000000; g.refreshBoard(); });
