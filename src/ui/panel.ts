@@ -43,8 +43,15 @@ export interface PanelCtx { net: Net; diagTarget: string; cables: Cable[]; devic
 export function copySource(d: Device, ctx: Pick<PanelCtx, 'cables' | 'devices'>): Device | null {
   const other = (c: Cable, id: string) => (c.a.dev === id ? c.b.dev : c.b.dev === id ? c.a.dev : null);
   const hubs = ctx.cables.map(c => other(c, d.id)).filter((x): x is string => !!x);
-  const near = ctx.devices.filter(x => x !== d && isEndpoint(x.kind) && (x.cfg.mode === 'dhcp' || x.cfg.ip) && ctx.cables.some(c => hubs.includes(other(c, x.id) ?? '')));
+  const near = ctx.devices.filter(x => x !== d && isEndpoint(x.kind) && x.cfg.mode !== 'dhcp' && x.cfg.ip && ctx.cables.some(c => hubs.includes(other(c, x.id) ?? '')));
+  // 写す元は1台に決める(同じ種類の端末を優先し、机に置いた順でいちばん早いもの)。写したあとは、ボタンが出なくなる
   return near.find(x => x.kind === d.kind) ?? near[0] ?? null;
+}
+export const COPY_LABEL: Record<string, string> = { prefix: 'マスク', gw: 'ゲートウェイ', dns: 'DNS', proxy: 'プロキシ', noProxy: 'プロキシを使わない宛先' };
+/** 写す項目。IPアドレスは機器ごとに違うので入れない。changed を指定すると、値が変わる項目だけを返す */
+export function copyKeys(to: Device, from: Device, changed = false): string[] {
+  const keys = ['prefix', 'gw', ...(to.kind !== 'printer' ? ['dns'] : []), ...(to.kind === 'pc' && from.kind === 'pc' ? ['proxy', 'noProxy'] : [])];
+  return keys.filter(k => (k === 'prefix' || from.cfg[k]) && (!changed || String(to.cfg[k] ?? '') !== String(from.cfg[k] ?? '')));
 }
 
 export function cablePanel(c: Cable, devices: Device[]): string {
@@ -111,8 +118,8 @@ function panelBody(d: Device, ctx: PanelCtx): string {
   if (isHost(d.kind)) h += `<div class="mac">MACアドレス <code>${d.mac}</code></div>`;
 
   if (isEndpoint(d.kind)) {
-    const from = ctx.assist && c.mode !== 'dhcp' && !c.ip ? copySource(d, ctx) : null;
-    if (from) h += `<button class="btn wide assist" data-act="copy-cfg" data-from="${from.id}">${esc(from.name)} の設定を写す<small>${from.cfg.mode === 'dhcp' ? '自動取得(DHCP)にします' : 'マスク・ゲートウェイ・DNSを写し、IPアドレスは空いている番号にします'}</small></button>`;
+    const from = ctx.assist && c.mode !== 'dhcp' ? copySource(d, ctx) : null, keys = from ? copyKeys(d, from, true) : [];
+    if (from && keys.length) h += `<button class="btn wide assist" data-act="copy-cfg">${esc(from.name)} の${keys.map(k => COPY_LABEL[k]).join('・')}を写す<small>IPアドレスは写しません。この機器の番号は自分で入力します。</small></button>`;
     h += '<h3>ネットワーク設定</h3>'
       + `<label class="f"><span>アドレスの決め方</span>${sel('mode', [['static', '手動で設定'], ['dhcp', '自動取得 (DHCP)']], true)}</label>`;
     if (c.mode === 'dhcp') {

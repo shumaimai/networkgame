@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/core/checks';
+import { generate } from '../src/core/gen';
 import { Builder, worldCost } from '../src/core/job';
 import { clone } from '../src/core/model';
 import { Game, MAX_LEVEL, newSave, xpFor } from '../src/game/state';
 import { regularJob } from '../src/game/regular';
+import { findBy, review } from '../src/game/review';
 import { TUTORIALS, tutorialJob } from '../src/game/tutorial';
 
 describe('チュートリアル', () => {
@@ -210,7 +212,42 @@ describe('常連の依頼', () => {
     const d = g.useStock('l2-8');
     if (typeof d === 'string') throw new Error(d);
     g.s.active!.world.devices.push(d);
-    expect(g.stockSaving(g.s.active!.world)).toBe(7000 - 3500);
-    expect(g.upcoming(2)).toEqual(['server', 'nas']);
+    expect(g.stockDiff(g.s.active!.world)).toBe(7000 - 3500);
+    // 高く仕入れた週は、差が負になる
+    g.s.market['l2-8'] = 0.5;
+    expect(g.stockDiff(g.s.active!.world)).toBe(3500 - 3500);
+    g.s.active!.world.devices[g.s.active!.world.devices.length - 1].cost = 9000;
+    expect(g.stockDiff(g.s.active!.world)).toBe(3500 - 9000);
+    // 予告に出すのは、次に機材が増えるレベルの分だけ
+    expect(g.upcoming()).toEqual(['server']);
+    g.s.xp = xpFor(4);
+    expect(g.upcoming()).toEqual(['nas']);
+    g.s.xp = xpFor(24);
+    expect(g.upcoming()).toEqual([]);
+  });
+});
+
+describe('納品後の振り返り', () => {
+  it('トラブル対応では、仕込まれていた不具合ごとに原因と見つけ方が出る', () => {
+    let n = 0;
+    const generic = new Set<string>();
+    for (let lv = 2; lv <= MAX_LEVEL; lv += 2) for (let seed = 1; seed <= 25; seed++) {
+      const j = generate(seed * 17 + lv * 100, lv, { kind: 'trouble' }), r = review(j, j.solution, 0, { ping: 2, tracert: 1 });
+      expect(r.filter(x => x.head === '原因').length).toBe(Math.min(4, j.faults.length));
+      expect(r[r.length - 1].body).toBe('使った診断ツール: ping 2回、tracert 1回');
+      for (const f of j.faults) { n++; if (/手前から順に ping/.test(findBy(f))) generic.add(f.replace(/[0-9.]+/g, '#')); }
+    }
+    // どの不具合にも、決まり文句ではない見つけ方が付いている
+    expect([...generic]).toEqual([]);
+    expect(n).toBeGreaterThan(300);
+  });
+  it('構築では、模範解答より多く使った機材が出る', () => {
+    const j = generate(4242, 6, { kind: 'build' }), w = clone(j.solution);
+    expect(review(j, w, j.par)[0].body).toMatch(/同じか、それより少ない/);
+    const b = new Builder();
+    w.devices.push(b.add('server', 'x1', 'SV-9'));
+    const r = review(j, w, j.par);
+    expect(r[0].body).toMatch(/¥25,000 多くかかっています。模範解答より多く使ったもの: サーバー 1台/);
+    expect(r[1].body).toBe('診断ツールは使いませんでした。');
   });
 });

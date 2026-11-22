@@ -588,3 +588,13 @@ h3 .q:hover { border-color: var(--teal); color: var(--teal); }
 .shop-row .s-lock { grid-column: 5 / 8; text-align: right; color: var(--yellow); font-weight: 700; font-size: 15px; }
 .panel h3 { white-space: nowrap; }
 .panel h3 small { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* 研修の一言、在庫品と新品の差、納品後の振り返り */
+.coach-note { margin-top: 6px; padding: 6px 12px; border-left: 4px solid var(--orange); background: rgba(0, 0, 0, .25); border-radius: 0 10px 10px 0; font-size: 15px !important; color: #ffd9b0; }
+.cost .save.up { color: #ff9b9b; }
+.r-review { text-align: left; background: #101831; border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px 12px; margin-top: 12px; }
+.r-review h3 { margin: 10px 0 6px; }
+.r-review div { display: grid; grid-template-columns: 64px 1fr; gap: 12px; font-size: 15px; line-height: 1.6; padding: 3px 0; }
+.r-review b { color: var(--teal); }
+.r-review span { color: #c9d4ee; }
+.r-review + .xpbar { margin-top: 12px; }

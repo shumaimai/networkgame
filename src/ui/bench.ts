@@ -4,6 +4,7 @@ import { ipStr, parseIp } from '../core/ip';
 import { Job, KIND_LABEL, worldCost } from '../core/job';
 import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, PortRef, ServerCfg, SVC, SwitchCfg, dkimKey, fillCfg, isGateway, isHost, linkError, makeDevice } from '../core/model';
 import { Net, arpTable, browse, build, reach, resolve, traceroute } from '../core/sim';
+import { ReviewItem, review } from '../game/review';
 import { Active, Game, HELP_COST, HelpUse, Outcome } from '../game/state';
 import { Step, TUTORIALS } from '../game/tutorial';
 import type { App } from './app';
@@ -11,7 +12,7 @@ import { sfx } from './audio';
 import { Desk, Sel } from './desk';
 import { guideChips, openGuide } from './guide';
 import { $, esc, img, nl2br, onAct, stars, yen } from './dom';
-import { ROW_TEMPLATE, VALID, cablePanel, copySource, devicePanel, setPath } from './panel';
+import { COPY_LABEL, ROW_TEMPLATE, VALID, cablePanel, copyKeys, copySource, devicePanel, setPath } from './panel';
 
 const PORTRAIT: Record<string, string> = { 会計事務所: 'p_office', 不動産店: 'p_shop', 保育園: 'p_school', 図書館: 'p_design', 事務所: 'p_office', 設計事務所: 'p_design', 店舗: 'p_shop', クリニック: 'p_clinic', 学習塾: 'p_school', 宿泊施設: 'p_hotel', 飲食店: 'p_cafe', 工場: 'p_factory' };
 export const portrait = (industry: string): string => img(PORTRAIT[industry] ?? 'p_office');
@@ -36,7 +37,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   // 机に置けるお客様の機器。最初から机の上にあるものも、片付けたあとで置き直せる
   const suppliedAll = [...job.supplied, ...job.initial.devices.filter(d => d.own === 'supplied' && !job.supplied.some(x => x.id === d.id)).map(d => ({ id: d.id, model: d.model, name: d.name }))];
   let results: CheckResult[] = [];
-  let diagTarget = '', stepIdx = 0, hintShown = -1, pal: { key: string; label: string; kind: string; x0: number; y0: number; moved: boolean } | null = null;
+  let diagTarget = '', stepIdx = 0, hintStep = -1, hintLevel = 0, pal: { key: string; label: string; kind: string; x0: number; y0: number; moved: boolean } | null = null;
   const diagDone = new Set<string>();
   const nameOf = (id: string) => world.devices.find(d => d.id === id)?.name ?? job.supplied.find(s => s.id === id)?.name ?? job.solution.devices.find(d => d.id === id)?.name ?? id;
 
@@ -203,14 +204,14 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     box.innerHTML = chips ? `<h3>関連するガイド</h3><div class="gchips">${chips}</div>` : '';
   }
   function renderMoney(): void {
-    const cost = worldCost(world), reward = game.rewardOf(job), pen = Math.round(reward * game.helpPenalty), saving = game.stockSaving(world);
+    const cost = worldCost(world), reward = game.rewardOf(job), pen = Math.round(reward * game.helpPenalty), diff = game.stockDiff(world);
     $('#b-money', root).innerHTML = `資金 <b>${yen(game.s.money)}</b>`;
     const [l3] = game.starLimits(job);
     $('#b-cost', root).innerHTML = `
       <div><span>契約金</span><b>${yen(reward)}</b></div>
       ${pen ? `<div class="neg"><span>ヘルプの利用</span><b>${yen(-pen)}</b></div>` : ''}
       <div><span>機材費</span><b>${yen(-cost)}</b></div>
-      ${saving ? `<div class="save"><span>在庫を使って浮いた額</span><b>${yen(saving)}</b></div>` : ''}
+      ${world.devices.some(d => d.own === 'stock') ? `<div class="save ${diff < 0 ? 'up' : ''}" title="在庫品の仕入れ値と、今週の新品の値段の差です。倉庫代は入っていません。"><span>うち在庫品: 今週の新品との差</span><b>${diff === 0 ? '同じ' : `${yen(Math.abs(diff))} ${diff > 0 ? '安い' : '高い'}`}</b></div>` : ''}
       <div class="total"><span>見込み利益</span><b class="${reward - pen - cost < 0 ? 'neg' : ''}">${yen(reward - pen - cost)}</b></div>
       <small>機材費 ${yen(l3)} 以下で ★3${a.challenge ? ` / 納期 ${job.minutes}分` : ''}</small>`;
   }
@@ -219,7 +220,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   // 在庫の仕入れ値と、今週の新品の値段を並べる。在庫のほうが安ければ、その差を出す
   function stockNote(m: string): string {
     const it = game.s.stock[m], unit = Math.round(it.cost / it.qty), now = game.price(m);
-    return `仕入れ値 ${yen(unit)}<br>${unit < now ? `<i class="down">新品より ${yen(now - unit)} 安い</i>` : unit > now ? `<i class="up">今週の新品は ${yen(now)}</i>` : `新品も ${yen(now)}`}`;
+    return `仕入れ値 ${yen(unit)}<br>${unit < now ? `<i class="down">新品より ${yen(now - unit)} 安い</i>` : unit > now ? `<i class="up">新品より ${yen(unit - now)} 高い</i>` : '新品と同じ値段'}`;
   }
   function renderPalette(): void {
     const waiting = suppliedAll.filter(x => !dev(x.id));
@@ -259,6 +260,8 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   }
 
   // ---------- 診断ツール ----------
+  // 使った回数を依頼ごとに残す(納品後の振り返りに出す)
+  const count = (kind: string) => { const m = (a.diag ??= {}); m[kind] = (m[kind] ?? 0) + 1; };
   function diag(kind: string): void {
     const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null;
     if (!d || d.off) return;
@@ -267,14 +270,14 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       const e = net.eff.get(d.id)!;
       log(tag, 'cmd');
       log(`   MACアドレス ${d.mac}\n   IPアドレス  ${e.ip != null ? ipStr(e.ip) + ' /' + e.prefix : '(なし)'}${e.dhcp ? (e.ip != null ? `  ※${e.lease} から自動取得` : `  ※取得できず: ${e.note}`) : ''}\n   ゲートウェイ ${e.gw != null ? ipStr(e.gw) : '(なし)'}\n   DNSサーバー ${e.dns != null ? ipStr(e.dns) : '(なし)'}`);
-      diagDone.add('ipconfig'); updateCoach();
+      diagDone.add('ipconfig'); count('ipconfig'); updateCoach();
       return;
     }
     if (kind === 'arp') {
       const t = arpTable(net, d);
       log(tag, 'cmd');
       log(t.length ? t.map(x => `   ${x.ip.padEnd(16)} ${x.mac}${x.dup ? '  ← 同じIPアドレスの機器が複数あります' : ''}`).join('\n') : '   同じネットワークに、ほかの機器が見つかりません。');
-      diagDone.add('arp'); updateCoach();
+      diagDone.add('arp'); count('arp'); updateCoach();
       return;
     }
     if (!target) { log('診断の宛先を入力してください。', 'ng'); return; }
@@ -312,6 +315,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     log(`   ${text}`, ok ? 'ok' : 'ng');
     sfx(ok ? 'ok' : 'ng');
     diagDone.add(kind); diagDone.add(`${kind}:${ok ? 'ok' : 'ng'}`);
+    count(kind);
     void desk.playTrace(tnet.trace!);
     updateCoach();
   }
@@ -324,11 +328,15 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     while (stepIdx < tut.steps.length - 1 && tut.steps[stepIdx].done(ctx)) { stepIdx++; sfx('ok'); }
     const step: Step = tut.steps[stepIdx];
     coach.classList.remove('hidden');
-    const hinted = hintShown === stepIdx && !!step.hint;
+    const hints = step.hints ?? [], shown = hintStep === stepIdx ? Math.min(hintLevel, hints.length) : 0, note = step.note?.(ctx);
     coach.innerHTML = `<img src="${img('p_guide')}" alt=""><div><small>研修 ${TUTORIALS.indexOf(tut) + 1} / ${TUTORIALS.length}「${esc(tut.title)}」 ステップ ${stepIdx + 1} / ${tut.steps.length}</small><p>${esc(step.text)}</p>
-      ${hinted ? `<p class="coach-hint">${esc(step.hint)}</p>` : step.hint ? '<button class="btn small" data-act="coach-hint">ヒント</button>' : ''}</div>`;
-    placeRing(hinted ? step.hintTarget ?? step.target : step.target);
+      ${note ? `<p class="coach-note">${esc(note)}</p>` : ''}
+      ${hints.slice(0, shown).map(x => `<p class="coach-hint">${esc(x)}</p>`).join('')}
+      ${shown < hints.length ? `<button class="btn small" data-act="coach-hint">${shown ? 'もう少し詳しく' : 'ヒント'}</button>` : ''}</div>`;
+    placeRing(ringTarget(step));
   }
+  // 最後のヒントまで見せたときだけ、答えの場所を光らせる
+  const ringTarget = (st: Step): string | undefined => (hintStep === stepIdx && st.hints && hintLevel >= st.hints.length ? st.hintTarget ?? st.target : st.target);
   function placeRing(sel?: string): void {
     const el = sel ? root.querySelector(sel) : null;
     if (!el) { ring.classList.add('hidden'); return; }
@@ -403,18 +411,19 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   function deliver(): void {
     if (world.devices.some(d => d.off)) { log('故障テストで止めている機器があります。動かしてから納品します。', 'ng'); sfx('ng'); return; }
     results = evaluate(world, job.checks.map(c => c.check), nameOf);
+    const notes = review(job, world, a.par ?? job.par, a.diag);
     const out = game.deliver(results);
     if (!out) { log('まだ合格していない検収テストがあります。', 'ng'); sfx('ng'); return; }
     clearInterval(timer);
     desk.stopAnim();
-    showResult(app, job, out);
+    showResult(app, job, out, notes);
   }
 
   // ---------- 入力 ----------
   onAct(root, (act, el) => {
     switch (act) {
       case 'back': sfx('click'); app.show('hub'); break;
-      case 'coach-hint': hintShown = stepIdx; sfx('open'); updateCoach(); break;
+      case 'coach-hint': hintLevel = hintStep === stepIdx ? hintLevel + 1 : 1; hintStep = stepIdx; sfx('open'); updateCoach(); break;
       case 'guide': sfx('open'); openGuide(app); break;
       case 'guide-to': sfx('open'); openGuide(app, el.dataset.id, renderGuides); break;
       case 'help': sfx('open'); openHelp(); break;
@@ -444,20 +453,12 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       case 'copy-cfg': {
         const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null, from = d ? copySource(d, { cables: world.cables, devices: world.devices }) : null;
         if (!d || !from) break;
-        const f = from.cfg;
-        if (f.mode === 'dhcp') d.cfg.mode = 'dhcp';
-        else {
-          // IPアドレスは、写す元の次の番号から順に、机の上でまだ使われていないものを選ぶ
-          const used = new Set(world.devices.map(x => parseIp(x.cfg?.ip)).filter(x => x != null)), size = 2 ** (32 - Number(f.prefix)), base = parseIp(f.ip)!, net0 = base - (base % size);
-          let ip = base + 1;
-          while (ip < net0 + size - 1 && (used.has(ip) || ipStr(ip) === f.gw)) ip++;
-          Object.assign(d.cfg, { mode: 'static', ip: ip < net0 + size - 1 ? ipStr(ip) : '', prefix: f.prefix, gw: f.gw });
-          if (d.kind !== 'printer') d.cfg.dns = f.dns;
-          if (d.kind === 'pc' && from.kind === 'pc') Object.assign(d.cfg, { proxy: f.proxy, noProxy: f.noProxy ?? '' });
-        }
-        log(`${from.name} の設定を ${d.name} に写しました。${d.cfg.mode === 'dhcp' ? '' : `IPアドレスは ${d.cfg.ip} です。`}`);
+        // IPアドレスは機器ごとに違う番号が要るので写さない(同じ番号の機器を増やさないため)
+        for (const k of copyKeys(d, from)) d.cfg[k] = from.cfg[k];
+        log(`${from.name} の${copyKeys(d, from, true).map(k => COPY_LABEL[k]).join('・')}を ${d.name} に写しました。IPアドレスは写していません。`);
         sfx('ok');
         changed(); renderPanel();
+        panel.querySelector<HTMLInputElement>('[data-bind="ip"]')?.focus();
         break;
       }
       case 'copy': {
@@ -541,7 +542,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       timerEl.textContent = left >= 0 ? `納期まで ${fmtTime(left)}` : `納期を ${fmtTime(-left)} 超過`;
     }
     if (a.elapsed % 10000 === 0) game.save();
-    if (tut) { const st = tut.steps[stepIdx]; placeRing(hintShown === stepIdx && st.hint ? st.hintTarget ?? st.target : st.target); }
+    if (tut) placeRing(ringTarget(tut.steps[stepIdx]));
   };
   const timer = window.setInterval(tick, 1000);
   if (a.challenge) { a.elapsed -= 1000; tick(); }
@@ -563,7 +564,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   };
 }
 
-function showResult(app: App, job: Job, out: Outcome): void {
+function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[]): void {
   const game = app.game, up = out.levelAfter > out.levelBefore;
   const m = app.modal(`
     <div class="result">
@@ -582,6 +583,7 @@ function showResult(app: App, job: Job, out: Outcome): void {
         ${out.onTime === true ? '<span class="good">納期内に納品</span>' : out.onTime === false ? '<span class="neg">納期に間に合わず</span>' : ''}
         <span>資金 <b>${yen(out.final)}</b></span>
       </div>
+      ${notes.length ? `<div class="r-review"><h3>振り返り</h3>${notes.map(n => `<div><b>${esc(n.head)}</b><span>${esc(n.body)}</span></div>`).join('')}</div>` : ''}
       <div class="xpbar"><i style="width:${Math.round(game.xpProgress * 100)}%"></i><span>Lv.${game.level} ${esc(game.levelInfo.title)}</span></div>
       ${up ? `<div class="levelup"><b>レベルアップ! Lv.${out.levelAfter}</b><ul>${out.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><small>機材とガイドのページが増えました。</small></div>` : ''}
       <div class="modal-btns"><button class="btn primary big" data-act="hub">受注へ戻る</button></div>

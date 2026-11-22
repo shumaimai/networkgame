@@ -25,7 +25,7 @@ export function mountShop(app: App, root: HTMLElement): () => void {
       </div>`;
     }).join('');
     // 次に買えるようになる機材(まだ買えない)
-    const soon = game.upcoming(3).map(m => {
+    const soon = game.upcoming().map(m => {
       const M = MODEL[m];
       return `<div class="shop-row locked"><img src="${img(M.kind)}" alt=""><div class="s-name"><b>${esc(M.label)}</b><small>${esc(M.desc)}</small></div>
         <div class="s-price"><b>定価 ${yen(M.price)}</b></div><div class="s-size">${M.size}スロット</div><div class="s-lock">Lv.${M.level} で買えるようになります</div></div>`;

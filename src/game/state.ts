@@ -59,6 +59,8 @@ export interface Active {
   /** 受注したときの契約金と、その週の相場で見た模範解答の機材費 */
   reward?: number;
   par?: number;
+  /** 診断ツールを使った回数(納品後の振り返りに出す) */
+  diag?: Record<string, number>;
 }
 export interface StockItem { qty: number; cost: number }
 export interface PriceMove { model: string; before: number; now: number }
@@ -164,13 +166,14 @@ export class Game {
     list.sort((a, b) => a.now / a.before - b.now / b.before);
     return { down: list.filter(x => x.now < x.before).slice(0, max), up: list.filter(x => x.now > x.before).reverse().slice(0, max) };
   }
-  /** 机の上の在庫品を、今週の値段で新品を買った場合と比べて浮いた額 */
-  stockSaving(w: World): number {
-    return w.devices.reduce((t, d) => t + (d.own === 'stock' ? Math.max(0, this.price(d.model) - d.cost) : 0), 0);
+  /** 机の上の在庫品の仕入れ値と、今週の新品の値段の差。正なら在庫のほうが安い(倉庫代は含まない) */
+  stockDiff(w: World): number {
+    return w.devices.reduce((t, d) => t + (d.own === 'stock' ? this.price(d.model) - d.cost : 0), 0);
   }
-  /** まだ買えない機材のうち、次に買えるようになるもの */
-  upcoming(max = 3): string[] {
-    return MODELS.filter(m => m.price > 0 && m.level > this.level).sort((a, b) => a.level - b.level).slice(0, max).map(m => m.id);
+  /** 次に機材が増えるレベルで、買えるようになるもの */
+  upcoming(): string[] {
+    const next = MODELS.filter(m => m.price > 0 && m.level > this.level).map(m => m.level).sort((a, b) => a - b)[0];
+    return next == null ? [] : MODELS.filter(m => m.price > 0 && m.level === next).map(m => m.id);
   }
   get stockUsed(): number { return Object.entries(this.s.stock).reduce((t, [m, i]) => t + MODEL[m].size * i.qty, 0); }
   stockQty(model: string): number { return this.s.stock[model]?.qty ?? 0; }

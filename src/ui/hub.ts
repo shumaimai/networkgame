@@ -119,7 +119,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
             <div class="tags">${j.tags.slice(0, 8).map(t => `<i>${esc(t)}</i>`).join('')}</div>
             <div class="card-checks"><small>検収テスト ${j.checks.length}項目</small><ul>${j.checks.map(c => `<li>${esc(c.label)}</li>`).join('')}</ul></div>
             <div class="card-facts"><div><span>難易度の点数</span><b>${j.difficulty.score}点</b></div><div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div><div><span>納期(チャレンジ)</span><b>${j.minutes}分</b></div></div>
-            <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind !== 'trouble' ? `<span>機材費の目安 ${yen(game.parNow(j))} ・ 見込み利益 <i>${yen(game.rewardOf(j) - game.parNow(j))}</i></span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
+            <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind !== 'trouble' ? `<span>新品でそろえた場合の目安: 機材費 ${yen(game.parNow(j))} ・ 利益 <i>${yen(game.rewardOf(j) - game.parNow(j))}</i></span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
         }).join('')}</div>`;
     }
     root.innerHTML = `<div class="hub">${statusBar(game, 'hub')}<div class="hub-main">${main}</div></div>`;

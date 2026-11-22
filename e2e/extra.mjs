@@ -44,7 +44,7 @@ try {
   ok(await page.evaluate(() => window.app.game.s.week) === 2, '画面を行き来したあとでも、「次の週へ」は1回で1週だけ進む');
   await page.click('[data-act="week"]');
   ok(await page.locator('.chip.regular').count() === 1 && /田中税理士事務所/.test(await txt('.cards .card')), '3週目に田中税理士事務所の依頼が出る');
-  ok(/見込み利益/.test(await txt('.cards .card .card-foot')), '依頼のカードに見込み利益が出る');
+  ok(/新品でそろえた場合の目安/.test(await txt('.cards .card .card-foot')), '依頼のカードの利益は、新品でそろえた場合の目安だと示す');
   await page.waitForTimeout(4800);
   await shot('board');
   await page.click('.cards .card >> nth=0');
@@ -64,16 +64,16 @@ try {
   await page.click('[data-pal="buy:l2-8"]');
   for (const id of ['rpc1', 'rpc2', 'rpc3', 'rpc4']) await page.click(`[data-pal="sup:${id}"]`);
   await page.evaluate(() => { const b = window.__bench, sw = b.world.devices.find(d => d.model === 'l2-8'); b.world.devices.filter(d => d.kind === 'pc').forEach((d, i) => b.link({ dev: d.id, port: 0 }, { dev: sw.id, port: i })); });
-  // 新しいPCは「設定を写す」で入力する
+  // ゲートウェイもDNSもないネットワークでは、写すものがないのでボタンは出ない
   await page.evaluate(() => window.__bench.select('rpc1'));
-  ok(/の設定を写す/.test(await txt('#panel .assist')), '未設定の端末に「設定を写す」ボタンが出る');
-  for (const id of ['rpc1', 'rpc2', 'rpc3', 'rpc4']) { await page.evaluate(x => window.__bench.select(x), id); await page.click('[data-act="copy-cfg"]'); }
-  const ips = await page.evaluate(() => window.__bench.world.devices.filter(d => d.kind === 'pc').map(d => d.cfg.ip));
-  ok(new Set(ips).size === 6 && ips.every(x => /^192\.168\.1\.\d+$/.test(x)), `写したIPアドレスは重ならない ${ips.join(' ')}`);
+  ok(await page.locator('#panel .assist').count() === 0, '写す項目がないときは「写す」ボタンが出ない');
+  let last = 20;
+  for (const id of ['rpc1', 'rpc2', 'rpc3', 'rpc4']) { await page.evaluate(x => window.__bench.select(x), id); await page.fill('[data-bind="ip"]', `192.168.1.${++last}`); }
   ok((await txt('#pass')).replace(/\s/g, '') === '4/4', '8ポートに買い替えて1台にまとめても全合格');
   await shot('regular');
   await page.click('[data-act="deliver"]');
   ok(/納品完了/.test(await txt('.modal')), '常連の依頼を納品できる');
+  ok(/機材費/.test(await txt('.r-review')) && /多くかかっています/.test(await txt('.r-review')) && /L2スイッチ 8ポート 1台/.test(await txt('.r-review')), '構築の振り返りに、模範解答との機材費の差が出る: ' + await txt('.r-review'));
   await page.click('[data-act="hub"]');
   ok(await page.locator('.chip.regular').count() === 0, '納品したあとは出ない');
 
@@ -93,7 +93,7 @@ try {
 
   // ---- 仕入れ: まだ買えない機材、在庫の値段 ----
   await page.click('[data-act="go-shop"]');
-  ok(await page.locator('.shop-row.locked').count() === 3 && /Lv\.4 で買えるようになります/.test(await txt('.shop-row.locked')), '仕入れに、次に買えるようになる機材が出る');
+  ok(await page.locator('.shop-row.locked').count() === 1 && /Lv\.4 で買えるようになります/.test(await txt('.shop-row.locked')), '仕入れに、次のレベルで買えるようになる機材だけが出る');
   await page.waitForTimeout(500);
   await shot('shop');
   await page.evaluate(() => { const g = window.app.game; g.s.money = 3000000; g.s.xp = 30000; g.s.market['router'] = 0.6; g.setPlan('m'); g.buyStock('router', 2); g.s.market['router'] = 1.1; g.refreshBoard(); });
@@ -129,7 +129,16 @@ try {
   // 在庫の値段
   ok(/仕入れ値 ¥12,000/.test(await txt('[data-pal="stk:router"]')) && /新品より ¥10,000 安い/.test(await txt('[data-pal="stk:router"]')), '在庫の欄に、仕入れ値と新品との差が出る: ' + await txt('[data-pal="stk:router"]'));
   await page.click('[data-pal="stk:router"]');
-  ok(/在庫を使って浮いた額/.test(await txt('#b-cost')) && /¥10,000/.test(await txt('#b-cost .save')), '在庫を使うと、浮いた額が出る');
+  ok(/今週の新品との差/.test(await txt('#b-cost .save')) && /¥10,000 安い/.test(await txt('#b-cost .save')), '在庫を使うと、新品との差が出る');
+  await page.evaluate(() => { const b = window.__bench; window.app.game.s.market['router'] = 0.5; b.changed(); });
+  ok(/新品より ¥2,000 高い/.test(await txt('[data-pal="stk:router"]')) && /¥2,000 高い/.test(await txt('#b-cost .save')), '仕入れ値のほうが高い週は「高い」と出る: ' + await txt('#b-cost .save'));
+  // 設定を写す: IPアドレスは写さない
+  await page.evaluate(() => { const b = window.__bench, pcs = b.world.devices.filter(d => d.kind === 'pc'); Object.assign(pcs[1].cfg, { mode: 'static', ip: '', gw: '', dns: '' }); Object.assign(pcs[0].cfg, { mode: 'static', ip: '192.168.77.10', gw: '192.168.77.254', dns: '8.8.8.8' }); b.changed(); b.select(pcs[1].id); });
+  ok(/ゲートウェイ・DNSを写す/.test(await txt('#panel .assist')) && /IPアドレスは写しません/.test(await txt('#panel .assist')), '「写す」ボタンは、写す項目とIPアドレスを写さないことを示す: ' + await txt('#panel .assist'));
+  await page.click('[data-act="copy-cfg"]');
+  const cp2 = await page.evaluate(() => window.__bench.world.devices.filter(d => d.kind === 'pc')[1].cfg);
+  ok(cp2.gw === '192.168.77.254' && cp2.dns === '8.8.8.8' && cp2.ip === '', `ゲートウェイとDNSだけが写り、IPアドレスは空のまま ${JSON.stringify([cp2.ip, cp2.gw, cp2.dns])}`);
+  ok(await page.locator('#panel .assist').count() === 0, '写し終えるとボタンは消える');
   await leave();
 
   // ---- 仕様書の値とDKIMのレコードをコピーする ----
