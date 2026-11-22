@@ -11,3 +11,4 @@ assets/raw/
 shots/
 release/
 dist-trial/
+.wrangler/

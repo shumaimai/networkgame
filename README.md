@@ -27,11 +27,17 @@ Node.js が必要です。
     npm run package    # release/NetworkShop-win32-x64/NetworkShop.exe を作る
     npm run trial      # Webで公開するお試し版(Lv.5 まで)を trial/index.html に作る
 
-## Webで公開する(Cloudflare Pages)
+## Webで公開する(Cloudflare)
 `npm run build` で作った `dist/` を配信します。サーバー側の処理はなく、セーブは遊ぶ人のブラウザに入ります。
 
-- GitHub とつなぐ場合: Cloudflare のダッシュボードで Pages のプロジェクトを作り、このリポジトリを選びます。ビルドコマンドに `npm run build`、出力先に `dist` を入れます。main に push するたびに公開されます。
-- 手元から上げる場合: `npm run build` のあと、`npx wrangler pages deploy dist --project-name <プロジェクト名>` を実行します(最初に `npx wrangler login` が要ります)。
+Cloudflare のダッシュボードでこのリポジトリをつなぐと、main に push するたびに公開されます。入れる設定は次のとおりです。
+
+| つなぎ方 | ビルドコマンド | 出力先・デプロイ |
+|---|---|---|
+| Pages | `npm run build` | 出力先のディレクトリに `dist` |
+| Workers | `npm run build` | デプロイコマンドに `npx wrangler deploy`(`wrangler.jsonc` を使う) |
+
+どちらの場合も、環境変数に `ELECTRON_SKIP_BINARY_DOWNLOAD` = `1` を入れると、ビルドが速くなります(デスクトップアプリ用の部品を取ってこなくなります)。Node.js の版は `.node-version` で決めています。
 
 ## テスト
     npm run typecheck
@@ -39,4 +45,10 @@ Node.js が必要です。
     npm run e2e        # 画面の通しテスト(npm run dev を起動した状態で実行。Edge が必要)
     node e2e/adv.mjs   # Lv.17 以降の依頼を、種類ごとに1件ずつ画面の操作で組んで納品する
 
-開発のための詳しい説明は `AGENTS.md` にあります。画像は Gemini で生成したものです。
+開発のための詳しい説明は `AGENTS.md` にあります。
+
+## 使っているもの
+- 画像(機器、依頼主、背景): Gemini で生成したものです。
+- 効果音とBGM: プログラムで合成しています。素材のファイルはありません。
+- フォント: Zen Maru Gothic と JetBrains Mono(どちらも SIL Open Font License)。
+- `.devin/skills/yomiyasu/`: 日本語の文章を点検する道具で、nanaism さんの作です(MIT License)。ゲーム本体には含まれません。

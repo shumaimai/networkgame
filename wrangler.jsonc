@@ -1,0 +1,7 @@
+// Cloudflare で「Workers」としてリポジトリをつないだときの設定(dist/ を静的なサイトとして配信する)
+// 「Pages」としてつないだときは、このファイルは使われず、ダッシュボードで入れたビルドの設定が使われる
+{
+  "name": "networkgame",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./dist" }
+}
