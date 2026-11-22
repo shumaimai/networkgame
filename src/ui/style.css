@@ -636,3 +636,27 @@ h3 .fold:hover { border-color: var(--teal); color: var(--teal); }
 .result.two .modal-btns { grid-column: 1 / -1; }
 .result.two .r-review { margin-top: 0; max-height: 700px; }
 .result.two .xpbar { margin-top: 4px; }
+
+/* 机の表示を動かす: 右下のボタン、つかんで動かすときのカーソル */
+.desk-wrap svg.desk { border-radius: 24px; border: 2px solid #26355a; background: #131c31; box-sizing: border-box; }
+.desk-wrap .mat { stroke: none; cursor: grab; }
+.mat-home { fill: none; stroke: #2b3a5c; stroke-width: 2; stroke-dasharray: 10 12; pointer-events: none; }
+svg.desk.panning, svg.desk.panning * { cursor: grabbing !important; }
+/* 机のすぐ下に帯として置き、右に寄せる(机の上に重ねると、右下の機器や文字が隠れる) */
+.center { grid-template-rows: 646px 34px 1fr; }
+.center:has(> .coach:not(.hidden)) { grid-template-rows: 646px 34px auto 1fr; }
+.viewctl { display: flex; align-items: center; justify-content: flex-end; gap: 4px; background: #0b1120; border-top: 1px solid var(--line); padding: 0 14px; }
+.viewctl small { color: var(--mute); font-size: 12px; margin: 0 6px 0 6px; white-space: nowrap; }
+.viewctl button { width: 30px; height: 26px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel2); color: #dfe8ff; font: inherit; font-size: 12px; line-height: 1; cursor: pointer; padding: 0; }
+.viewctl button.wide { width: auto; padding: 0 10px; }
+.viewctl button:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
+.viewctl button:disabled { opacity: .3; cursor: default; }
+.viewctl span { width: 46px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; color: #dfe8ff; }
+.viewctl i { width: 1px; height: 18px; background: var(--line2); margin: 0 4px; }
+.offnote { left: 16px; transform: none; }
+
+/* ポートは機器の絵とは別の層(.pg)に描く。ポート名の文字は、機器の中にあったときと同じ見た目にする */
+.pg .plabel { font-size: 10.5px; fill: var(--mute); font-family: var(--mono); paint-order: stroke; stroke: #131c31; stroke-width: 3px; }
+.pg .plabel.start { text-anchor: start; }
+.pg .plabel.in { font-size: 9px; font-weight: 700; fill: #0b1222; stroke: none; }
+.pg.off .port, .pg.off .plabel { opacity: .35; }

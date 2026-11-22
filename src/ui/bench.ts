@@ -63,7 +63,15 @@ export function mountBench(app: App, root: HTMLElement): () => void {
         <h3>お金</h3><div id="b-cost" class="cost"></div>
       </aside>
       <section class="center">
-        <div class="desk-wrap"><svg id="desk" class="desk"></svg><div id="offnote" class="offnote hidden"></div></div>
+        <div class="desk-wrap"><svg id="desk" class="desk"></svg><div id="offnote" class="offnote hidden"></div>
+        </div>
+        <div id="viewctl" class="viewctl" title="机の空いた場所をドラッグすると動かせます。マウスのホイールでも拡大・縮小できます。">
+          <small>空いた場所をドラッグで移動</small>
+          <button data-act="pan-left" title="左へ動かす">◀</button><button data-act="pan-up" title="上へ動かす">▲</button><button data-act="pan-down" title="下へ動かす">▼</button><button data-act="pan-right" title="右へ動かす">▶</button>
+          <i></i>
+          <button data-act="zoom-out" title="縮小">－</button><span id="zoom-pct">100%</span><button data-act="zoom-in" title="拡大">＋</button>
+          <button class="wide" data-act="view-reset" title="最初の位置と大きさに戻す">戻す</button>
+        </div>
         <div id="coach" class="coach hidden"></div>
         <div class="under">
           <div class="pane"><h3>検収テスト <span id="pass"></span></h3><ul id="checks" class="checks"></ul></div>
@@ -128,6 +136,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     link, removeCable, log,
     onSelect: () => { renderPanel(); updateCoach(); },
     onMoved: () => game.save(),
+    onView: () => { updateView(); if (tut) placeRing(ringTarget(tut.steps[stepIdx])); },
   });
 
   // パレットから机へ。key: sup:<機器id> / buy:<型番> / stk:<型番>
@@ -154,6 +163,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     desk.sel = { kind: 'dev', id: d.id };
     changed();
     renderPanel();
+    desk.reveal(d);
   }
   function removeDevice(id: string): void {
     const d = dev(id);
@@ -182,6 +192,13 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     renderMoney();
     updateCoach();
     syncLive();
+  }
+  // 右下の、表示を動かすボタン: 動かせない向きと、これ以上変えられない拡大率は押せなくする
+  function updateView(): void {
+    const v = desk.viewInfo(), set = (act: string, on: boolean) => { $<HTMLButtonElement>(`#viewctl [data-act="${act}"]`, root).disabled = !on; };
+    set('pan-left', v.left); set('pan-right', v.right); set('pan-up', v.up); set('pan-down', v.down);
+    set('zoom-in', v.canIn); set('zoom-out', v.canOut); set('view-reset', !v.home);
+    $('#zoom-pct', root).textContent = `${Math.round(v.zoom * 100)}%`;
   }
   function renderChecks(): void {
     const showWhy = a.help.reasons || !!tut;
@@ -459,6 +476,13 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   onAct(root, (act, el) => {
     switch (act) {
       case 'back': sfx('click'); app.show('hub'); break;
+      case 'zoom-in': desk.zoomStep(1); sfx('tick'); break;
+      case 'zoom-out': desk.zoomStep(-1); sfx('tick'); break;
+      case 'view-reset': desk.resetView(); sfx('tick'); break;
+      case 'pan-left': desk.panBy(-0.3, 0); sfx('tick'); break;
+      case 'pan-right': desk.panBy(0.3, 0); sfx('tick'); break;
+      case 'pan-up': desk.panBy(0, -0.3); sfx('tick'); break;
+      case 'pan-down': desk.panBy(0, 0.3); sfx('tick'); break;
       case 'toggle-buy': buyOpen = !buyOpen; sfx('tab'); renderPalette(); break;
       case 'coach-hint': hintLevel = hintStep === stepIdx ? hintLevel + 1 : 1; hintStep = stepIdx; sfx('open'); updateCoach(); break;
       case 'guide': sfx('open'); openGuide(app); break;
@@ -599,6 +623,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   changed();
   renderPanel();
   renderGuides();
+  updateView();
   (window as any).__bench = { place, link, removeDevice, removeCable, diag, changed, desk, world, job, get results() { return results; }, select: (id: string) => desk.select({ kind: 'dev', id }) };
 
   return () => {

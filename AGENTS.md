@@ -11,8 +11,9 @@
 - `node e2e/shot.mjs <title|hub|board|offer|t1|shop|ware|guide [項目id]|solved|trouble|adv [タグか題名の一部] [機器の種類]|adv0 ...>` 画面を `shots/` に撮る(adv は模範解答を置いた状態、adv0 は受注した直後)
 - `npm run build` → `dist/` / `npm run app` デスクトップアプリで起動 / `npm run package` → `release/`(確認は `node e2e/app.mjs`。シェルに ELECTRON_RUN_AS_NODE があると起動しないので unset する)
 - `node e2e/extra.mjs` ガイドへの近道、故障テスト、コピーと設定を写すボタン、常連の依頼、仕入れの画面
+- `node e2e/view.mjs` 机の拡大・縮小と移動(ボタン、何もない場所のドラッグ、ホイール、拡大したままの操作)
 - `node e2e/play.mjs` AIに遊ばせて見つかった点(研修の案内の位置、習う前の設定欄、ポートの重なり、設定パネルの状態表示、納品結果の収まり)
-- 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs・play.mjs)を通す
+- 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs・play.mjs・view.mjs)を通す
 - `node tools/maxsave.mjs [app]` 最高レベルのセーブを `saves/max-level.json` に作る(app を付けるとデスクトップアプリにも入れる)。設定の「セーブデータを読み込む」で読める。`node e2e/app.mjs` は一時フォルダのセーブで起動するので、遊んでいるセーブ(%APPDATA%/NetworkShop)には触らない
 
 ## 構成
@@ -46,6 +47,8 @@
 - 設定パネルの中の「いまの状態」の表示(接続中・未接続など)には `data-live` を付ける。入力のたびに、その部分だけが更新される。条件で出たり消えたりする表示は、空のときも要素を残す
 - 不具合(faults.ts)は、目的のレコードや項目を値や名前で選ぶ(「最初のTXTレコード」のような選び方をしない)。同じ場所を触る不具合と、机の上を何も変えない不具合は、genlib.ts の `makeTrouble` が外す
 - 研修の案内(`#coach`)は机の下に置く。机の上に重ねない
+- 机(desk.ts)は拡大・縮小と移動ができる。動かせる範囲は、最初に見えている範囲(1400×800)より上下左右に広い(`PAD_X`・`PAD_Y`)。生成する配置は、最初に見えている範囲に収める。操作のボタン(`#viewctl`)は机のすぐ下の帯に置き、机の上には重ねない。キーボードでは動かさない
+- ポートは機器の絵とは別の層(`.pg`)に描く。ポートまわりの見た目は `.pg` のCSSで決める(`.dev` の中のCSSは効かない)
 - 新しい設定項目を足したら `defaultCfg` に入れる。古いセーブには `fillCfg` が補う。設定欄は `PanelCtx.level` で、そのレベルに届くまで隠す
 - チュートリアルの案内は `[data-pal]` `[data-dev]` `[data-port]` `[data-diag]` `[data-act]` を目印にしている。属性名を変えたら tutorial.ts も直す
 - シェル経由のコマンドは約8KBで切れる。大きなファイルはヒアドキュメントで書かない

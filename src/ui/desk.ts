@@ -20,6 +20,8 @@ export interface DeskHost {
   removeCable(id: string): void;
   onSelect(sel: Sel): void;
   onMoved(): void;
+  /** 表示の位置か拡大率が変わった */
+  onView?(): void;
   log(msg: string, cls?: string): void;
 }
 
@@ -29,6 +31,12 @@ export const vlanColor = (v: number): string => (v === 1 ? '#8fa0c4' : VLAN_COLO
 const SPRITE: Record<string, number> = { internet: 124 };
 // /24 はいちばん多いので省いて、ラベルを短くする
 const pf = (prefix: number): string => (Number(prefix) === 24 ? '' : '/' + prefix);
+
+// 作業用の机は、最初に見えている範囲の外側にも機器を置ける。その余白の広さ
+const PAD_X = 350, PAD_Y = 200;
+/** ボタンで切り替える拡大率 */
+const ZOOMS = [0.8, 1, 1.25, 1.5, 2, 2.5, 3];
+export interface ViewInfo { zoom: number; canIn: boolean; canOut: boolean; left: boolean; right: boolean; up: boolean; down: boolean; home: boolean }
 
 interface Geo { top: number; bottom: number; half: number; sprite: number; spriteY: number }
 function geo(d: Device): Geo {
@@ -58,20 +66,33 @@ export class Desk {
   private linkFrom: PortRef | null = null;
   private gesture: { x: number; y: number } | null = null;
   private drag: { id: string; dx: number; dy: number; moved: boolean } | null = null;
+  // 何もない場所をつかんで動かしている間の状態
+  private pan: { cx: number; cy: number; x: number; y: number; moved: boolean } | null = null;
+  /** 最初に見えている範囲 [x, y, 幅, 高さ] と、動かせる範囲 */
+  private base: [number, number, number, number];
+  private area: [number, number, number, number];
+  /** いま見えている範囲の左上と、拡大率 */
+  private view = { x: 0, y: 0, z: 1 };
   private mouse = { x: 0, y: 0 };
   private anim = 0;
   private off: (() => void)[] = [];
 
   constructor(private svg: SVGSVGElement, private host: DeskHost) {
     const [vx, vy, vw, vh] = host.view ?? [0, 0, DESK_W, DESK_H];
+    const px = host.readOnly ? 0 : PAD_X, py = host.readOnly ? 0 : PAD_Y;
+    this.base = [vx, vy, vw, vh];
+    this.area = [vx - px, vy - py, vw + px * 2, vh + py * 2];
+    this.view = { x: vx, y: vy, z: 1 };
+    const [ax, ay, aw, ah] = this.area;
     svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
     svg.innerHTML = `<defs>
       <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="14" cy="14" r="1.2" fill="#2b3a5c"/></pattern>
       <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#05080f" flood-opacity=".55"/></filter>
     </defs>
-    <rect class="mat" x="${vx}" y="${vy}" width="${vw}" height="${vh}" rx="26"/>
-    <rect class="mat-dots" x="${vx}" y="${vy}" width="${vw}" height="${vh}" rx="26"/>
+    <rect class="mat" x="${ax}" y="${ay}" width="${aw}" height="${ah}" rx="26"/>
+    <rect class="mat-dots" x="${ax}" y="${ay}" width="${aw}" height="${ah}" rx="26"/>
+    ${host.readOnly ? '' : `<rect class="mat-home" x="${vx}" y="${vy}" width="${vw}" height="${vh}" rx="26"/>`}
     <g class="scene"></g><g class="fx"></g>`;
     this.scene = svg.querySelector('.scene')!;
     this.fx = svg.querySelector('.fx')!;
@@ -86,8 +107,58 @@ export class Desk {
   private portAbs(ref: PortRef) { const d = this.dev(ref.dev)!, r = portRel(d, ref.port); return { x: d.x + r.x, y: d.y + r.y, dir: r.dir }; }
   clampPos(d: Device): void {
     const g = geo(d);
-    d.x = Math.round(clamp(d.x, g.half + 14, DESK_W - g.half - 14));
-    d.y = Math.round(clamp(d.y, -g.top + 10, DESK_H - g.bottom - 6));
+    const [ax, ay, aw, ah] = this.area;
+    d.x = Math.round(clamp(d.x, ax + g.half + 14, ax + aw - g.half - 14));
+    d.y = Math.round(clamp(d.y, ay - g.top + 10, ay + ah - g.bottom - 6));
+  }
+
+  // ---------- 表示の位置と拡大率 ----------
+  private get minZoom(): number { return this.base[2] / this.area[2]; }
+  private applyView(): void {
+    const [ax, ay, aw, ah] = this.area, v = this.view, w = this.base[2] / v.z, h = this.base[3] / v.z;
+    v.x = clamp(v.x, ax, ax + aw - w);
+    v.y = clamp(v.y, ay, ay + ah - h);
+    this.svg.setAttribute('viewBox', `${v.x} ${v.y} ${w} ${h}`);
+    this.host.onView?.();
+  }
+  /** 拡大率を変える。around(机の座標)を渡すと、その点が画面の同じ位置に残る。省くと、見えている範囲の中央を保つ */
+  zoomTo(z: number, around?: { x: number; y: number }): void {
+    const v = this.view, [, , bw, bh] = this.base, w0 = bw / v.z, h0 = bh / v.z;
+    const p = around ?? { x: v.x + w0 / 2, y: v.y + h0 / 2 }, fx = (p.x - v.x) / w0, fy = (p.y - v.y) / h0;
+    v.z = clamp(z, this.minZoom, ZOOMS[ZOOMS.length - 1]);
+    v.x = p.x - (fx * bw) / v.z;
+    v.y = p.y - (fy * bh) / v.z;
+    this.applyView();
+  }
+  /** ボタンでの拡大(1)と縮小(-1): 決まった拡大率を1段ずつ進む */
+  zoomStep(dir: 1 | -1): void {
+    // いちばん小さい拡大率は、動かせる範囲の全体がちょうど入る大きさ
+    const steps = [this.minZoom, ...ZOOMS.filter(x => x > this.minZoom + 0.01)];
+    const z = this.view.z, list = dir > 0 ? steps.filter(x => x > z + 0.01) : steps.filter(x => x < z - 0.01).reverse();
+    this.zoomTo(list[0] ?? z);
+  }
+  /** 見えている範囲の幅・高さに対する割合で動かす */
+  panBy(fx: number, fy: number): void {
+    this.view.x += (fx * this.base[2]) / this.view.z;
+    this.view.y += (fy * this.base[3]) / this.view.z;
+    this.applyView();
+  }
+  /** 最初の位置と大きさに戻す */
+  resetView(): void { this.view = { x: this.base[0], y: this.base[1], z: 1 }; this.applyView(); }
+  viewInfo(): ViewInfo {
+    const [ax, ay, aw, ah] = this.area, v = this.view, w = this.base[2] / v.z, h = this.base[3] / v.z, e = 0.5;
+    return {
+      zoom: v.z, canIn: v.z < ZOOMS[ZOOMS.length - 1] - 0.01, canOut: v.z > this.minZoom + 0.01,
+      left: v.x > ax + e, right: v.x < ax + aw - w - e, up: v.y > ay + e, down: v.y < ay + ah - h - e,
+      home: Math.abs(v.z - 1) < 0.01 && Math.abs(v.x - this.base[0]) < e && Math.abs(v.y - this.base[1]) < e,
+    };
+  }
+  /** 機器が見えている範囲の外にあるときは、その機器が中央に来るように動かす */
+  reveal(d: Device): void {
+    const v = this.view, w = this.base[2] / v.z, h = this.base[3] / v.z, m = 60;
+    if (d.x > v.x + m && d.x < v.x + w - m && d.y > v.y + m && d.y < v.y + h - m) return;
+    v.x = d.x - w / 2; v.y = d.y - h / 2;
+    this.applyView();
   }
   /** 置いた機器のポートが、ほかの機器のポートと重なるときは、重ならない位置まで下(下に余地がなければ上)へずらす */
   separate(d: Device): void {
@@ -175,8 +246,9 @@ export class Desk {
       else if (d.kind === 'home') h += e?.ip != null ? `<text class="dip auto" y="${y}">VPN ${ipStr(e.ip)}</text>` : `<text class="dip warn" y="${y}">VPN未接続</text>`;
       else h += d.cfg.ip ? `<text class="dip" y="${y}">${esc(d.cfg.ip)}${pf(d.cfg.prefix)}</text>` : `<text class="dip warn" y="${y}">IP未設定</text>`;
     } else if (d.kind === 'internet') {
-      h += `<text class="dname" y="-58">インターネット</text>`;
-      if (d.cfg.domain) h += `<text class="dip side" x="72" y="4">${esc(d.cfg.domain)}</text>`;
+      // 名前は雲の右に書く(雲は机の上の端に置かれるので、上に書くと見えている範囲からはみ出す)
+      h += `<text class="dname side" x="70" y="-10">インターネット</text>`;
+      if (d.cfg.domain) h += `<text class="dip side" x="70" y="8">${esc(d.cfg.domain)}</text>`;
     } else {
       const x = 46;
       h += `<text class="dname side" x="${x}" y="-26">${esc(d.name)}</text>`;
@@ -201,7 +273,7 @@ export class Desk {
       else if (d.kind === 'internet' && d.ports.length > 1) h += `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
       else if (sc) h += `<text class="plabel in" x="${p.x}" y="${p.y + 3.5}">${trunk ? 'T' : sc.portVlan[i]}</text>`;
     });
-    return h ? `<g transform="translate(${d.x},${d.y})">${h}</g>` : '';
+    return h ? `<g class="pg${d.off ? ' off' : ''}" transform="translate(${d.x},${d.y})">${h}</g>` : '';
   }
 
   private cablePath(c: Cable): string {
@@ -301,9 +373,26 @@ export class Desk {
         return;
       }
       const ce = target.closest<HTMLElement>('[data-cable]');
-      this.select(ce ? { kind: 'cable', id: ce.dataset.cable! } : null);
+      if (ce) { this.select({ kind: 'cable', id: ce.dataset.cable! }); return; }
+      // 何もない場所: つかんで動かす。動かさずに離したら、選択を外す
+      this.pan = { cx: e.clientX, cy: e.clientY, x: this.view.x, y: this.view.y, moved: false };
+      e.preventDefault();
+    });
+    on(this.svg, 'wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      this.zoomTo(this.view.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), this.point(e));
     });
     on(window, 'pointermove', (e: PointerEvent) => {
+      if (this.pan) {
+        const dx = e.clientX - this.pan.cx, dy = e.clientY - this.pan.cy, k = this.svg.getScreenCTM()?.a || 1;
+        if (!this.pan.moved && Math.hypot(dx, dy) < 5) return;
+        this.pan.moved = true;
+        this.svg.classList.add('panning');
+        this.view.x = this.pan.x - dx / k;
+        this.view.y = this.pan.y - dy / k;
+        this.applyView();
+        return;
+      }
       if (this.drag) {
         const p = this.point(e), d = this.dev(this.drag.id);
         if (!d) { this.drag = null; return; }
@@ -318,6 +407,13 @@ export class Desk {
       }
     });
     on(window, 'pointerup', (e: PointerEvent) => {
+      if (this.pan) {
+        const moved = this.pan.moved;
+        this.pan = null;
+        this.svg.classList.remove('panning');
+        if (!moved && this.sel) this.select(null);
+        return;
+      }
       if (this.drag) {
         const moved = this.drag.moved, d = this.dev(this.drag.id);
         this.drag = null;

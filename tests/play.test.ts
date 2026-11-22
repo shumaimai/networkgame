@@ -60,3 +60,22 @@ describe('設定欄を出すレベル', () => {
     expect([...tutorialJob('t1').solution.devices.flatMap(d => [...usedFeatures(d)])]).toEqual([]);
   });
 });
+
+describe('生成される配置', () => {
+  it('どの機器も、最初に見えている机の範囲に、名前の文字まで収まる', { timeout: 120000 }, () => {
+    let top = 999, bottom = 0;
+    for (let level = 2; level <= MAX_LEVEL; level++) for (let seed = 1; seed <= 30; seed++) {
+      const j = generate(seed * 17 + level * 300, level, { kind: 'build', ease: (seed % 5) / 4 });
+      for (const d of j.solution.devices) {
+        const host = ['pc', 'printer', 'phone', 'camera', 'pos', 'server', 'nas', 'lb', 'home'].includes(d.kind);
+        // 絵の上の端は 66(インターネットは 64)、端末の名前とIPアドレスは絵の下(92)まで出る
+        const t = d.y - (d.kind === 'internet' ? 64 : 66), b = d.y + (host ? 92 : 46);
+        top = Math.min(top, t); bottom = Math.max(bottom, b);
+        expect(t, `${j.id} ${d.name} y=${d.y}`).toBeGreaterThanOrEqual(0);
+        expect(b, `${j.id} ${d.name} y=${d.y}`).toBeLessThanOrEqual(800);
+      }
+    }
+    expect(top).toBeLessThan(40);
+    expect(bottom).toBeGreaterThan(700);
+  });
+});
