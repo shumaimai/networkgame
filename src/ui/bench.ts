@@ -265,7 +265,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
 
   // ---------- 診断ツール ----------
   // 使った回数を依頼ごとに残す(納品後の振り返りに出す)
-  const count = (kind: string) => { const m = (a.diag ??= {}); m[kind] = (m[kind] ?? 0) + 1; };
+  const count = (kind: string) => { const m = (a.diag ??= {}); m[kind] = (m[kind] ?? 0) + 1; game.save(); };
   function diag(kind: string): void {
     const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null;
     if (!d || d.off) return;

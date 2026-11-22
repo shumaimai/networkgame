@@ -145,7 +145,13 @@ try {
   ok(/作業中の依頼/.test(await txt('.resume')), '事務所に作業中の依頼が出る');
   await page.click('[data-act="resume"]');
   await solve();
+  const diagPc = await page.evaluate(() => window.__bench.world.devices.find(d => d.kind === 'pc').id);
+  await page.evaluate(id => window.__bench.select(id), diagPc);
+  await page.click('[data-diag="ipconfig"]');
+  await page.reload(); await page.waitForSelector('.title'); await page.click('[data-act="continue"]');
+  ok(await page.evaluate(() => window.app.game.s.active?.diag?.ipconfig === 1), '診断の直後に再読み込みしても回数が残る');
   await page.click('[data-act="deliver"]');
+  ok(/ipconfig 1回/.test(await txt('.modal')), '再読み込み後の納品結果にも診断回数が出る');
   ok(/ヘルプの利用/.test(await txt('.modal')) && /納期ボーナス/.test(await txt('.modal')), '結果にヘルプの減額と納期ボーナス');
   await page.click('[data-act="hub"]');
   s = await state();
