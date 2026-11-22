@@ -75,7 +75,7 @@ try {
   ok(/納品完了/.test(await txt('.modal')), '常連の依頼を納品できる');
   await page.click('.r-answer summary');
   ok(/模範解答の機器と設定/.test(await txt('.r-answer')) && /SW-増設/.test(await txt('.r-answer')), '納品後に、模範解答を無料で見られる');
-  ok(/機材費/.test(await txt('.r-review')) && /多くかかっています/.test(await txt('.r-review')) && /L2スイッチ 8ポート 1台/.test(await txt('.r-review')), '構築の振り返りに、模範解答との機材費の差が出る: ' + await txt('.r-review'));
+  ok(/機材費/.test(await txt('.r-review')) && /構成の違い: 模範解答は L2スイッチ 5ポート 1台/.test(await txt('.r-review')) && /今回は L2スイッチ 8ポート 1台/.test(await txt('.r-review')) && !/多く使ったもの/.test(await txt('.r-review')), '振り返りに、模範解答との構成の違いが出る(余計な買い物とは書かない): ' + await txt('.r-review'));
   await page.click('[data-act="hub"]');
   ok(await page.locator('.chip.regular').count() === 0, '納品したあとは出ない');
 
@@ -89,6 +89,14 @@ try {
   await page.click('[data-pal="buy:l2-5"]');
   const m0 = await page.evaluate(() => window.app.game.s.money);
   await page.click('[data-act="remove"]');
+  // 設定を入れた購入品は、1回押しただけでは返品されない
+  await page.click('[data-pal="buy:router"]');
+  await page.fill('[data-bind="lan.0.ip"]', '192.168.1.1');
+  const n0 = await page.evaluate(() => window.__bench.world.devices.length);
+  await page.click('[data-act="remove"]');
+  ok(await page.evaluate(() => window.__bench.world.devices.length) === n0 && /設定が消えます/.test(await txt('[data-act="remove"]')), '設定を入れた機器の返品は、1回目では確かめるだけ');
+  await page.click('[data-act="remove"]');
+  ok(await page.evaluate(() => window.__bench.world.devices.length) === n0 - 1, '2回目で返品される');
   const back = (await page.evaluate(() => window.app.game.s.money)) - m0, price = await page.evaluate(() => window.app.game.price('l2-5'));
   ok(back === price, `返品で戻るのは、いま返した1台分だけ (${back} / ${price})`);
   await leave();

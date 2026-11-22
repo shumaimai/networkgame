@@ -90,7 +90,16 @@ try {
   ok(await page.locator('#demo .dev').count() === 3, '辞書の図解に機器が出る');
   ok(await page.locator('#demo .packet').count() === 1, '辞書の図解でパケットが流れる');
   await page.keyboard.press('Escape');
-  await solve();
+  // PCだけを先に設定しても、プリンタが未設定のうちは「納品する」の案内まで進まない
+  await page.evaluate(() => {
+    const g = window.app.game, a = g.s.active, w = JSON.parse(JSON.stringify(g.activeJob.solution));
+    w.devices.find(d => d.id === 'prn').cfg.ip = '';
+    a.world.devices.splice(0, 999, ...w.devices); a.world.cables.splice(0, 999, ...w.cables);
+    window.__bench.changed();
+  });
+  ok(/ステップ 6/.test(await coach()) && /プリンタにもIPアドレス/.test(await txt('.coach-note')), '研修2: プリンタが未設定なら、ステップ6にとどまって理由を言う: ' + await coach());
+  await page.evaluate(() => { const b = window.__bench; Object.assign(b.world.devices.find(d => d.id === 'prn').cfg, { ip: '192.168.10.200' }); b.changed(); });
+  ok(/ステップ 9/.test(await coach()), '研修2: 全部合格すると最後のステップへ');
   await page.click('[data-act="deliver"]'); await page.click('[data-act="hub"]');
 
   // ---- 研修3: 既設のネットワークを直す ----
@@ -102,16 +111,20 @@ try {
   await page.click('[data-act="coach-hint"]');
   ok(/プリンタにケーブルがつながっていません/.test(await txt('#coach')), '研修3の2つめのヒントで原因が出る');
   await clickPort('prn:0'); await clickPort('sw:3');
+  // 正常な PC-1 から先に試しても、「進めませんでした」とは言わない
+  const p1 = await center('[data-dev="pc1"] image'); await page.mouse.click(p1.x, p1.y);
+  await page.fill('#diag-target', '8.8.8.8'); await page.click('[data-diag="tracert"]');
+  ok(/到達しました/.test(await txt('#console')) && /ステップ 2/.test(await coach()) && /PC-1 からは 8\.8\.8\.8 に届きました/.test(await txt('.coach-note')), 'PC-1 から届いたことを認め、PC-2 と比べるよう促す: ' + await txt('#coach'));
   const p2 = await center('[data-dev="pc2"] image'); await page.mouse.click(p2.x, p2.y);
   await page.fill('#diag-target', '8.8.8.8'); await page.click('[data-diag="tracert"]');
-  ok(/止まりました/.test(await txt('#console')), 'tracertで止まった場所が出る');
+  ok(/止まりました/.test(await txt('#console')) && /ステップ 3/.test(await coach()), 'PC-2 の tracert が止まると次のステップへ進む');
   await page.waitForTimeout(900);
   ok(await page.locator('#desk .failmark').count() === 1, '止まった機器に×印');
   await page.fill('[data-bind="gw"]', '192.168.1.9');
   ok(/まだルーターに届きません/.test(await txt('.coach-note')), '違う値に直すと、次に見るものが出る');
   await page.fill('[data-bind="gw"]', '192.168.1.1');
   await page.click('[data-act="deliver"]');
-  ok(/振り返り/.test(await txt('.r-review')) && /原因/.test(await txt('.r-review')) && /見つけ方/.test(await txt('.r-review')) && /tracert 1回/.test(await txt('.r-review')), '納品後に、原因と見つけ方、使った診断が出る: ' + await txt('.r-review'));
+  ok(/振り返り/.test(await txt('.r-review')) && /原因/.test(await txt('.r-review')) && /見つけ方/.test(await txt('.r-review')) && /tracert 2回/.test(await txt('.r-review')), '納品後に、原因と見つけ方、使った診断が出る: ' + await txt('.r-review'));
   s = await state();
   ok(s.level === 3 && s.done.length === 3 && s.board === 5, `研修を終えるとレベル3でボードが開く ${JSON.stringify(s)}`);
   await page.click('[data-act="hub"]');

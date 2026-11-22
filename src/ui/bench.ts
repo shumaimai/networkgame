@@ -2,7 +2,7 @@
 import { CheckResult, evaluate } from '../core/checks';
 import { ipStr, parseIp } from '../core/ip';
 import { Job, KIND_LABEL, worldCost } from '../core/job';
-import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, PortRef, ServerCfg, SVC, SwitchCfg, dkimKey, fillCfg, isGateway, isHost, linkError, makeDevice } from '../core/model';
+import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, PortRef, ServerCfg, SVC, SwitchCfg, defaultCfg, dkimKey, fillCfg, isGateway, isHost, linkError, makeDevice } from '../core/model';
 import { Net, arpTable, browse, build, reach, resolve, traceroute } from '../core/sim';
 import { ReviewItem, review } from '../game/review';
 import { Active, Game, HELP_COST, HelpUse, Outcome } from '../game/state';
@@ -318,7 +318,8 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     if (tnet.trace!.length > 1) for (const t of tnet.trace!) log(`   ${t.label}: ${t.hops.join(' → ')}${t.ok ? '' : ' ✕'}`, 'step');
     log(`   ${text}`, ok ? 'ok' : 'ng');
     sfx(ok ? 'ok' : 'ng');
-    diagDone.add(kind); diagDone.add(`${kind}:${ok ? 'ok' : 'ng'}`);
+    // 研修の案内は、どの機器で試して、どうなったかを見る
+    for (const k of [kind, `${kind}:${ok ? 'ok' : 'ng'}`, `${kind}:${ok ? 'ok' : 'ng'}@${d.id}`]) diagDone.add(k);
     count(kind);
     void desk.playTrace(tnet.trace!);
     updateCoach();
@@ -481,7 +482,15 @@ export function mountBench(app: App, root: HTMLElement): () => void {
         break;
       }
       case 'unplug': if (desk.sel?.kind === 'cable') removeCable(desk.sel.id); break;
-      case 'remove': if (desk.sel?.kind === 'dev') removeDevice(desk.sel.id); break;
+      case 'remove': {
+        const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null;
+        if (!d) break;
+        // 設定を入れた購入品・在庫品は、返すと設定が消える。1回目は確かめるだけにする
+        const edited = d.own !== 'supplied' && JSON.stringify(d.cfg) !== JSON.stringify(defaultCfg(MODEL[d.model]));
+        if (edited && !el.dataset.armed) { el.dataset.armed = '1'; el.classList.add('danger'); el.textContent = `入力した設定が消えます。もう一度押すと${d.own === 'bought' ? '返品します' : '倉庫に戻します'}`; sfx('ng'); break; }
+        removeDevice(d.id);
+        break;
+      }
       case 'diag': diag(el.dataset.diag!); break;
       case 'add': case 'del': case 'up': {
         if (desk.sel?.kind !== 'dev') break;

@@ -206,6 +206,7 @@ export function openSettings(app: App): void {
     <label class="f range"><span>BGMの大きさ</span><input type="range" id="bgm" min="0" max="1" step="0.05" value="${s.bgm}"></label>
     <label class="f"><span>画面</span><button class="btn" data-act="fullscreen">全画面にする / 戻す</button></label>
     <h3>セーブデータ</h3>
+    <div class="save-btns"><button class="btn" data-act="save-out">セーブデータを書き出す</button><button class="btn" data-act="save-in">セーブデータを読み込む</button><input type="file" id="save-file" accept=".json,application/json" hidden></div>
     <button class="btn danger" data-act="wipe">セーブデータを消して最初から始める</button>
     <div class="modal-btns"><button class="btn" data-act="title">タイトルへ</button><button class="btn primary" data-act="close">閉じる</button></div>`);
   m.addEventListener('input', e => {
@@ -213,9 +214,28 @@ export function openSettings(app: App): void {
     if (el.id === 'vol') { s.sfx = Number(el.value); setVolume(s.sfx); app.game.save(); sfx('ok'); }
     if (el.id === 'bgm') { s.bgm = Number(el.value); setBgm(s.bgm); app.game.save(); }
   });
+  // セーブデータの読み込み: いまのセーブは上書きされる
+  m.querySelector<HTMLInputElement>('#save-file')!.addEventListener('change', async e => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data?.v !== 2 || typeof data.money !== 'number' || typeof data.xp !== 'number') throw new Error('形式が違います');
+      app.setSave(data); app.game.save();
+      app.closeModal(); app.show('hub');
+      app.toast(`セーブデータを読み込みました(Lv.${app.game.level})。`);
+    } catch { app.toast('このファイルは、セーブデータとして読み込めません。', 'ng'); sfx('ng'); }
+  });
   onAct(m, (act, el) => {
     if (act === 'fullscreen') { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => {}); }
     if (act === 'title') { app.closeModal(); app.show('title'); }
+    if (act === 'save-out') {
+      const url = URL.createObjectURL(new Blob([JSON.stringify(app.game.s)], { type: 'application/json' })), link = document.createElement('a');
+      link.href = url; link.download = `networkshop-save-lv${app.game.level}.json`;
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    if (act === 'save-in') m.querySelector<HTMLInputElement>('#save-file')!.click();
     if (act === 'wipe') {
       if (el.dataset.armed) { app.newGame(); app.closeModal(); app.show('title'); }
       else { el.dataset.armed = '1'; el.textContent = 'もう一度押すと消します'; }

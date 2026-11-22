@@ -248,6 +248,18 @@ describe('納品後の振り返り', () => {
     w.devices.push(b.add('server', 'x1', 'SV-9'));
     const r = review(j, w, j.par);
     expect(r[0].body).toMatch(/¥25,000 多くかかっています。模範解答より多く使ったもの: サーバー 1台/);
+    // 常連の依頼: 5ポートを足す模範解答に対し、8ポート1台にまとめた構成
+    const t = regularJob(undefined), m = new Builder(), sw = m.add('l2-8', 'b1', 'SW-1');
+    for (const d of t.solution.devices.filter(x => x.kind === 'pc')) m.plug(m.add('pc', d.id, d.name, 'supplied'), sw);
+    m.cables.slice(0, 2).forEach(c => { c.free = true; });
+    const tr = review(t, m.world(), t.par)[0].body;
+    expect(tr).toMatch(/構成の違い: 模範解答は L2スイッチ 5ポート 1台、LANケーブル 5本。今回は L2スイッチ 8ポート 1台、LANケーブル 4本。/);
+    expect(tr).toMatch(/机の上の機器は1台少なく、LANケーブルは1本少なく済んでいます/);
+    expect(tr).not.toMatch(/多く使ったもの/);
+    // トラブル対応を、診断ツールを使わずに直したとき
+    const tj = generate(77, 6, { kind: 'trouble' }), none = review(tj, tj.solution, 0, {}), some = review(tj, tj.solution, 0, { ping: 1 });
+    expect(none[none.length - 1].body).toMatch(/開く設定画面を絞れます/);
+    expect(some[some.length - 1].body).not.toMatch(/開く設定画面を絞れます/);
     expect(r[1].body).toBe('診断ツールは使いませんでした。');
   });
 });

@@ -12,6 +12,7 @@
 - `npm run build` → `dist/` / `npm run app` デスクトップアプリで起動 / `npm run package` → `release/`(確認は `node e2e/app.mjs`。シェルに ELECTRON_RUN_AS_NODE があると起動しないので unset する)
 - `node e2e/extra.mjs` ガイドへの近道、故障テスト、コピーと設定を写すボタン、常連の依頼、仕入れの画面
 - 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs)を通す
+- `node tools/maxsave.mjs [app]` 最高レベルのセーブを `saves/max-level.json` に作る(app を付けるとデスクトップアプリにも入れる)。設定の「セーブデータを読み込む」で読める。`node e2e/app.mjs` はアプリのセーブを最初からにするので、そのあとで入れ直す
 
 ## 構成
 - `src/core/` 画面に依存しない中身

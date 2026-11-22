@@ -44,20 +44,32 @@ export function review(job: Job, world: World, par: number, diag: Record<string,
   }
   if (job.kind === 'trouble') {
     for (const f of job.faults.slice(0, 4)) out.push({ head: '原因', body: `${f}。見つけ方: ${findBy(f)}` });
-    out.push({ head: '診断', body: diagLine(diag) });
+    // 診断ツールを使わずに直したとき(配線を見れば分かる不具合だけの依頼は除く)
+    const used = Object.values(diag).some(n => n > 0), visible = job.faults.every(f => /ケーブルが抜けて|ポートに挿さって/.test(f));
+    out.push({ head: '診断', body: diagLine(diag) + (!used && !visible ? '設定画面を1台ずつ開いて見つける方法でも直せますが、機器が増えると時間がかかります。先に tracert や ipconfig を使うと、開く設定画面を絞れます。' : '') });
     return out;
   }
-  const cost = worldCost(world), yen = (n: number) => '¥' + Math.round(n).toLocaleString('ja-JP');
-  if (cost <= par) out.push({ head: '機材費', body: `${yen(cost)} でした。模範解答(${yen(par)})と同じか、それより少ない額です。` });
-  else {
-    // 模範解答より多く使った機材を、型番ごとに数える
-    const count = (w: World, own: string[]) => { const m: Record<string, number> = {}; for (const d of w.devices) if (own.includes(d.own)) m[d.model] = (m[d.model] ?? 0) + 1; return m; };
-    const mine = count(world, ['bought', 'stock']), ref = count(job.solution, ['bought']);
-    const more = Object.keys(mine).filter(k => mine[k] > (ref[k] ?? 0)).map(k => `${MODEL[k].label} ${mine[k] - (ref[k] ?? 0)}台`);
-    const cables = world.cables.filter(c => !c.free).length - job.solution.cables.filter(c => !c.free).length;
-    if (cables > 0) more.push(`LANケーブル ${cables}本(1本 ${yen(CABLE_PRICE)})`);
-    out.push({ head: '機材費', body: `${yen(cost)} でした。模範解答(${yen(par)})より ${yen(cost - par)} 多くかかっています。${more.length ? `模範解答より多く使ったもの: ${more.join('、')}` : '機材の数は模範解答と同じで、買ったときの値段が違います。'}` });
-  }
+  const cost = worldCost(world), yen = money;
+  // 購入した機材(在庫品を含む)とケーブルを、模範解答と比べる
+  const count = (w: World, own: string[]) => { const m: Record<string, number> = {}; for (const d of w.devices) if (own.includes(d.own)) m[d.model] = (m[d.model] ?? 0) + 1; return m; };
+  const mine = count(world, ['bought', 'stock']), ref = count(job.solution, ['bought']);
+  const myCables = world.cables.filter(c => !c.free).length, refCables = job.solution.cables.filter(c => !c.free).length;
+  const models = [...new Set([...Object.keys(ref), ...Object.keys(mine)])].filter(k => (mine[k] ?? 0) !== (ref[k] ?? 0));
+  const list = (m: Record<string, number>, cables: number) => [...models.filter(k => m[k]).map(k => `${MODEL[k].label} ${m[k]}台`), ...(myCables !== refCables ? [`LANケーブル ${cables}本`] : [])].join('、') || '追加の機材なし';
+  const more = models.filter(k => (mine[k] ?? 0) > (ref[k] ?? 0)), fewer = models.filter(k => (mine[k] ?? 0) < (ref[k] ?? 0));
+  let body = cost <= par ? `${yen(cost)} でした。模範解答(${yen(par)})と同じか、それより少ない額です。` : `${yen(cost)} でした。模範解答(${yen(par)})より ${yen(cost - par)} 多くかかっています。`;
+  if (fewer.length || (more.length && myCables < refCables)) {
+    // 機材を入れ替えた構成: 足した・減らしたの両方を並べる
+    body += `構成の違い: 模範解答は ${list(ref, refCables)}。今回は ${list(mine, myCables)}。`;
+    // 机の上に残した機器(お客様のものも含む)の台数で比べる
+    const infra = (w: World) => w.devices.filter(x => x.own !== 'fixed' && !['pc', 'printer', 'phone', 'camera', 'pos'].includes(x.kind)).length;
+    const d = infra(job.solution) - infra(world), less = [d > 0 ? `机の上の機器は${d}台少なく` : '', myCables < refCables ? `LANケーブルは${refCables - myCables}本少なく` : ''].filter(Boolean);
+    if (less.length) body += `${less.join('、')}済んでいます。機器やケーブルが少ないと、配線と故障の調査が簡単になります。${cost > par ? '値段と配線の簡単さのどちらを取るかは、設計する人が決めます。' : ''}`;
+    else if (d < 0) body += `机の上の機器は${-d}台多くなっています。`;
+  } else if (more.length || myCables > refCables) {
+    body += `模範解答より多く使ったもの: ${[...more.map(k => `${MODEL[k].label} ${mine[k] - (ref[k] ?? 0)}台`), ...(myCables > refCables ? [`LANケーブル ${myCables - refCables}本(1本 ${yen(CABLE_PRICE)})`] : [])].join('、')}`;
+  } else if (cost > par) body += '機材の数は模範解答と同じで、買ったときの値段が違います。';
+  out.push({ head: '機材費', body });
   out.push({ head: '診断', body: diagLine(diag) });
   return out;
 }

@@ -608,3 +608,10 @@ h3 .q:hover { border-color: var(--teal); color: var(--teal); }
 .r-answer section { max-height: 250px; overflow: auto; }
 .r-review .r-answer h3 { font-size: 13px; }
 .r-review .r-answer .answer div { display: block; }
+
+/* 納品の結果: 振り返りが長いときは、その欄の中で送る(「受注へ戻る」が画面の外に出ないようにする) */
+.modal:has(.result) { width: 900px; }
+.r-review { max-height: 250px; overflow: auto; }
+.r-answer section { max-height: none; }
+
+.save-btns { display: flex; gap: 10px; margin-bottom: 10px; }
