@@ -158,6 +158,15 @@ try {
   await cp.click();
   ok(await page.evaluate(() => navigator.clipboard.readText()) === want, `仕様書の値をクリックするとコピーされる (${want})`);
   ok(await page.locator('.spec .cp').count() >= 6, '仕様書のアドレスや名前がコピーできる形になっている');
+  // ネットワークのアドレスは、/24 を除いてコピーする。/24 の部分をクリックしたときだけ、全体をコピーする
+  const pre = page.locator('.spec .cp.pre').first(), whole = await pre.getAttribute('data-v');
+  await page.locator('.spec .cp.pre').first().evaluate(e => e.previousElementSibling.click());
+  const got = await page.evaluate(() => navigator.clipboard.readText());
+  ok(/^\d+\.\d+\.\d+\.\d+$/.test(got) && whole.startsWith(got + '/'), `アドレスをクリックすると、/24 を除いてコピーされる (${got} ← ${whole})`);
+  await pre.click();
+  ok(await page.evaluate(() => navigator.clipboard.readText()) === whole, `/24 の部分をクリックすると、全体がコピーされる (${whole})`);
+  const left = await page.evaluate(() => { const e = document.querySelector('.col.left'); return { sw: e.scrollWidth, cw: e.clientWidth, wide: [...e.querySelectorAll('.sl')].filter(x => x.scrollWidth > x.clientWidth + 1).length }; });
+  ok(left.sw <= left.cw && left.wide === 0, `仕様書は横に送らずに読める (${JSON.stringify(left)})`);
   await page.click('[data-pal="buy:server"]');
   await page.click('label.toggle:has([data-bind="mailOn"])'); await page.click('label.toggle:has([data-bind="dkimOn"])');
   await page.click('#panel code.cp >> nth=1');

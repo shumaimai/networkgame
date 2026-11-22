@@ -660,3 +660,30 @@ svg.desk.panning, svg.desk.panning * { cursor: grabbing !important; }
 .pg .plabel.start { text-anchor: start; }
 .pg .plabel.in { font-size: 9px; font-weight: 700; fill: #0b1222; stroke: none; }
 .pg.off .port, .pg.off .plabel { opacity: .35; }
+
+/* 日本語の折り返し: 行頭に句読点などを置かない。文節の切れ目で折り返す */
+body { line-break: strict; }
+p, li, td, dd, .brief, .info, .sl, .card h3, .coach p { word-break: auto-phrase; overflow-wrap: anywhere; }
+/* 仕様書(作業画面の左): 見出しを上に置いて、本文に幅を使う。横には送らない */
+.col.left { overflow-x: hidden; }
+.spec.stack section { padding: 8px 0 9px; border-bottom: 1px solid #22304f; }
+.spec.stack h4 { font-size: 13px; color: var(--teal); letter-spacing: .06em; margin: 0 0 3px; }
+.spec.stack .sl { font-size: 15px; line-height: 1.65; margin: 0; padding-left: 1em; text-indent: -1em; font-variant-numeric: tabular-nums; user-select: text; -webkit-user-select: text; }
+.spec.stack .sl + .sl { margin-top: 3px; }
+.spec.stack .cp { text-indent: 0; }
+.cp.pre { color: var(--mute); border-bottom-style: dotted; }
+/* 机の上の機器の名前: 画数の多い漢字がつぶれないよう、太字をやめて少し大きくする */
+.dev .dname { font-size: 16px; font-weight: 500; stroke-width: 3.5px; letter-spacing: .02em; }
+/* VLAN番号の欄: 右に、1ずつ増やす・減らすボタンを縦に並べる */
+.vp { grid-template-columns: 1fr 20px; }
+.vp input[type=number] { grid-column: 1; grid-row: 2; }
+.vp .stp { grid-column: 2; grid-row: 2; display: grid; grid-template-rows: 1fr 1fr; gap: 1px; height: 27px; }
+.vp .stp button { font: inherit; font-size: 8px; line-height: 1; padding: 0; border: 1px solid var(--line2); background: #101831; color: #c5d0ea; border-radius: 4px; cursor: pointer; }
+.vp .stp button:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
+.vp .stp button:disabled { opacity: .3; cursor: default; }
+/* 設定パネルと机の上で、同じポートを強調する */
+.vp.hl { outline: 2px solid var(--yellow); background: #2e2a1c; }
+.psec { border-radius: 10px; margin: 0 -8px; padding: 0 8px 4px; }
+.psec.hl { outline: 2px solid var(--yellow); background: rgba(255, 209, 102, .07); }
+.port.hl { stroke: var(--yellow) !important; stroke-width: 4; filter: drop-shadow(0 0 7px rgba(255, 209, 102, .95)); }
+.spec-hint { color: var(--dim); font-size: 12.5px; line-height: 1.5; margin: -4px 0 2px; }

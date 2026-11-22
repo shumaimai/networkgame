@@ -22,6 +22,8 @@ export interface DeskHost {
   onMoved(): void;
   /** 表示の位置か拡大率が変わった */
   onView?(): void;
+  /** 机の上のポートにカーソルが乗った(外れたら null) */
+  onPortHover?(ref: PortRef | null): void;
   log(msg: string, cls?: string): void;
 }
 
@@ -33,9 +35,9 @@ const SPRITE: Record<string, number> = { internet: 124 };
 const pf = (prefix: number): string => (Number(prefix) === 24 ? '' : '/' + prefix);
 
 // 作業用の机は、最初に見えている範囲の外側にも機器を置ける。その余白の広さ
-const PAD_X = 350, PAD_Y = 200;
+const PAD_X = 1400, PAD_Y = 800;
 /** ボタンで切り替える拡大率 */
-const ZOOMS = [0.8, 1, 1.25, 1.5, 2, 2.5, 3];
+const ZOOMS = [0.5, 0.65, 0.8, 1, 1.25, 1.5, 2, 2.5, 3];
 export interface ViewInfo { zoom: number; canIn: boolean; canOut: boolean; left: boolean; right: boolean; up: boolean; down: boolean; home: boolean }
 
 interface Geo { top: number; bottom: number; half: number; sprite: number; spriteY: number }
@@ -68,6 +70,8 @@ export class Desk {
   private drag: { id: string; dx: number; dy: number; moved: boolean } | null = null;
   // 何もない場所をつかんで動かしている間の状態
   private pan: { cx: number; cy: number; x: number; y: number; moved: boolean } | null = null;
+  // 設定パネルの側から強調するように頼まれたポート
+  private hl: PortRef | null = null;
   /** 最初に見えている範囲 [x, y, 幅, 高さ] と、動かせる範囲 */
   private base: [number, number, number, number];
   private area: [number, number, number, number];
@@ -142,6 +146,12 @@ export class Desk {
     this.view.x += (fx * this.base[2]) / this.view.z;
     this.view.y += (fy * this.base[3]) / this.view.z;
     this.applyView();
+  }
+  /** 設定パネルで触っているポートを、机の上で強調する(null で消す) */
+  highlightPort(ref: PortRef | null): void {
+    this.hl = ref;
+    this.scene.querySelectorAll('.port.hl').forEach(e => e.classList.remove('hl'));
+    if (ref) this.scene.querySelector(`[data-port="${ref.dev}:${ref.port}"]`)?.classList.add('hl');
   }
   /** 最初の位置と大きさに戻す */
   resetView(): void { this.view = { x: this.base[0], y: this.base[1], z: 1 }; this.applyView(); }
@@ -268,7 +278,7 @@ export class Desk {
       const active = this.linkFrom?.dev === d.id && this.linkFrom.port === i;
       const trunk = sc?.portMode[i] === 'trunk';
       const style = sc ? ` style="--vlan:${trunk ? '#ffffff' : vlanColor(Number(sc.portVlan[i]) || 1)}"` : '';
-      h += `<rect class="port${used ? ' used' : ''}${active ? ' active' : ''}${sc ? ' vl' : ''}" data-port="${d.id}:${i}" x="${p.x - 8}" y="${p.y - 8}" width="16" height="16" rx="4"${style}><title>${esc(d.name)} ${esc(name)}${sc ? (trunk ? ' トランク' : ' VLAN' + sc.portVlan[i]) : ''}</title></rect>`;
+      h += `<rect class="port${used ? ' used' : ''}${active ? ' active' : ''}${sc ? ' vl' : ''}${this.hl?.dev === d.id && this.hl.port === i ? ' hl' : ''}" data-port="${d.id}:${i}" x="${p.x - 8}" y="${p.y - 8}" width="16" height="16" rx="4"${style}><title>${esc(d.name)} ${esc(name)}${sc ? (trunk ? ' トランク' : ' VLAN' + sc.portVlan[i]) : ''}</title></rect>`;
       if (isGateway(d.kind)) h += i === 0 ? `<text class="plabel start" x="${p.x + 13}" y="${p.y + 4}">${esc(name)}</text>` : `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
       else if (d.kind === 'internet' && d.ports.length > 1) h += `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
       else if (sc) h += `<text class="plabel in" x="${p.x}" y="${p.y + 3.5}">${trunk ? 'T' : sc.portVlan[i]}</text>`;
@@ -378,6 +388,16 @@ export class Desk {
       this.pan = { cx: e.clientX, cy: e.clientY, x: this.view.x, y: this.view.y, moved: false };
       e.preventDefault();
     });
+    // ポートにカーソルが乗ったことを知らせる(設定パネルの同じポートの欄を強調するため)
+    let over = '';
+    const hover = (el: Element | null) => {
+      const key = el ? (el as HTMLElement).dataset.port! : '';
+      if (key === over) return;
+      over = key;
+      this.host.onPortHover?.(el ? this.portRef(el) : null);
+    };
+    on(this.svg, 'pointerover', (e: PointerEvent) => hover((e.target as Element).closest('[data-port]')));
+    on(this.svg, 'pointerleave', () => hover(null));
     on(this.svg, 'wheel', (e: WheelEvent) => {
       e.preventDefault();
       this.zoomTo(this.view.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), this.point(e));

@@ -128,15 +128,15 @@ try {
 
   // ---- 縮小と、広くなった机 ----
   await page.click('#viewctl [data-act="view-reset"]');
-  await page.click('#viewctl [data-act="zoom-out"]'); await page.click('#viewctl [data-act="zoom-out"]');
+  for (let i = 0; i < 9 && !(await off('zoom-out')); i++) await page.click('#viewctl [data-act="zoom-out"]');
   v = await vb();
-  ok(near(v[2], 2100, 12) && await off('zoom-out') && (await pct()) === '67%', `縮小は、机の全体が入る 67% まで (${v.map(Math.round).join(' ')})`);
+  ok(near(v[2], 4200, 12) && near(v[3], 2400, 12) && await off('zoom-out') && (await pct()) === '33%', `縮小は、机の全体(最初の範囲の縦横3倍)が入る 33% まで (${v.map(Math.round).join(' ')})`);
   ok(await off('pan-left') && await off('pan-right') && await off('pan-up') && await off('pan-down'), '全体が見えているときは、向きのボタンが押せない');
   const sw = await page.evaluate(() => window.__bench.world.devices.find(d => d.model === 'l2-5' && d.own === 'bought').id);
   const s0 = await center(`[data-dev="${sw}"] image`), box = await page.locator('#desk').boundingBox();
   await page.mouse.move(s0.x, s0.y); await page.mouse.down(); await page.mouse.move(box.x + box.width - 60, s0.y, { steps: 6 }); await page.mouse.up();
   const sx = await page.evaluate(id => window.__bench.world.devices.find(x => x.id === id).x, sw);
-  ok(sx > 1450, `最初に見えていた範囲(幅1400)の外にも、機器を置ける (x=${Math.round(sx)})`);
+  ok(sx > 2200, `最初に見えていた範囲(幅1400)のずっと外にも、機器を置ける (x=${Math.round(sx)})`);
 
   // ---- キーボードでは動かない ----
   await page.click('#viewctl [data-act="view-reset"]');
@@ -147,7 +147,7 @@ try {
   await page.click('#viewctl [data-act="zoom-in"]'); await page.click('#viewctl [data-act="zoom-in"]'); await page.click('#viewctl [data-act="zoom-in"]');
   await page.screenshot({ path: 'shots/v_zoom.png' });
   await page.click('#viewctl [data-act="view-reset"]');
-  await page.click('#viewctl [data-act="zoom-out"]'); await page.click('#viewctl [data-act="zoom-out"]');
+  for (let i = 0; i < 9 && !(await off('zoom-out')); i++) await page.click('#viewctl [data-act="zoom-out"]');
   await page.screenshot({ path: 'shots/v_out.png' });
   ok(errors.length === 0, 'JSエラーなし: ' + errors.join(' | '));
 } catch (e) { failed++; console.log('EXCEPTION', String(e).split('\n').slice(0, 6).join('\n')); await page.screenshot({ path: 'shots/_fail.png' }); }

@@ -58,6 +58,34 @@ try {
   c = await cfg('l3');
   ok(c.portVlan[0] === 10 && c.portMode[7] === 'trunk' && c.svis[0].ip === '192.168.10.254' && c.svis[0].relay === '192.168.1.53', 'L3: VLAN・トランク・VLANインターフェース ' + JSON.stringify(c.svis));
   ok(await page.locator('[data-bind="portVlan.7"]').isDisabled(), 'トランクのポートはVLAN番号を入力できない');
+  // VLAN番号の上下のボタン
+  await page.click('.vp:nth-child(2) [data-d="1"]'); await page.click('.vp:nth-child(2) [data-d="1"]'); await page.click('.vp:nth-child(2) [data-d="1"]');
+  ok((await cfg('l3')).portVlan[1] === 4 && await page.inputValue('[data-bind="portVlan.1"]') === '4', '▲ を3回押すと、VLAN番号が 1 → 4 になる');
+  await page.click('.vp:nth-child(2) [data-d="-1"]');
+  ok((await cfg('l3')).portVlan[1] === 3, '▼ で1減る');
+  for (let i = 0; i < 5; i++) await page.click('.vp:nth-child(2) [data-d="-1"]');
+  ok((await cfg('l3')).portVlan[1] === 1, '1 より小さくはならない');
+  ok(await page.locator('.vp:nth-child(8) [data-d="1"]').isDisabled(), 'トランクのポートは、上下のボタンも押せない');
+  // 設定パネルのポートの欄と、机の上のポートを、互いに強調する
+  const l3id = await page.evaluate(() => window.__bench.world.devices.find(d => d.kind === 'l3').id);
+  await page.hover('.vp:nth-child(3)');
+  ok(await page.locator(`#desk [data-port="${l3id}:2"].hl`).count() === 1 && await page.locator('#desk .port.hl').count() === 1, '設定パネルでポート3の欄にカーソルを乗せると、机の上のポート3が強調される');
+  await page.hover('.vp:nth-child(6) [data-d="1"]');
+  ok(await page.locator(`#desk [data-port="${l3id}:5"].hl`).count() === 1 && await page.locator('#desk .port.hl').count() === 1, '別のポートの欄に移ると、強調も移る');
+  await page.click('.vp:nth-child(6) [data-d="1"]');
+  ok(await page.locator(`#desk [data-port="${l3id}:5"].hl`).count() === 1, 'ボタンを押して机が描き直されても、強調は残る');
+  await page.hover('#panel h2');
+  ok(await page.locator('#desk .port.hl').count() === 0, 'ポートの欄から外れると、強調が消える');
+  await page.hover(`#desk [data-port="${l3id}:4"]`);
+  ok(await page.locator('#panel .vp.hl').count() === 1 && await page.locator('#panel .vp:nth-child(5).hl').count() === 1, '机の上のポート5にカーソルを乗せると、設定パネルのポート5の欄が強調される');
+  { const b = await page.locator('.desk-wrap').boundingBox(); await page.mouse.move(b.x + 30, b.y + 30); }
+  ok(await page.locator('#panel .hl').count() === 0, '机の上のポートから外れると、強調が消える');
+  const rid = await page.evaluate(() => window.__bench.world.devices.find(d => d.kind === 'router').id);
+  await page.evaluate(id => window.__bench.select(id), rid);
+  await page.hover('#panel .psec[data-port-hl="1"] h3');
+  ok(await page.locator(`#desk [data-port="${rid}:1"].hl`).count() === 1, 'ルーターの LAN1 の欄にカーソルを乗せると、机の上の LAN1 のポートが強調される');
+  await page.hover(`#desk [data-port="${rid}:0"]`);
+  ok(await page.locator('#panel .psec[data-port-hl="0"].hl').count() === 1, '机の上のWANポートにカーソルを乗せると、設定パネルのWANの欄が強調される');
 
   await buy('fw');
   await page.selectOption('[data-bind="wan.mode"]', 'static');

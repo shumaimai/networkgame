@@ -11,7 +11,7 @@ import type { App } from './app';
 import { sfx } from './audio';
 import { Desk, Sel } from './desk';
 import { guideChips, openGuide } from './guide';
-import { $, esc, img, nl2br, onAct, stars, yen } from './dom';
+import { $, esc, img, onAct, stars, yen } from './dom';
 import { COPY_LABEL, PanelCtx, ROW_TEMPLATE, VALID, cablePanel, copyKeys, copySource, devicePanel, setPath } from './panel';
 
 const PORTRAIT: Record<string, string> = { 会計事務所: 'p_office', 不動産店: 'p_shop', 保育園: 'p_school', 図書館: 'p_design', 事務所: 'p_office', 設計事務所: 'p_design', 店舗: 'p_shop', クリニック: 'p_clinic', 学習塾: 'p_school', 宿泊施設: 'p_hotel', 飲食店: 'p_cafe', 工場: 'p_factory' };
@@ -26,7 +26,13 @@ const fmtTime = (ms: number): string => { const s = Math.max(0, Math.floor(ms / 
 
 // 仕様書の中のIPアドレス、ネットワーク、名前、キーを、クリックでコピーできるようにする
 const COPY_RE = /(\d{1,3}(?:\.\d{1,3}){3}(?:\/\d{1,2})?|\*?[a-z0-9_-]+(?:\.[a-z0-9_-]+)+|(?<=(?:キー|SSID): )[\w-]+)/g;
-const copyable = (html: string): string => html.replace(COPY_RE, v => `<span class="cp" data-act="copy" data-v="${v}">${v}</span>`);
+// 「192.168.10.0/24」は、アドレスの部分と /24 の部分を分ける。アドレスをクリックすると /24 を除いてコピーし(IPアドレスの欄にそのまま貼れる)、/24 をクリックすると全体をコピーする
+const copyable = (html: string): string => html.replace(COPY_RE, v => {
+  const m = /^(\d{1,3}(?:\.\d{1,3}){3})(\/\d{1,2})$/.exec(v);
+  return m ? `<span class="cp" data-act="copy" data-v="${m[1]}">${m[1]}</span><span class="cp pre" data-act="copy" data-v="${v}" title="${v} をコピー">${m[2]}</span>` : `<span class="cp" data-act="copy" data-v="${v}">${v}</span>`;
+});
+// 仕様書の1項目: 改行ごとに段落にする(折り返した行と、次の行を見分けられるようにする)
+const specLines = (body: string, copy: boolean): string => body.split('\n').map(l => `<p class="sl">${copy ? copyable(esc(l)) : esc(l)}</p>`).join('');
 
 export function mountBench(app: App, root: HTMLElement): () => void {
   const game: Game = app.game, a: Active = game.s.active!, job: Job = game.activeJob!;
@@ -58,7 +64,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       <aside class="col left">
         <div class="client"><img src="${portrait(job.industry)}" alt=""><div><b>${esc(job.client)}</b><small>${esc(job.industry)}・${esc(job.person)}</small></div></div>
         <div class="brief">${esc(job.brief)}</div>
-        ${job.spec.length ? `<h3>仕様書<small>${tut ? '' : 'アドレスや名前は、クリックでコピーできます'}</small></h3><table class="spec">${job.spec.map(s => `<tr><th>${esc(s.head)}</th><td>${tut ? nl2br(s.body) : copyable(nl2br(s.body))}</td></tr>`).join('')}</table>` : ''}
+        ${job.spec.length ? `<h3>仕様書</h3>${tut ? '' : '<p class="spec-hint">アドレスや名前は、クリックでコピーできます。/24 は付きません。</p>'}<div class="spec stack">${job.spec.map(s => `<section><h4>${esc(s.head)}</h4>${specLines(s.body, !tut)}</section>`).join('')}</div>` : ''}
         ${tut ? '' : '<div id="b-guides"></div>'}
         <h3>お金</h3><div id="b-cost" class="cost"></div>
       </aside>
@@ -136,6 +142,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     link, removeCable, log,
     onSelect: () => { renderPanel(); updateCoach(); },
     onMoved: () => game.save(),
+    onPortHover: ref => hlPanel(ref && desk.sel?.kind === 'dev' && desk.sel.id === ref.dev ? ref.port : null),
     onView: () => { updateView(); if (tut) placeRing(ringTarget(tut.steps[stepIdx])); },
   });
 
@@ -279,8 +286,17 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     if (cur.length !== next.length) return;
     cur.forEach((el, i) => { if (el.innerHTML !== next[i].innerHTML) el.innerHTML = next[i].innerHTML; if (el.className !== next[i].className) el.className = next[i].className; });
   }
+  // 机の上のポートにカーソルが乗ったら、設定パネルの同じポートの欄を強調する
+  function hlPanel(port: number | null): void {
+    panel.querySelectorAll('.hl').forEach(e => e.classList.remove('hl'));
+    if (port == null) return;
+    const els = panel.querySelectorAll<HTMLElement>(`[data-port-hl="${port}"]`);
+    els.forEach(e => e.classList.add('hl'));
+    els[0]?.scrollIntoView({ block: 'nearest' });
+  }
   function renderPanel(): void {
     panelDev = '';
+    desk.highlightPort(null);
     const s: Sel = desk.sel;
     if (!s) { panel.innerHTML = '<div class="empty">机の上の機器やケーブルをクリックすると、ここに設定が出ます。<br><br>ケーブルを外す: ケーブルを選んで Delete キー、または右クリック。</div>'; return; }
     if (s.kind === 'cable') {
@@ -483,6 +499,17 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       case 'pan-right': desk.panBy(0.3, 0); sfx('tick'); break;
       case 'pan-up': desk.panBy(0, -0.3); sfx('tick'); break;
       case 'pan-down': desk.panBy(0, 0.3); sfx('tick'); break;
+      case 'step': {
+        // 上下のボタン: 数字の欄を1ずつ変える(入力したときと同じ処理に流す)
+        const inp = panel.querySelector<HTMLInputElement>(`[data-bind="${el.dataset.for}"]`);
+        if (!inp || inp.disabled) break;
+        const v = Math.max(Number(inp.min) || 1, Math.min(Number(inp.max) || 4094, (parseInt(inp.value, 10) || 0) + Number(el.dataset.d)));
+        if (String(v) === inp.value) break;
+        inp.value = String(v);
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        sfx('tick');
+        break;
+      }
       case 'toggle-buy': buyOpen = !buyOpen; sfx('tab'); renderPalette(); break;
       case 'coach-hint': hintLevel = hintStep === stepIdx ? hintLevel + 1 : 1; hintStep = stepIdx; sfx('open'); updateCoach(); break;
       case 'guide': sfx('open'); openGuide(app); break;
@@ -571,6 +598,15 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     changed();
     if ('rerender' in el.dataset) { sfx('tab'); renderPanel(); }
   });
+  // 設定パネルでポートごとの欄にカーソルが乗ったら、机の上の同じポートを強調する
+  let hlKey = '';
+  panel.addEventListener('pointerover', e => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-port-hl]'), key = el && desk.sel?.kind === 'dev' ? `${desk.sel.id}:${el.dataset.portHl}` : '';
+    if (key === hlKey) return;
+    hlKey = key;
+    desk.highlightPort(el && desk.sel?.kind === 'dev' ? { dev: desk.sel.id, port: Number(el.dataset.portHl) } : null);
+  });
+  panel.addEventListener('pointerleave', () => { hlKey = ''; desk.highlightPort(null); });
   panel.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target as HTMLElement).id === 'diag-target') diag('ping'); });
 
   // パレットの機材をつまむ

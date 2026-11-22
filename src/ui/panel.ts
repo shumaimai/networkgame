@@ -201,8 +201,13 @@ function panelBody(d: Device, ctx: PanelCtx): string {
   } else if (d.kind === 'l2m' || d.kind === 'l3') {
     const s = c as SwitchCfg;
     h += `<h3>ポートのVLAN<small>T = トランク(複数のVLANを通す)</small></h3><div class="vlans${d.ports.length > 8 ? ' many' : ''}">`
-      + d.ports.map((_, i) => `<div class="vp"><span>${i + 1}</span><input type="number" min="1" max="4094" data-bind="portVlan.${i}" data-num value="${esc(s.portVlan[i])}"${s.portMode[i] === 'trunk' ? ' disabled' : ''}>
-        <label title="トランク"><input type="checkbox" data-bind="portMode.${i}" data-trunk data-rerender${s.portMode[i] === 'trunk' ? ' checked' : ''}>T</label></div>`).join('') + '</div>'
+      + d.ports.map((_, i) => {
+        const trunk = s.portMode[i] === 'trunk', dis = trunk ? ' disabled' : '';
+        // VLAN番号は、右の上下のボタンで1ずつ変えられる
+        return `<div class="vp" data-port-hl="${i}"><span>${i + 1}</span><label title="トランク"><input type="checkbox" data-bind="portMode.${i}" data-trunk data-rerender${trunk ? ' checked' : ''}>T</label>
+          <input type="number" min="1" max="4094" data-bind="portVlan.${i}" data-num value="${esc(s.portVlan[i])}"${dis}>
+          <span class="stp"><button data-act="step" data-for="portVlan.${i}" data-d="1" title="1 増やす"${dis}>▲</button><button data-act="step" data-for="portVlan.${i}" data-d="-1" title="1 減らす"${dis}>▼</button></span></div>`;
+      }).join('') + '</div>'
       + '<div class="info">同じVLAN番号のポート同士だけが、同じネットワークになります。スイッチ同士をトランクでつなぐと、複数のVLANを1本のケーブルで運べます。</div>';
     if (d.kind === 'l3') {
       const l = c as L3Cfg;
@@ -215,17 +220,18 @@ function panelBody(d: Device, ctx: PanelCtx): string {
   } else if (isGateway(d.kind)) {
     const g = c as GwCfg, fw = d.kind === 'fw', cl = d.kind === 'cloud';
     const wi = ctx.net.ifaces.find(i => i.dev === d && i.wan), online = !!wi && ctx.net.ifaces.some(i => i.dev.kind === 'internet' && i.seg === wi.seg);
-    h += `<h3>${cl ? 'インターネット側' : d.ports[0] + '(外側)'}</h3>`;
+    h += `<div class="psec" data-port-hl="0"><h3>${cl ? 'インターネット側' : d.ports[0] + '(外側)'}</h3>`;
     if (fw) h += `<label class="f"><span>アドレス</span>${sel('wan.mode', [['auto', '回線から自動取得'], ['static', '手動で設定']], true)}</label>`;
     if (cl) h += `<div class="info">契約済みのクラウドです。インターネットには最初からつながっていて、ケーブルは要りません。<br>外側のアドレス: <code>${ipStr(CLOUD_IP)}</code></div>`;
     else if (g.wan.mode === 'auto') h += `<div class="info" data-live>回線につなぐと外側のアドレスを受け取り、外向きの通信はここから出ていきます。<br>${online ? `いまのアドレス: <code>${ipStr(wi!.ip)}/30</code>${wi!.via != null ? `<br>回線の向こう(プロバイダ側)のアドレス: <code>${ipStr(wi!.via)}</code>` : ''}` : 'まだ回線につながっていません。'}</div>`;
     else h += field('IPアドレス', 'wan.ip', 'ip') + mask('wan.prefix') + field('ゲートウェイ', 'wan.gw', 'ip');
     h += toggle('nat', `NAT(${cl ? '仮想ネットワーク' : '社内'}のアドレスを外側のアドレスに書き換える)`);
+    h += '</div>';
     g.lan.forEach((l, i) => {
       // ルーターの2つめ以降のLANは、使うことを習うまで隠す(ケーブルをつないだときは出す)
       if (i > 0 && d.kind === 'router' && !open('lan2') && !cabled(i + 1)) return;
       const pn = cl ? 'vNET' : d.ports[i + 1];
-      h += `<h3>${cl ? 'vNET<small>vNIC につないだ仮想サーバーのネットワーク</small>' : pn}</h3>` + field('IPアドレス', `lan.${i}.ip`, 'ip', i === 0 && !fw ? (cl ? '10.20.0.1' : '192.168.1.1') : '未使用なら空欄') + mask(`lan.${i}.prefix`);
+      h += `<div class="psec" data-port-hl="${i + 1}"><h3>${cl ? 'vNET<small>vNIC につないだ仮想サーバーのネットワーク</small>' : pn}</h3>` + field('IPアドレス', `lan.${i}.ip`, 'ip', i === 0 && !fw ? (cl ? '10.20.0.1' : '192.168.1.1') : '未使用なら空欄') + mask(`lan.${i}.prefix`);
       if (!cl && open('dhcp')) h += toggle(`lan.${i}.dhcpOn`, 'DHCPでアドレスを配る');
       if (l.dhcpOn && !cl) h += `<div class="svc"><div class="row pair">${inp(`lan.${i}.dhcpStart`, 'ip', '開始')}<span class="arrow">〜</span>${inp(`lan.${i}.dhcpEnd`, 'ip', '終了')}<span></span></div>${field('配るDNS', `lan.${i}.dhcpDns`, 'ip', `例 ${PUBLIC_DNS}`)}<div class="info">ゲートウェイには、この${pn}のIPアドレスを配ります。仮想IPを設定しているときは、仮想IPアドレスを配ります。</div></div>`;
       if (!cl && (ctx.level >= 21 || l.vip)) {
@@ -233,6 +239,7 @@ function panelBody(d: Device, ctx: PanelCtx): string {
         h += `<div class="row vr"><span class="vip-l">仮想IP</span>${inp(`lan.${i}.vip`, 'ip', '2台で同じアドレス(冗長化)')}<input type="number" min="1" max="254" data-bind="lan.${i}.prio" data-num value="${esc(l.prio ?? 100)}" title="優先度。大きいほうが、ふだん仮想IPアドレスを受け持つ"></div>`;
         h += `<div class="info" data-live>${!l.vip || d.off ? '' : (!grp ? '仮想IPアドレスが、このポートのネットワークの範囲にありません。' : grp.master === d.id ? `いまは<b>この機器</b>が ${esc(l.vip)} を受け持っています${grp.members.length < 2 ? '(同じ仮想IPアドレスを設定した機器が、ほかにありません)' : ''}。` : `いまは <b>${esc(ctx.devices.find(x => x.id === grp.master)?.name)}</b> が ${esc(l.vip)} を受け持っています。この機器は控えです。`) + '右の数字は優先度です。'}</div>`;
       }
+      h += '</div>';
     });
     if (ctx.level >= 20 || g.tunnels?.length || cl) {
       h += '<h3>拠点間VPN<small>インターネット経由で、ほかの拠点とつなぐ</small></h3>'
