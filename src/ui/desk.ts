@@ -144,19 +144,7 @@ export class Desk {
       h += `<rect class="strip" x="${-g.half + 6}" y="32" width="${g.half * 2 - 12}" height="${rows * 24 + 4}" rx="8"/>`;
     }
     h += `<image class="sprite" href="${img(d.model === 'vserver' ? 'vserver' : d.kind)}" x="${-sprite / 2}" y="${g.spriteY - sprite / 2}" width="${sprite}" height="${sprite}" filter="url(#shadow)"/>`;
-    const sc = d.kind === 'l2m' || d.kind === 'l3' ? (d.cfg as SwitchCfg) : null;
     if (host && !d.ports.length) h += '';
-    d.ports.forEach((name, i) => {
-      if (d.kind === 'cloud' && i === 0) return; // クラウドのWANは、ケーブルなしでインターネットにつながっている
-      const p = portRel(d, i), used = !!this.cableAt(d.id, i);
-      const active = this.linkFrom?.dev === d.id && this.linkFrom.port === i;
-      const trunk = sc?.portMode[i] === 'trunk';
-      const style = sc ? ` style="--vlan:${trunk ? '#ffffff' : vlanColor(Number(sc.portVlan[i]) || 1)}"` : '';
-      h += `<rect class="port${used ? ' used' : ''}${active ? ' active' : ''}${sc ? ' vl' : ''}" data-port="${d.id}:${i}" x="${p.x - 8}" y="${p.y - 8}" width="16" height="16" rx="4"${style}><title>${esc(d.name)} ${esc(name)}${sc ? (trunk ? ' トランク' : ' VLAN' + sc.portVlan[i]) : ''}</title></rect>`;
-      if (isGateway(d.kind)) h += i === 0 ? `<text class="plabel start" x="${p.x + 13}" y="${p.y + 4}">${esc(name)}</text>` : `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
-      else if (d.kind === 'internet' && d.ports.length > 1) h += `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
-      else if (sc) h += `<text class="plabel in" x="${p.x}" y="${p.y + 3.5}">${trunk ? 'T' : sc.portVlan[i]}</text>`;
-    });
     if (host) {
       let y = 50;
       h += `<text class="dname" y="${y}">${esc(d.name)}</text>`;
@@ -181,6 +169,24 @@ export class Desk {
     }
     if (d.off) h += `<g class="offmark"><rect x="-34" y="-24" width="68" height="24" rx="12"/><text y="-7">停止中</text></g>`;
     return h + '</g>';
+  }
+
+  // ポートは機器の絵より先に描かない。ほかの機器が重なっても、最前面の層として必ずクリックできるようにする
+  private portSvg(d: Device): string {
+    const sc = d.kind === 'l2m' || d.kind === 'l3' ? (d.cfg as SwitchCfg) : null;
+    let h = '';
+    d.ports.forEach((name, i) => {
+      if (d.kind === 'cloud' && i === 0) return; // クラウドのWANは、ケーブルなしでインターネットにつながっている
+      const p = portRel(d, i), used = !!this.cableAt(d.id, i);
+      const active = this.linkFrom?.dev === d.id && this.linkFrom.port === i;
+      const trunk = sc?.portMode[i] === 'trunk';
+      const style = sc ? ` style="--vlan:${trunk ? '#ffffff' : vlanColor(Number(sc.portVlan[i]) || 1)}"` : '';
+      h += `<rect class="port${used ? ' used' : ''}${active ? ' active' : ''}${sc ? ' vl' : ''}" data-port="${d.id}:${i}" x="${p.x - 8}" y="${p.y - 8}" width="16" height="16" rx="4"${style}><title>${esc(d.name)} ${esc(name)}${sc ? (trunk ? ' トランク' : ' VLAN' + sc.portVlan[i]) : ''}</title></rect>`;
+      if (isGateway(d.kind)) h += i === 0 ? `<text class="plabel start" x="${p.x + 13}" y="${p.y + 4}">${esc(name)}</text>` : `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
+      else if (d.kind === 'internet' && d.ports.length > 1) h += `<text class="plabel" x="${p.x}" y="${p.y + 21}">${esc(name)}</text>`;
+      else if (sc) h += `<text class="plabel in" x="${p.x}" y="${p.y + 3.5}">${trunk ? 'T' : sc.portVlan[i]}</text>`;
+    });
+    return h ? `<g transform="translate(${d.x},${d.y})">${h}</g>` : '';
   }
 
   private cablePath(c: Cable): string {
@@ -218,6 +224,7 @@ export class Desk {
       if (cloud) h += `<line class="wifi vpn" x1="${d.x + 40}" y1="${d.y}" x2="${cloud.x - 50}" y2="${cloud.y}"/>`;
     }
     for (const d of w.devices) h += this.devSvg(d);
+    for (const d of w.devices) h += this.portSvg(d);
     if (this.linkFrom) {
       const p = this.portAbs(this.linkFrom);
       h += `<line class="rubber" x1="${p.x}" y1="${p.y}" x2="${this.mouse.x}" y2="${this.mouse.y}"/>`;

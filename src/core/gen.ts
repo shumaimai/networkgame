@@ -3,8 +3,8 @@
 // トラブル対応は、正解の構成に不具合を入れて壊したものを初期状態にする
 import { Check, Target, describe, evaluate } from './checks';
 import { cidrStr, ipStr, parseIp } from './ip';
-import { Builder, DESK_W, Factor, Job, JobCheck, SpecRow, mulberry, pick, randInt, worldCost } from './job';
-import { Device, GwCfg, InetCfg, L3Cfg, Rule, ServerCfg, dkimKey, isEndpoint, isGateway, makeDevice } from './model';
+import { Builder, DESK_H, DESK_W, Factor, Job, JobCheck, SpecRow, mulberry, pick, randInt, worldCost } from './job';
+import { Device, GwCfg, InetCfg, L3Cfg, Rule, ServerCfg, dkimKey, isEndpoint, isGateway, isHost, makeDevice } from './model';
 import { scenario } from './scen';
 import { EXTERNAL } from './sim';
 import { Base, INDUSTRIES, NAMES, finish, makeTrouble } from './genlib';
@@ -613,11 +613,29 @@ function layout(_b: Builder, t: { groups: { hosts: Device[]; sw?: Device }[]; in
   const width = (t.side.length ? DESK_W - 330 : DESK_W - 140);
   const step = Math.min(132, width / (n + gaps * 0.7));
   const two = step < 112;
-  // ある段だけを、上から下まで等間隔に並べる
+  // ある段だけを、上から下まで並べる。段の間隔は、上の段のポートの下端と下の段のポートの上端が重ならない広さにする
   const hasSw = t.groups.some(g => g.sw);
   const tiers = [t.inet ? 'inet' : '', t.gwDev ? 'gw' : '', t.l3 ? 'l3' : '', hasSw ? 'sw' : '', 'host'].filter(Boolean);
-  const top = t.inet ? 82 : 150, bottom = two ? 585 : 650;
-  const yOf = (k: string) => (tiers.length === 1 ? bottom : top + ((bottom - top) * tiers.indexOf(k)) / (tiers.length - 1));
+  const portRows = (d?: Device | null) => (d ? Math.ceil(Math.max(1, d.ports.length - (isGateway(d.kind) ? 1 : 0)) / 12) : 1);
+  const down = (d?: Device | null) => (!d ? 0 : d.kind === 'internet' ? 72 : isHost(d.kind) ? 8 : 58 + 24 * (portRows(d) - 1));
+  const up = (d?: Device | null) => (!d ? 0 : isGateway(d.kind) ? 72 : isHost(d.kind) ? 64 : 54);
+  const sDown = (d?: Device | null) => (!d ? 0 : isHost(d.kind) ? 98 : d.kind === 'internet' ? (d.ports.length > 1 ? 94 : 80) : 46 + 24 * portRows(d) + 18);
+  const sUp = (d?: Device | null) => (!d ? 0 : isGateway(d.kind) ? 80 : isHost(d.kind) ? 72 : d.kind === 'internet' ? 68 : 58);
+  const repOf = (k: string) => k === 'inet' ? t.inet : k === 'gw' ? t.gwDev : k === 'l3' ? t.l3 : k === 'sw'
+    ? t.groups.map(g => g.sw).filter((s): s is Device => !!s).reduce<Device | undefined>((a, b) => (!a || portRows(a) < portRows(b) ? b : a), undefined)
+    : t.groups[0]?.hosts[0];
+  // ポートが重ならない最小の間隔と、枠(機器の形)まで離れた間隔のあいだで、机に収まるよう伸縮する
+  const pairs = tiers.slice(1).map(k => [repOf(tiers[tiers.indexOf(k) - 1]), repOf(k)] as const);
+  const min = pairs.map(([a, b]) => down(a) + up(b) + 4);
+  const wide = pairs.map(([a, b]) => sDown(a) + sUp(b) + 6);
+  const avail = DESK_H - 100 - (two ? 110 : 0) - (t.inet ? 64 : 150);
+  const minSum = min.reduce((s, v) => s + v, 0), wideSum = wide.reduce((s, v) => s + v, 0);
+  const grow = wideSum > minSum ? Math.min(1, Math.max(0, (avail - minSum) / (wideSum - minSum))) : 0;
+  const ys: Record<string, number> = {};
+  let y = t.inet ? 64 : 150;
+  for (const [i, k] of tiers.slice(1).entries()) y += min[i] + (wide[i] - min[i]) * grow, ys[k] = y;
+  ys[tiers[0]] = t.inet ? 64 : 150;
+  const yOf = (k: string) => ys[k] ?? 650;
   put(t.inet, cx, yOf('inet'));
   put(t.gwDev, cx, yOf('gw'));
   put(t.web, cx + 330, yOf('gw'));
