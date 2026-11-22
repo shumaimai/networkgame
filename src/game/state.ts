@@ -3,6 +3,7 @@ import { CheckResult } from '../core/checks';
 import { generate } from '../core/gen';
 import { Job, mulberry, worldCost } from '../core/job';
 import { CABLE_PRICE, Device, MODEL, MODELS, World, clone, makeDevice } from '../core/model';
+import { regularJob } from './regular';
 import { TUTORIALS, tutorialJob } from './tutorial';
 
 export const MAX_LEVEL = 24;
@@ -38,7 +39,9 @@ export const LEVELS: LevelInfo[] = [
   { level: 24, title: '統括', unlocks: ['複数の拠点とクラウドをまたぐ総合案件'] },
 ];
 
-export interface Offer { id: string; seed: number; level: number; kind: 'build' | 'trouble'; ease: number }
+export interface Offer { id: string; seed: number; level: number; kind: 'build' | 'trouble'; ease: number; /** 常連のお客様からの依頼 */ special?: 'tanaka' }
+/** 常連の依頼が出はじめる週 */
+export const REGULAR_WEEK = 3;
 export interface HelpUse { plan: boolean; reasons: boolean; answer: boolean }
 export interface Active {
   offer: Offer | null;
@@ -89,6 +92,10 @@ export interface Save {
   weekSeen?: number;
   /** 直前の週の変わり目に払った倉庫代 */
   lastFee?: number;
+  /** 納品したときの机の上(常連の依頼で、続きから作業するために残す) */
+  keep?: Record<string, World>;
+  /** 納品し終えた常連の依頼 */
+  regularDone?: string[];
   settings: { sfx: number; bgm: number };
 }
 
@@ -156,6 +163,14 @@ export class Game {
     const list = this.catalog.map(m => ({ model: m, before: at(m, prev[m] ?? 1), now: this.price(m) })).filter(x => Math.abs(x.now / x.before - 1) >= 0.1);
     list.sort((a, b) => a.now / a.before - b.now / b.before);
     return { down: list.filter(x => x.now < x.before).slice(0, max), up: list.filter(x => x.now > x.before).reverse().slice(0, max) };
+  }
+  /** 机の上の在庫品を、今週の値段で新品を買った場合と比べて浮いた額 */
+  stockSaving(w: World): number {
+    return w.devices.reduce((t, d) => t + (d.own === 'stock' ? Math.max(0, this.price(d.model) - d.cost) : 0), 0);
+  }
+  /** まだ買えない機材のうち、次に買えるようになるもの */
+  upcoming(max = 3): string[] {
+    return MODELS.filter(m => m.price > 0 && m.level > this.level).sort((a, b) => a.level - b.level).slice(0, max).map(m => m.id);
   }
   get stockUsed(): number { return Object.entries(this.s.stock).reduce((t, [m, i]) => t + MODEL[m].size * i.qty, 0); }
   stockQty(model: string): number { return this.s.stock[model]?.qty ?? 0; }
@@ -228,6 +243,10 @@ export class Game {
     this.s.board = eases.map((ease, i) => ({
       id: `w${this.s.week}-${i}`, seed: Math.floor(r() * 2 ** 31), level, kind: troubles.has(i) ? 'trouble' as const : 'build' as const, ease,
     }));
+    // 常連のお客様: 納品するまで、いちばん易しい枠に出し続ける
+    if (this.tutorialFinished && this.s.week >= REGULAR_WEEK && !this.s.regularDone?.includes('tanaka')) {
+      this.s.board[0] = { id: `w${this.s.week}-r`, seed: 0, level: 1, kind: 'build', ease: 0, special: 'tanaka' };
+    }
   }
   /** 1週間進める: 倉庫代を払い、相場とボードが変わる */
   nextWeek(): void {
@@ -240,7 +259,7 @@ export class Game {
   }
   job(o: Offer): Job {
     let j = this.jobCache.get(o.id + o.seed);
-    if (!j) { j = generate(o.seed, o.level, { kind: o.kind, ease: o.ease }); this.jobCache.set(o.id + o.seed, j); }
+    if (!j) { j = o.special ? regularJob(this.s.keep?.t1) : generate(o.seed, o.level, { kind: o.kind, ease: o.ease }); this.jobCache.set(o.id + o.seed, j); }
     return j;
   }
   get activeJob(): Job | null {
@@ -368,6 +387,8 @@ export class Game {
     this.s.history.unshift({ client: job.client, title: job.title, kind: job.kind, stars, profit: reward - cost, week: this.s.week });
     this.s.history.length = Math.min(this.s.history.length, 50);
     if (a.tutorial) { if (!this.s.tutorialDone.includes(a.tutorial)) this.s.tutorialDone.push(a.tutorial); }
+    if (a.tutorial === 't1') this.s.keep = { ...this.s.keep, t1: clone(a.world) };
+    if (a.offer?.special) this.s.regularDone = [...(this.s.regularDone ?? []), a.offer.special];
     this.s.active = null;
     const levelAfter = this.level;
     const unlocks = LEVELS.filter(l => l.level > levelBefore && l.level <= levelAfter).flatMap(l => l.unlocks);

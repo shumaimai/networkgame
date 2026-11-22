@@ -24,12 +24,18 @@ export function mountShop(app: App, root: HTMLElement): () => void {
         <button class="btn primary" data-act="buy" data-m="${m}"${q.total > game.s.money || !fits ? ' disabled' : ''}>${fits ? '仕入れる' : 'スロット不足'}</button>
       </div>`;
     }).join('');
+    // 次に買えるようになる機材(まだ買えない)
+    const soon = game.upcoming(3).map(m => {
+      const M = MODEL[m];
+      return `<div class="shop-row locked"><img src="${img(M.kind)}" alt=""><div class="s-name"><b>${esc(M.label)}</b><small>${esc(M.desc)}</small></div>
+        <div class="s-price"><b>定価 ${yen(M.price)}</b></div><div class="s-size">${M.size}スロット</div><div class="s-lock">Lv.${M.level} で買えるようになります</div></div>`;
+    }).join('');
     root.innerHTML = `<div class="hub">${statusBar(game, 'shop')}
       <div class="page">
         <div class="board-head"><h2>仕入れ</h2><p>値段は週ごとに変わります。仕入れた機材は倉庫に入り、依頼の作業で使えます。</p>
           <div class="slotbox">倉庫 <b>${used} / ${cap}</b> スロット<button class="btn small" data-act="go-ware">倉庫へ</button></div></div>
         <div class="bulk">まとめ買い ${BULK.slice().reverse().map(([n, r]) => `<span>${n}台以上 <b>−${Math.round(r * 100)}%</b></span>`).join('')}</div>
-        <div class="shop-rows">${rows}</div>
+        <div class="shop-rows">${rows}${soon}</div>
       </div></div>`;
   }
 

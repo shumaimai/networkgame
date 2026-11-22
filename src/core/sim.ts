@@ -49,6 +49,8 @@ export interface Net {
   storm: Set<string>;
   /** VRRPの組と、いまマスターになっている機器 */
   vrrp: VrrpGroup[];
+  /** 故障テストで止めてある機器のID */
+  off: Set<string>;
 }
 export type Fail = { ok: false; reason: string };
 const fail = <T extends object>(reason: string, extra?: T): Fail & T => ({ ok: false, reason, ...(extra as T) });
@@ -93,6 +95,9 @@ const proxyAllows = (px: Device, ip: number): boolean => {
 };
 
 export function build(devices: Device[], cables: Cable[], opts: { trace?: boolean } = {}): Net {
+  // 止めてある機器は、机にないものとして扱う(つながっているケーブルも通らない)
+  const off = new Set(devices.filter(d => d.off).map(d => d.id));
+  if (off.size) devices = devices.filter(d => !d.off);
   const parent = new Map<string, string>(), adj = new Map<string, Edge[]>();
   const find = (k: string): string => {
     let r = k;
@@ -297,7 +302,7 @@ export function build(devices: Device[], cables: Cable[], opts: { trace?: boolea
   }
   const storm = new Set<string>();
   for (const id of deg.keys()) if (byId.get(id)!.kind === 'l2') for (const t of tags) storm.add(find(sw(id, t)));
-  return { devices, byId, ifaces, eff, adj, trace: opts.trace ? [] : null, storm, vrrp };
+  return { devices, byId, ifaces, eff, adj, trace: opts.trace ? [] : null, storm, vrrp, off };
 }
 
 const ifs = (net: Net, dev: Device): Iface[] => net.ifaces.filter(i => i.dev === dev);

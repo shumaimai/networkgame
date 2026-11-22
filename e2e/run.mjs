@@ -54,16 +54,20 @@ try {
   const c1 = await center('[data-dev="pc1"] image'); await page.mouse.click(c1.x, c1.y);
   await page.fill('[data-bind="ip"]', '192.168.1.10');
   const c2 = await center('[data-dev="pc2"] image'); await page.mouse.click(c2.x, c2.y);
-  await page.fill('[data-bind="ip"]', '192.168.1.11');
-  ok(/ステップ 8/.test(await coach()), 'IPを入れるとステップ8: ' + await coach());
+  await page.fill('[data-bind="ip"]', '192.168.1.10');
+  ok(/ステップ 7/.test(await coach()), 'PC-1 と同じ番号では先へ進まない: ' + await coach());
+  await page.click('[data-act="coach-hint"]');
+  ok(/192\.168\.1\.11/.test(await txt('.coach-hint')), '「ヒント」を押すと例が出る');
+  await page.fill('[data-bind="ip"]', '192.168.1.37');
+  ok(/ステップ 8/.test(await coach()), '自分で選んだ番号でステップ8に進む: ' + await coach());
   ok((await pass()) === '2/2', '検収テスト 2/2');
   await page.mouse.click(c1.x, c1.y);
-  await page.fill('#diag-target', '192.168.1.11');
+  await page.fill('#diag-target', '192.168.1.37');
   await page.click('[data-diag="ping"]');
   ok(/応答あり/.test(await txt('#console')), 'pingが通る');
   ok(/ステップ 9/.test(await coach()), 'pingでステップ9');
   await page.click('[data-diag="arp"]'); await page.click('[data-diag="ipconfig"]');
-  ok(/192\.168\.1\.11\s+00-00-5E/.test(await txt('#console')), 'arp表が出る');
+  ok(/192\.168\.1\.37\s+00-00-5E/.test(await txt('#console')), 'arp表が出る');
   await page.click('[data-act="deliver"]');
   ok(/納品完了/.test(await txt('.modal')) && /レベルアップ/.test(await txt('.modal')), '納品結果とレベルアップ');
   ok(await page.locator('.r-stars .on').count() === 3, '★3');
@@ -89,6 +93,9 @@ try {
   // ---- 研修3: 既設のネットワークを直す ----
   await page.click('[data-act="tutorial"]');
   ok(await page.locator('#desk .dev').count() === 6 && await page.locator('#desk .cable').count() === 4, '研修3は既設の機器とケーブルから始まる');
+  ok(!/プリンタにケーブル/.test(await txt('#coach')), '研修3は、最初から原因を言わない');
+  await page.click('[data-act="coach-hint"]');
+  ok(/プリンタにケーブルがつながっていません/.test(await txt('.coach-hint')), '研修3のヒントで原因が出る');
   await clickPort('prn:0'); await clickPort('sw:3');
   const p2 = await center('[data-dev="pc2"] image'); await page.mouse.click(p2.x, p2.y);
   await page.fill('#diag-target', '8.8.8.8'); await page.click('[data-diag="tracert"]');
@@ -148,7 +155,7 @@ try {
   await page.click('.card >> nth=2'); await page.click('[data-act="accept"]');
   ok(await page.locator('[data-pal="stk:l2-8"]').count() === 1, '作業画面のパレットに在庫が出る');
   await page.click('[data-pal="stk:l2-8"]');
-  ok(/残り 2/.test(await txt('[data-pal="stk:l2-8"]')), '在庫を机に出すと残りが減る');
+  ok(/×2/.test(await txt('[data-pal="stk:l2-8"]')) && /仕入れ値/.test(await txt('[data-pal="stk:l2-8"]')), '在庫を机に出すと残りが減り、仕入れ値が出ている');
   await page.click('[data-act="menu"]'); await page.click('[data-act="abandon"]');
   ok(!(await state()).active && await page.evaluate(() => window.app.game.stockQty('l2-8')) === 3, '取り下げると在庫が戻る');
 

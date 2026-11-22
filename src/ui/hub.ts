@@ -4,10 +4,10 @@ import { MODEL } from '../core/model';
 import { Game, LEVELS, MAX_LEVEL, Offer, PriceMove, xpFor } from '../game/state';
 import { TUTORIALS, tutorialJob } from '../game/tutorial';
 import type { App } from './app';
-import { setVolume, sfx } from './audio';
+import { setBgm, setVolume, sfx } from './audio';
 import { portrait } from './bench';
 import { esc, nl2br, onAct, stars, yen } from './dom';
-import { openGuide } from './guide';
+import { guideChips, openGuide } from './guide';
 
 const TABS: [string, string][] = [['hub', '受注'], ['shop', '仕入れ'], ['ware', '倉庫']];
 
@@ -111,7 +111,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
         <div class="cards">${game.s.board.map(o => {
           const j = game.job(o);
           return `<button class="card" data-act="offer" data-id="${o.id}">
-            <div class="card-top">${kindChip(j)}${diffStars(j.difficulty.stars)}</div>
+            <div class="card-top"><span>${kindChip(j)}${o.special ? ' <span class="chip regular">常連</span>' : ''}</span>${diffStars(j.difficulty.stars)}</div>
             <div class="card-client"><img src="${portrait(j.industry)}" alt=""><div><b>${esc(j.client)}</b><small>${esc(j.industry)}</small></div></div>
             <h3>${esc(j.title)}</h3>
             <p class="card-brief">${esc(j.brief)}</p>
@@ -119,7 +119,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
             <div class="tags">${j.tags.slice(0, 8).map(t => `<i>${esc(t)}</i>`).join('')}</div>
             <div class="card-checks"><small>検収テスト ${j.checks.length}項目</small><ul>${j.checks.map(c => `<li>${esc(c.label)}</li>`).join('')}</ul></div>
             <div class="card-facts"><div><span>難易度の点数</span><b>${j.difficulty.score}点</b></div><div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div><div><span>納期(チャレンジ)</span><b>${j.minutes}分</b></div></div>
-            <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind !== 'trouble' ? `<span>機材費の目安 ${yen(game.parNow(j))}</span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
+            <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind !== 'trouble' ? `<span>機材費の目安 ${yen(game.parNow(j))} ・ 見込み利益 <i>${yen(game.rewardOf(j) - game.parNow(j))}</i></span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
         }).join('')}</div>`;
     }
     root.innerHTML = `<div class="hub">${statusBar(game, 'hub')}<div class="hub-main">${main}</div></div>`;
@@ -129,6 +129,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
   function openOffer(o: Offer): void {
     const j = game.job(o), reward = game.rewardOf(j), busy = !!game.s.active, [l3] = game.starLimits(j);
     let challenge = false;
+    const chips = guideChips(game, [...j.tags, ...(j.kind === 'trouble' ? ['トラブル対応'] : [])]);
     const body = () => `
       <div class="offer">
         <div class="offer-head"><img src="${portrait(j.industry)}" alt=""><div>${kindChip(j)}<h2>${esc(j.title)}</h2><small>${esc(j.client)}(${esc(j.industry)})・${esc(j.person)}</small></div></div>
@@ -139,6 +140,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
           <div><h3>難易度 ${diffStars(j.difficulty.stars)}<small>${j.difficulty.score}点</small></h3>
             <table class="factors">${j.difficulty.factors.map(f => `<tr><td>${esc(f.label)}</td><td>+${f.pts}</td></tr>`).join('')}</table>
             <small class="mute">合計が8点までは★1、17点まで★2、29点まで★3、44点まで★4、45点以上は★5です。</small>
+            ${chips ? `<h3>関連するガイド<small>読んでから受注できます</small></h3><div class="gchips">${chips}</div>` : ''}
             <h3>お金</h3>
             <div class="cost"><div><span>契約金</span><b>${yen(reward)}</b></div><div><span>前金(受注したときに受け取る)</span><b>${yen(Math.round(reward / 2 / 500) * 500)}</b></div>
               ${j.kind !== 'trouble' ? `<div><span>機材費の目安(今週の値段)</span><b>${yen(game.parNow(j))}</b></div><div><span>★3になる機材費</span><b>${yen(l3)} 以下</b></div>` : ''}<div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div></div>
@@ -150,7 +152,11 @@ export function mountHub(app: App, root: HTMLElement): () => void {
       </div>`;
     const m = app.modal(body(), { wide: true });
     m.addEventListener('change', e => { if ((e.target as HTMLElement).id === 'challenge') { challenge = (e.target as HTMLInputElement).checked; sfx('tab'); } });
-    onAct(m, act => { if (act === 'accept') { sfx('coin'); game.accept(o, challenge); app.closeModal(); app.show('bench'); } });
+    onAct(m, (act, el) => {
+      if (act === 'accept') { sfx('coin'); game.accept(o, challenge); app.closeModal(); app.show('bench'); }
+      // ガイドを読み終えたら、この依頼の詳細に戻る
+      if (act === 'guide-to') { sfx('open'); openGuide(app, el.dataset.id, () => openOffer(o)); }
+    });
   }
 
   onAct(root, (act, el) => {
@@ -188,6 +194,7 @@ export function openSettings(app: App): void {
   const s = app.game.s.settings;
   const m = app.modal(`<h2>設定</h2>
     <label class="f range"><span>効果音の大きさ</span><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.sfx}"></label>
+    <label class="f range"><span>BGMの大きさ</span><input type="range" id="bgm" min="0" max="1" step="0.05" value="${s.bgm}"></label>
     <label class="f"><span>画面</span><button class="btn" data-act="fullscreen">全画面にする / 戻す</button></label>
     <h3>セーブデータ</h3>
     <button class="btn danger" data-act="wipe">セーブデータを消して最初から始める</button>
@@ -195,6 +202,7 @@ export function openSettings(app: App): void {
   m.addEventListener('input', e => {
     const el = e.target as HTMLInputElement;
     if (el.id === 'vol') { s.sfx = Number(el.value); setVolume(s.sfx); app.game.save(); sfx('ok'); }
+    if (el.id === 'bgm') { s.bgm = Number(el.value); setBgm(s.bgm); app.game.save(); }
   });
   onAct(m, (act, el) => {
     if (act === 'fullscreen') { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => {}); }

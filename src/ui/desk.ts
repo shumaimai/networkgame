@@ -137,7 +137,7 @@ export class Desk {
   private devSvg(d: Device): string {
     const g = geo(d), host = isHost(d.kind), selected = this.sel?.kind === 'dev' && this.sel.id === d.id;
     const sprite = SPRITE[d.kind] ?? g.sprite;
-    let h = `<g class="dev k-${d.kind}${selected ? ' sel' : ''}" data-dev="${d.id}" transform="translate(${d.x},${d.y})">`;
+    let h = `<g class="dev k-${d.kind}${selected ? ' sel' : ''}${d.off ? ' off' : ''}" data-dev="${d.id}" transform="translate(${d.x},${d.y})">`;
     h += `<rect class="selbox" x="${-g.half}" y="${g.top}" width="${g.half * 2}" height="${g.bottom - g.top}" rx="14"/>`;
     if (!host && d.kind !== 'internet') {
       const n = d.ports.length - (isGateway(d.kind) ? 1 : 0), rows = Math.ceil(n / 12);
@@ -179,6 +179,7 @@ export class Desk {
       h += `<text class="dname side" x="${x}" y="-26">${esc(d.name)}</text>`;
       this.infoLines(d).forEach((t, i) => { h += `<text class="dip side" x="${x}" y="${-10 + i * 13}">${esc(t)}</text>`; });
     }
+    if (d.off) h += `<g class="offmark"><rect x="-34" y="-24" width="68" height="24" rx="12"/><text y="-7">停止中</text></g>`;
     return h + '</g>';
   }
 
@@ -205,7 +206,7 @@ export class Desk {
     for (const c of w.cables) {
       if (!this.dev(c.a.dev) || !this.dev(c.b.dev)) continue;
       const p = this.cablePath(c), sel = this.sel?.kind === 'cable' && this.sel.id === c.id;
-      h += `<g class="cable${sel ? ' sel' : ''}${c.free ? ' free' : ''}" data-cable="${c.id}"><path class="hit" d="${p}"/><path class="wire-bg" d="${p}"/><path class="wire" d="${p}"/></g>`;
+      h += `<g class="cable${sel ? ' sel' : ''}${c.free ? ' free' : ''}${this.dev(c.a.dev)!.off || this.dev(c.b.dev)!.off ? ' dead' : ''}" data-cable="${c.id}"><path class="hit" d="${p}"/><path class="wire-bg" d="${p}"/><path class="wire" d="${p}"/></g>`;
     }
     // 無線でつながっているPCとアクセスポイント
     for (const d of w.devices) {

@@ -10,7 +10,8 @@
 - `node e2e/adv.mjs` Lv.17 以降の依頼を種類ごとに1件ずつ、机に置く・つなぐ・片付ける操作で組んで納品する。依頼の種類や検収テストを足したら必ず通す
 - `node e2e/shot.mjs <title|hub|board|offer|t1|shop|ware|guide [項目id]|solved|trouble|adv [タグか題名の一部] [機器の種類]|adv0 ...>` 画面を `shots/` に撮る(adv は模範解答を置いた状態、adv0 は受注した直後)
 - `npm run build` → `dist/` / `npm run app` デスクトップアプリで起動 / `npm run package` → `release/`(確認は `node e2e/app.mjs`。シェルに ELECTRON_RUN_AS_NODE があると起動しないので unset する)
-- 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs)を通す
+- `node e2e/extra.mjs` ガイドへの近道、故障テスト、コピーと設定を写すボタン、常連の依頼、仕入れの画面
+- 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs)を通す
 
 ## 構成
 - `src/core/` 画面に依存しない中身
@@ -29,6 +30,10 @@
 - 生成した依頼は必ず `evaluate(solution)` が全合格になること(tests/gen.test.ts が全レベルで確認)
 - 検収テストから、プレイヤーが購入して置く機器をIDで指さない(置いたときにIDが変わる)。名前解決、IPアドレス、機器の種類で指す。お客様の機器(supplied)と据え付けの設備(fixed)はIDで指してよい
 - すでに出ているレベルの依頼の中身を変えない。新しい内容の抽選には別の乱数(gen.ts の `r2`)を使い、新しい不具合は `faultCatalog2` に足す
+- 画面(`mountXxx`)は、渡された root にクリックなどの処理を付けてよい。`App.show` が画面ごとに root を作り直すので、前の画面の処理は残らない(root を使い回すと、同じ操作が何回も実行される)
+- 設定パネルの見出し(`<h3>`)を足したら、panel.ts の `HELP` に対応するガイドの項目を足す。依頼のタグを足したら、guide.ts の `TAG_GUIDE` に足す
+- 機器の `off`(故障テストで止めてある)は、sim.ts の `build` が机にないものとして扱う。止めたままでは納品できない
+- 常連の依頼(`game/regular.ts`)は、納品したときの机の上(`Save.keep`)を最初の状態にする。いまは研修1の田中税理士事務所だけ
 - 新しい設定項目を足したら `defaultCfg` に入れる。古いセーブには `fillCfg` が補う。設定欄は `PanelCtx.level` で、そのレベルに届くまで隠す
 - チュートリアルの案内は `[data-pal]` `[data-dev]` `[data-port]` `[data-diag]` `[data-act]` を目印にしている。属性名を変えたら tutorial.ts も直す
 - シェル経由のコマンドは約8KBで切れる。大きなファイルはヒアドキュメントで書かない

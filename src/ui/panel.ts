@@ -2,6 +2,7 @@
 import { ipStr, maskOf, parseCidr, parseCidrList, parseIp } from '../core/ip';
 import { CABLE_PRICE, Cable, Device, GwCfg, L3Cfg, MODEL, ServerCfg, SVC, Svc, SwitchCfg, deniesByDefault, dkimKey, isEndpoint, isGateway, isHost } from '../core/model';
 import { CLOUD_IP, EXTERNAL, Net, PUBLIC_DNS, lineIp, reach, tunnelState } from '../core/sim';
+import { ENTRY } from '../game/guide';
 import { esc, yen } from './dom';
 
 const PREFIXES = [8, 16, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
@@ -36,7 +37,15 @@ export function setPath(o: any, path: string, v: any): void {
 const OWN: Record<string, string> = { fixed: '据え付けの設備', supplied: 'お客様の機器', stock: '在庫から使用' };
 
 /** level: いまのレベル。まだ習っていない内容の設定欄は出さない */
-export interface PanelCtx { net: Net; diagTarget: string; cables: Cable[]; devices: Device[]; level: number }
+export interface PanelCtx { net: Net; diagTarget: string; cables: Cable[]; devices: Device[]; level: number; /** 入力を助けるボタンを出す(研修では出さない) */ assist?: boolean }
+
+/** 同じスイッチにつながっている、設定済みの端末(設定を写す元にする) */
+export function copySource(d: Device, ctx: Pick<PanelCtx, 'cables' | 'devices'>): Device | null {
+  const other = (c: Cable, id: string) => (c.a.dev === id ? c.b.dev : c.b.dev === id ? c.a.dev : null);
+  const hubs = ctx.cables.map(c => other(c, d.id)).filter((x): x is string => !!x);
+  const near = ctx.devices.filter(x => x !== d && isEndpoint(x.kind) && (x.cfg.mode === 'dhcp' || x.cfg.ip) && ctx.cables.some(c => hubs.includes(other(c, x.id) ?? '')));
+  return near.find(x => x.kind === d.kind) ?? near[0] ?? null;
+}
 
 export function cablePanel(c: Cable, devices: Device[]): string {
   const a = devices.find(d => d.id === c.a.dev)!, b = devices.find(d => d.id === c.b.dev)!;
@@ -45,7 +54,31 @@ export function cablePanel(c: Cable, devices: Device[]): string {
     <button class="btn danger wide" data-act="unplug">ケーブルを外す${c.free ? '' : '(返金)'}</button>`;
 }
 
+// 設定欄の見出しと、それを説明しているガイドの項目。先に書いた項目から、いまのレベルで読めるものを選ぶ
+const HELP: [RegExp, (k: string) => string[]][] = [
+  [/^ネットワーク設定/, k => (k === 'server' || k === 'nas' ? ['server'] : k === 'lb' ? ['lb'] : ['ip'])],
+  [/^Webプロキシ/, () => ['proxy']], [/^無線LAN/, () => ['ap']],
+  [/^DNSサービス/, () => ['server-dns']], [/^DHCPサービス/, () => ['relay', 'dhcp']], [/^プロキシサービス/, () => ['proxy']],
+  [/^Webサービス/, () => ['https', 'forward', 'server']], [/^リバースプロキシ/, () => ['rproxy']], [/^ファイル共有/, () => ['nas']],
+  [/^メールサービス/, () => ['mail']], [/^監視サービス/, () => ['monitor']],
+  [/^説明/, k => (k === 'wan' ? ['wan'] : ['l2'])], [/^ポートのVLAN/, () => ['vlan']], [/^VLANインターフェース/, () => ['l3']],
+  [/^スタティックルート/, () => ['route']], [/^フィルター/, k => (k === 'fw' ? ['fw', 'filter'] : ['filter'])], [/^セキュリティグループ/, () => ['cloud']],
+  [/^(WAN|インターネット側)/, k => (k === 'cloud' ? ['cloud'] : ['nat'])], [/^(LAN\d?|DMZ)$/, k => (k === 'fw' ? ['fw', 'router'] : ['router'])], [/^vNET/, () => ['cloud']],
+  [/^拠点間VPN/, () => ['s2s']], [/^VPN/, () => ['vpn']], [/^ポート転送/, () => ['forward']],
+  [/^振り分け先/, () => ['lb']], [/^HTTPS/, () => ['tls']], [/^回線/, () => ['lines', 'nat']], [/^公開DNS/, () => ['pubdns']], [/^診断ツール/, () => ['diag-ping']],
+];
+/** 見出しの右に、対応するガイドを開く「?」ボタンを付ける */
+function addHelp(html: string, kind: string, level: number): string {
+  return html.replace(/<h3>([^<]+)((?:<small>[^<]*<\/small>)?)<\/h3>/g, (all, title: string, small: string) => {
+    const id = HELP.find(([re]) => re.test(title))?.[1](kind).find(x => ENTRY[x] && ENTRY[x].level <= level);
+    return id ? `<h3>${title}${small}<button class="q" data-act="guide-to" data-id="${id}" title="ガイド「${esc(ENTRY[id].title)}」を開く">?</button></h3>` : all;
+  });
+}
+
 export function devicePanel(d: Device, ctx: PanelCtx): string {
+  return addHelp(panelBody(d, ctx), d.kind, ctx.level);
+}
+function panelBody(d: Device, ctx: PanelCtx): string {
   const m = MODEL[d.model], c = d.cfg;
   const val = (path: string) => esc(getPath(c, path));
   const field = (label: string, path: string, v: string, ph = '') =>
@@ -78,6 +111,8 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
   if (isHost(d.kind)) h += `<div class="mac">MACアドレス <code>${d.mac}</code></div>`;
 
   if (isEndpoint(d.kind)) {
+    const from = ctx.assist && c.mode !== 'dhcp' && !c.ip ? copySource(d, ctx) : null;
+    if (from) h += `<button class="btn wide assist" data-act="copy-cfg" data-from="${from.id}">${esc(from.name)} の設定を写す<small>${from.cfg.mode === 'dhcp' ? '自動取得(DHCP)にします' : 'マスク・ゲートウェイ・DNSを写し、IPアドレスは空いている番号にします'}</small></button>`;
     h += '<h3>ネットワーク設定</h3>'
       + `<label class="f"><span>アドレスの決め方</span>${sel('mode', [['static', '手動で設定'], ['dhcp', '自動取得 (DHCP)']], true)}</label>`;
     if (c.mode === 'dhcp') {
@@ -126,7 +161,7 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
       if (s.mailOn && (ctx.level >= 18 || s.dkimOn)) {
         h += '<div class="svc">' + toggle('dkimOn', '送るメールにDKIMの署名を付ける');
         if (s.dkimOn) h += field('セレクター', 'dkimSel', '', 's1')
-          + `<div class="info">公開鍵: <code>${dkimKey(d)}</code><br>公開DNSに、名前 <code>${esc(s.dkimSel)}._domainkey</code> のTXTレコードを作り、値に <code>v=DKIM1; k=rsa; p=${dkimKey(d)}</code> を登録します。受信側は、この公開鍵で署名を確かめます。</div>`;
+          + `<div class="info">公開鍵: <code>${dkimKey(d)}</code><br>公開DNSに、名前 <code class="cp" data-act="copy">${esc(s.dkimSel)}._domainkey</code> のTXTレコードを作り、値に <code class="cp" data-act="copy">v=DKIM1; k=rsa; p=${dkimKey(d)}</code> を登録します。受信側は、この公開鍵で署名を確かめます。名前と値は、クリックでコピーできます。</div>`;
         h += '</div>';
       }
       if (ctx.level >= 23 || s.monOn) {
@@ -172,7 +207,7 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
       if (!cl && (ctx.level >= 21 || l.vip)) {
         const vip = parseIp(l.vip), grp = vip == null ? undefined : ctx.net.vrrp.find(v => v.vip === vip && v.members.includes(d.id));
         h += `<div class="row vr"><span class="vip-l">仮想IP</span>${inp(`lan.${i}.vip`, 'ip', '2台で同じアドレス(冗長化)')}<input type="number" min="1" max="254" data-bind="lan.${i}.prio" data-num value="${esc(l.prio ?? 100)}" title="優先度。大きいほうが、ふだん仮想IPアドレスを受け持つ"></div>`;
-        if (l.vip) h += `<div class="info">${!grp ? '仮想IPアドレスが、このポートのネットワークの範囲にありません。' : grp.master === d.id ? `いまは<b>この機器</b>が ${esc(l.vip)} を受け持っています${grp.members.length < 2 ? '(同じ仮想IPアドレスを設定した機器が、ほかにありません)' : ''}。` : `いまは <b>${esc(ctx.devices.find(x => x.id === grp.master)?.name)}</b> が ${esc(l.vip)} を受け持っています。この機器は控えです。`}右の数字は優先度です。</div>`;
+        if (l.vip && !d.off) h += `<div class="info">${!grp ? '仮想IPアドレスが、このポートのネットワークの範囲にありません。' : grp.master === d.id ? `いまは<b>この機器</b>が ${esc(l.vip)} を受け持っています${grp.members.length < 2 ? '(同じ仮想IPアドレスを設定した機器が、ほかにありません)' : ''}。` : `いまは <b>${esc(ctx.devices.find(x => x.id === grp.master)?.name)}</b> が ${esc(l.vip)} を受け持っています。この機器は控えです。`}右の数字は優先度です。</div>`;
       }
     });
     if (ctx.level >= 20 || g.tunnels?.length || cl) {
@@ -220,12 +255,16 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
     }
   }
 
-  if (isHost(d.kind)) {
+  if (isHost(d.kind) && !d.off) {
     const name = d.kind !== 'printer';
     const b = (k: string, label: string, title: string) => `<button class="btn small" data-act="diag" data-diag="${k}" title="${title}">${label}</button>`;
     h += `<h3>診断ツール</h3><div class="diag"><input id="diag-target" value="${esc(ctx.diagTarget)}" placeholder="${name ? '宛先: IPアドレス または 名前' : '宛先: IPアドレス'}" spellcheck="false" autocomplete="off">
       <div class="diag-row">${b('ping', 'ping', '宛先まで往復できるか')}${b('tracert', 'tracert', '途中で通る機器を順に表示')}${name ? b('nslookup', 'nslookup', '名前をIPアドレスに変えられるか') : ''}${d.kind === 'pc' ? b('web', 'Web閲覧', 'Webサイトを開けるか') : ''}</div>
       <div class="diag-row">${b('ipconfig', 'ipconfig', 'この機器のアドレス設定')}${b('arp', 'arp', '同じネットワークで見えている機器')}</div></div>`;
+  }
+  if (d.off || (ctx.level >= 12 && !isEndpoint(d.kind) && !['internet', 'wan', 'cloud', 'home'].includes(d.kind))) {
+    h += `<h3>故障テスト</h3><button class="btn wide${d.off ? ' primary' : ''}" data-act="toggle-off">${d.off ? 'この機器を動かす' : 'この機器を一時的に止める'}</button>
+      <div class="info">${d.off ? '止めてあります。この機器を通る通信はできません。動かすまで納品はできません。' : '止めた状態で ping を打つと、残りの機器だけで通信できるかを確かめられます。設定や配線は消えません。'}</div>`;
   }
   if (d.own === 'bought') h += '<button class="btn danger wide" data-act="remove">返品する(返金)</button>';
   if (d.own === 'stock') h += '<button class="btn wide" data-act="remove">倉庫に戻す</button>';

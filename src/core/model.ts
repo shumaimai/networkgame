@@ -91,6 +91,8 @@ export interface Device {
   ports: string[];
   mac: string;
   cfg: any;
+  /** 故障テストで止めてある(机の上にはあるが、動いていない) */
+  off?: boolean;
 }
 export interface PortRef { dev: string; port: number }
 export interface Cable { id: string; a: PortRef; b: PortRef; free?: boolean }

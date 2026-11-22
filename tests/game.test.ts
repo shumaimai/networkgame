@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/core/checks';
-import { worldCost } from '../src/core/job';
+import { Builder, worldCost } from '../src/core/job';
 import { clone } from '../src/core/model';
 import { Game, MAX_LEVEL, newSave, xpFor } from '../src/game/state';
+import { regularJob } from '../src/game/regular';
 import { TUTORIALS, tutorialJob } from '../src/game/tutorial';
 
 describe('チュートリアル', () => {
@@ -139,5 +140,77 @@ describe('★の基準', () => {
       }
     }
     expect(n).toBeGreaterThan(300);
+  });
+});
+
+describe('常連の依頼', () => {
+  const checksOf = (j: ReturnType<typeof regularJob>) => j.checks.map(c => c.check);
+  it('研修1で納品した机の上が、そのまま最初の状態になる', () => {
+    const g = new Game(newSave(11));
+    g.startTutorial('t1');
+    const w = clone(tutorialJob('t1').solution);
+    // 模範解答と違う番号・違う位置で納品しても、そのまま残る
+    w.devices.find(d => d.id === 'pc2')!.cfg.ip = '192.168.1.37';
+    w.devices.find(d => d.id === 'pc1')!.x = 333;
+    g.s.active!.world = w;
+    expect(g.deliver(evaluate(w, tutorialJob('t1').checks.map(c => c.check)))).not.toBeNull();
+    const j = regularJob(g.s.keep?.t1);
+    expect(j.initial.devices.find(d => d.id === 'pc2')!.cfg.ip).toBe('192.168.1.37');
+    expect(j.initial.devices.find(d => d.id === 'pc1')!.x).toBe(333);
+    expect(j.initial.devices.every(d => d.own === 'supplied') && j.initial.cables.every(c => c.free)).toBe(true);
+    expect(j.brief).toMatch(/前にPC2台をつないでもらった/);
+    expect(evaluate(j.solution, checksOf(j)).every(r => r.ok)).toBe(true);
+    expect(evaluate(j.initial, checksOf(j)).some(r => !r.ok)).toBe(true);
+    // 5ポートのスイッチでは足りないので、模範解答はスイッチを1台足す
+    expect(j.solution.devices.filter(d => d.kind === 'l2').length).toBe(2);
+    expect(j.par).toBe(4000 + 5 * 500);
+  });
+  it('8ポートのスイッチで納品していたら、足さずにつなげる。スキップしたときは模範解答から始まる', () => {
+    const b = new Builder(), p1 = b.add('pc', 'pc1', 'PC-1', 'supplied'), p2 = b.add('pc', 'pc2', 'PC-2', 'supplied'), sw = b.add('l2-8', 'b1', 'SW-1');
+    b.plug(p1, sw); b.plug(p2, sw); p1.cfg.ip = '192.168.1.10'; p2.cfg.ip = '192.168.1.11';
+    for (const d of b.devices) { d.x = 400; d.y = 400; }
+    const j = regularJob(b.world());
+    expect(j.solution.devices.filter(d => d.kind === 'l2').length).toBe(1);
+    expect(j.par).toBe(4 * 500);
+    expect(evaluate(j.solution, checksOf(j)).every(r => r.ok)).toBe(true);
+    const s = regularJob(undefined);
+    expect(s.brief).toMatch(/別の方に/);
+    expect(evaluate(s.solution, checksOf(s)).every(r => r.ok)).toBe(true);
+  });
+  it('3週目からボードに出て、納品すると出なくなる。買い替えて1台にまとめても納品できる', () => {
+    const g = new Game(newSave(12));
+    g.skipTutorial();
+    expect(g.s.board.some(o => o.special)).toBe(false);
+    g.nextWeek(); g.nextWeek();
+    const o = g.s.board.find(x => x.special)!;
+    expect(o).toBeTruthy();
+    g.nextWeek();
+    expect(g.s.board.some(x => x.special)).toBe(true);
+    const offer = g.s.board.find(x => x.special)!, j = g.job(offer);
+    g.accept(offer, false);
+    // 5ポートのスイッチを片付け、8ポートに替えて6台をつなぐ
+    const b = new Builder(), sw = b.add('l2-8', 'b1', 'SW-1');
+    for (const d of j.solution.devices.filter(x => x.kind === 'pc')) { const pc = b.add('pc', d.id, d.name, 'supplied'); pc.cfg = clone(d.cfg); b.plug(pc, sw); }
+    const r = evaluate(b.world(), j.checks.map(c => c.check));
+    expect(r.map(x => x.reason ?? 'ok')).toEqual(r.map(() => 'ok'));
+    g.s.active!.world = b.world();
+    const out = g.deliver(r)!;
+    expect(out.stars).toBeGreaterThanOrEqual(2);
+    expect(g.s.board.some(x => x.special)).toBe(false);
+    g.nextWeek();
+    expect(g.s.board.some(x => x.special)).toBe(false);
+  });
+  it('在庫を使って浮いた額と、次に買えるようになる機材が分かる', () => {
+    const g = new Game(newSave(13));
+    g.skipTutorial();
+    g.s.market['l2-8'] = 0.5;
+    expect(g.buyStock('l2-8', 1)).toBeNull();
+    g.s.market['l2-8'] = 1;
+    g.accept(g.s.board[0], false);
+    const d = g.useStock('l2-8');
+    if (typeof d === 'string') throw new Error(d);
+    g.s.active!.world.devices.push(d);
+    expect(g.stockSaving(g.s.active!.world)).toBe(7000 - 3500);
+    expect(g.upcoming(2)).toEqual(['server', 'nas']);
   });
 });

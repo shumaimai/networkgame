@@ -1,6 +1,7 @@
 // チュートリアル: 手作りの依頼3件と、一手ずつの案内
 import { Check, CheckResult, describe } from '../core/checks';
 import { Builder, Job, JobCheck, worldCost } from '../core/job';
+import { inCidr, isHostAddr, parseCidr, parseIp } from '../core/ip';
 import { Device, World, clone } from '../core/model';
 
 export interface StepCtx { world: World; results: CheckResult[]; diag: Set<string> }
@@ -8,6 +9,9 @@ export interface Step {
   text: string;
   /** 光らせる画面の部品(CSSセレクタ) */
   target?: string;
+  /** 「ヒント」を押したときにだけ見せる文と、そのとき光らせる部品 */
+  hint?: string;
+  hintTarget?: string;
   done: (c: StepCtx) => boolean;
 }
 export interface Tutorial { id: string; title: string; summary: string; /** この研修で扱うこと(受注画面のカードに出す) */ learn: string[]; xp: number; steps: Step[] }
@@ -29,8 +33,9 @@ export const TUTORIALS: Tutorial[] = [
       { text: 'LANケーブルでつなぎます。PC-1 の上にある小さな四角(ポート)をクリックし、続けてスイッチのポートをクリックしてください。', target: '[data-port="pc1:0"]', done: c => linked(c, 'pc1', kind(c, 'l2')?.id) },
       { text: 'PC-2 も同じようにスイッチへつなぎます。', target: '[data-port="pc2:0"]', done: c => linked(c, 'pc2', kind(c, 'l2')?.id) },
       { text: '配線だけでは通信できません。機器には住所にあたる IPアドレス が要ります。PC-1 をクリックし、右下の設定でIPアドレスに 192.168.1.10 と入力してください。', target: '[data-dev="pc1"]', done: c => cfg(c, 'pc1').ip === '192.168.1.10' },
-      { text: '次は PC-2 です。クリックして、IPアドレスに 192.168.1.11 と入力します。同じネットワークの機器は、先頭の 192.168.1 までをそろえます。', target: '[data-dev="pc2"]', done: c => cfg(c, 'pc2').ip === '192.168.1.11' },
-      { text: '届くか確かめましょう。PC-1 を選び、診断ツールの宛先に 192.168.1.11 と入れて「ping」を押します。通信がケーブルの上を流れます。', target: '[data-diag="ping"]', done: c => c.diag.has('ping:ok') },
+      { text: '次は PC-2 です。IPアドレスは自分で決めてください。同じネットワークの機器は、先頭の3つ(192.168.1)をそろえます。最後の数字は 1〜254 のうち、PC-1 と違う番号にします。', target: '[data-dev="pc2"]',
+        hint: 'たとえば 192.168.1.11 です。192.168.1.20 や 192.168.1.200 でもかまいません。', done: c => { const a = parseIp(cfg(c, 'pc2').ip); return a != null && inCidr(a, parseCidr('192.168.1.0/24')!) && isHostAddr(a, 24) && cfg(c, 'pc2').ip !== cfg(c, 'pc1').ip; } },
+      { text: '届くか確かめましょう。PC-1 を選び、診断ツールの宛先に、いま PC-2 に付けたIPアドレスを入れて「ping」を押します。通信がケーブルの上を流れます。', target: '[data-diag="ping"]', done: c => c.diag.has('ping:ok') },
       { text: '左の検収テストがすべて合格になりました。「納品する」を押すと、契約金の残りを受け取れます。', target: '[data-act="deliver"]', done: never },
     ],
   },
@@ -43,16 +48,19 @@ export const TUTORIALS: Tutorial[] = [
       { text: 'ルーターの LAN1 をスイッチへ。PCとプリンタもスイッチへつなぎます。', done: c => linked(c, kind(c, 'router')?.id, kind(c, 'l2')?.id, 1) && ['pc1', 'pc2', 'prn'].every(x => linked(c, x, kind(c, 'l2')?.id)) },
       { text: 'ルーターをクリックして、LAN1 のIPアドレスに 192.168.10.1 と入力します。社内の機器は、外へ送るデータをこのアドレスに渡します。このアドレスをゲートウェイと呼びます。', done: c => kind(c, 'router')?.cfg.lan[0].ip === '192.168.10.1' },
       { text: 'PCとプリンタに 192.168.10.x のIPアドレスを付けます(例: 192.168.10.11)。さらにPCの「ゲートウェイ」に 192.168.10.1 を入れると、外への通信をルーターに任せられます。', done: c => c.results[2]?.ok === true },
-      { text: 'Webサイトを名前で開くには、名前をIPアドレスに変えてくれる DNS が要ります。PCの「DNSサーバー」に 8.8.8.8 を入力してください。', done: c => c.results[3]?.ok === true },
+      { text: '検収テストを見てください。「8.8.8.8 に通信できる」は合格になりましたが、「www.example.com を開ける」は不合格のままです。PC-1 を選び、診断ツールの宛先に www.example.com と入れて「Web閲覧」を押してみてください。', target: '[data-diag="web"]', done: c => c.diag.has('web:ng') || c.results[3]?.ok === true },
+      { text: 'コンソールに「DNSサーバーが設定されていません」と出ました。8.8.8.8 という番号には届くのに、www.example.com という名前では開けません。名前を番号に変えてもらう問い合わせ先が、まだ決まっていないからです。PC-1 と PC-2 の「DNSサーバー」に 8.8.8.8 を入力してください。', done: c => c.results[3]?.ok === true },
       { text: '検収テストがすべて合格です。「納品する」を押しましょう。機材費を抑えるほど評価(★)が上がります。', target: '[data-act="deliver"]', done: never },
     ],
   },
   {
     id: 't3', title: '故障を直す', summary: '動かなくなったネットワークの原因を、診断ツールで探して直します。', learn: ['検収テストで不具合を絞る', 'tracert で止まった場所を調べる', 'ヘルプとガイドを使う'], xp: 60,
     steps: [
-      { text: '最後はトラブル対応です。すでに組まれたネットワークのどこかが壊れています。まず左の検収テストで、不合格の項目を確かめてください。配線から見ていきます。プリンタのケーブルが抜けているので、スイッチにつなぎ直しましょう。', target: '[data-dev="prn"]', done: c => linked(c, 'prn', 'sw') },
+      { text: '最後はトラブル対応です。すでに組まれたネットワークのどこかが壊れています。下の検収テストで不合格の項目を確かめ、机の上を見てください。まず、印刷できない原因を探して直します。分からないときは「ヒント」を押します。', target: '#checks',
+        hint: 'プリンタにケーブルがつながっていません。プリンタの上のポートをクリックし、続けてスイッチの空いているポートをクリックします。', hintTarget: '[data-dev="prn"]', done: c => linked(c, 'prn', 'sw') },
       { text: '印刷は直りました。次に PC-2 を選び、診断ツールで 8.8.8.8 に「tracert」を打ってみてください。通信がどこまで進んだかが分かります。', target: '[data-diag="tracert"]', done: c => [...c.diag].some(x => x.startsWith('tracert')) },
-      { text: 'PC-2 はルーターにたどり着けていません。PC-2 の「ゲートウェイ」が、ルーターのLAN1のIPアドレス(192.168.1.1)と違っています。直してください。', target: '[data-dev="pc2"]', done: c => c.results.every(r => r.ok) },
+      { text: 'tracert は PC-2 から先へ進めませんでした。PC-2 は、外へ送るデータを渡す相手を見つけられていません。PC-2 の設定を、仕様書や PC-1 の設定と見比べて、違うところを直してください。', target: '[data-dev="pc2"]',
+        hint: 'PC-2 の「ゲートウェイ」が 192.168.1.254 になっています。ルーターのLAN1のIPアドレスは 192.168.1.1 です。', done: c => c.results.every(r => r.ok) },
       { text: '直りました。行き詰まったら、上の「ヘルプ」で手がかりを見られます。ヘルプを使うと契約金が減ります。機器や用語の説明は「ガイド」にあります。では納品しましょう。', target: '[data-act="deliver"]', done: never },
     ],
   },
@@ -94,7 +102,7 @@ function make(id: string): Job {
       client: '田中税理士事務所', reward: 12000,
       brief: 'PCを2台買ったんだけど、つなぎ方がわからなくてね。2台でやり取りできるようにしてほしい。アドレスは 192.168.1.0/24 でお願いします。',
       spec: [{ head: 'アドレス', body: '192.168.1.0/24' }],
-      hints: ['L2スイッチを1台買い、PC2台をつなぎます。', 'PCに 192.168.1.10 と 192.168.1.11 のように、同じネットワークのIPアドレスを付けます。'],
+      hints: ['L2スイッチを1台買い、PC2台をつなぎます。', 'PCに 192.168.1.10 と 192.168.1.11 のように、同じネットワークで番号の違うIPアドレスを付けます。'],
     });
   }
   const inet = b.add('internet', 'inet', 'インターネット', 'fixed');

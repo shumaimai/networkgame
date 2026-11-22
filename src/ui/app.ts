@@ -1,6 +1,6 @@
 // 画面の切り替え、16:9 の固定ステージ、モーダル、セーブの読み書き
 import { Game, Save, newSave } from '../game/state';
-import { setVolume, sfx } from './audio';
+import { setBgm, setVolume, sfx } from './audio';
 import { mountBench } from './bench';
 import { $, onAct } from './dom';
 import { mountHub } from './hub';
@@ -45,6 +45,7 @@ export class App {
   setSave(s: Save): void {
     this.game = new Game(s, x => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(x)); } catch { /* 保存できない環境でも遊べるようにする */ } });
     setVolume(s.settings.sfx);
+    setBgm(s.settings.bgm ?? 0.4);
   }
   newGame(): void { this.setSave(newSave()); this.game.save(); }
 
@@ -58,10 +59,11 @@ export class App {
     this.unmount?.();
     this.closeModal();
     this.current = id;
-    this.screen.className = '';
-    void this.screen.offsetWidth; // 入場アニメーションをやり直す
+    // 画面ごとに土台の要素を作り直す。前の画面が付けたクリックなどの処理を残さないため(入場アニメーションもやり直される)
+    const fresh = this.screen.cloneNode(false) as HTMLElement;
+    this.screen.replaceWith(fresh);
+    this.screen = fresh;
     this.screen.className = 'screen s-' + id;
-    this.screen.innerHTML = '';
     this.unmount = SCREENS[id](this, this.screen);
   }
 
@@ -78,8 +80,10 @@ export class App {
     this.overlay.classList.remove('open');
     this.overlay.innerHTML = '';
     this.modalLocked = false;
-    this.onModalClose?.();
+    // 閉じたあとの処理の中で、別のモーダルを開くことがある
+    const done = this.onModalClose;
     this.onModalClose = null;
+    done?.();
   }
   onModalClose: (() => void) | null = null;
 

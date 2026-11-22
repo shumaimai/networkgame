@@ -344,3 +344,24 @@ describe('ガイドの具体例に書いた動き', () => {
     expect(pcs.every(d => n.eff.get(d.id)!.ip != null)).toBe(true);
   });
 });
+
+describe('故障テスト', () => {
+  it('止めた機器は机にないものとして扱われ、予備のルーターに切り替わる。止めたままでは冗長化のテストに通らない', () => {
+    const b = new Builder(), inet = b.add('internet-2', 'inet', 'inet', 'fixed'), sw = b.add('l2-8', 'sw', 'sw');
+    const r1 = b.add('router', 'r1', 'RT-1'), r2 = b.add('router', 'r2', 'RT-2');
+    b.link(inet, 0, r1, 0); b.link(inet, 1, r2, 0); b.link(r1, 1, sw, 0); b.link(r2, 1, sw, 1);
+    Object.assign(gw(r1).lan[0], { ip: '192.168.1.1', vip: '192.168.1.254', prio: 110 });
+    Object.assign(gw(r2).lan[0], { ip: '192.168.1.2', vip: '192.168.1.254', prio: 100 });
+    const pc = host(b, 'pc', 'pc', '192.168.1.10', '192.168.1.254', '8.8.8.8');
+    b.plug(pc, sw);
+    const checks: Check[] = [{ t: 'flow', from: ['pc'], to: { ext: 'www.example.com' }, svc: 'web', expect: 'ok' }, { t: 'failover', kinds: ['router'], what: 'ルーター', checks: [{ t: 'flow', from: ['pc'], to: { ext: '8.8.8.8' }, svc: 'ping', expect: 'ok' }] }];
+    expect(evaluate(b.world(), checks).map(r => r.ok)).toEqual([true, true]);
+    r1.off = true;
+    const n = build(b.devices, b.cables), r = reach(n, pc, ip('8.8.8.8'));
+    expect(r.ok && r.hops.includes('RT-2') && !r.hops.includes('RT-1')).toBe(true);
+    expect(n.vrrp[0].master).toBe('r2');
+    expect(evaluate(b.world(), checks).map(x => x.ok)).toEqual([true, false]);
+    sw.off = true;
+    expect(reach(build(b.devices, b.cables), pc, ip('8.8.8.8')).ok).toBe(false);
+  });
+});

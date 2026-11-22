@@ -53,7 +53,7 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
     const base = q.checks.map(c => checkOne(net, c, nameOf)).find(r => !r.ok);
     if (base) return base;
     const seg = q.near ? net.ifaces.find(i => i.dev.id === q.near)?.seg : undefined;
-    const list = (world?.devices ?? []).filter(d => q.kinds.includes(d.kind) && d.own !== 'fixed' && (!seg || net.ifaces.some(i => i.dev === d && i.seg === seg)));
+    const list = (world?.devices ?? []).filter(d => q.kinds.includes(d.kind) && d.own !== 'fixed' && !d.off && (!seg || net.ifaces.some(i => i.dev === d && i.seg === seg)));
     if (list.length < 2) return ng(`${q.what}が${list.length}台しかなく、止まると通信できなくなります`);
     for (const d of list) {
       const cut = build(world!.devices.filter(x => x !== d), world!.cables.filter(c => c.a.dev !== d.id && c.b.dev !== d.id));
@@ -63,7 +63,7 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
     return ok;
   }
   const dev = (id: string) => net.byId.get(id);
-  if (q.t === 'gone') return dev(q.dev) ? ng(`${nameOf(q.dev)} がまだ机の上にあります(机から片付けます)`) : ok;
+  if (q.t === 'gone') return (world ? world.devices.some(d => d.id === q.dev) : !!dev(q.dev)) ? ng(`${nameOf(q.dev)} がまだ机の上にあります(机から片付けます)`) : ok;
   if (q.t === 'unused') return (world?.cables ?? []).some(c => c.a.dev === q.dev || c.b.dev === q.dev) ? ng(`${nameOf(q.dev)} にケーブルがつながったままです`) : ok;
   if (q.t === 'mailIn' || q.t === 'mailOut' || q.t === 'dkim' || q.t === 'dmarc' || q.t === 'monitor') {
     const r = q.t === 'mailIn' ? mailIn(net) : q.t === 'mailOut' ? mailOut(net) : q.t === 'dkim' ? dkimResult(net) : q.t === 'dmarc' ? dmarcResult(net) : monitorResult(net);
@@ -79,7 +79,7 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
   const ids = 'devs' in q ? q.devs : q.from;
   const tgt = q.t === 'flow' && 'dev' in q.to && q.to.dev ? [q.to.dev] : [];
   const missing = [...ids, ...tgt].find(id => !dev(id));
-  if (missing) return ng(`${nameOf(missing)} がまだ机に置かれていません`);
+  if (missing) return ng(net.off.has(missing) ? `${nameOf(missing)} は故障テストで止めてあります` : `${nameOf(missing)} がまだ机に置かれていません`);
   const each = (list: string[], fn: (d: NonNullable<ReturnType<typeof dev>>) => CheckResult): CheckResult => {
     for (const id of list) { const r = fn(dev(id)!); if (!r.ok) return r; }
     return ok;
