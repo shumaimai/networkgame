@@ -99,7 +99,7 @@ def key_out(img, size):
 
 def main():
     os.makedirs(RAW, exist_ok=True); os.makedirs(OUT, exist_ok=True)
-    names = sys.argv[1:] or [n for n in ASSETS if not os.path.exists(os.path.join(OUT, n + ('.png' if ASSETS[n][2] else '.jpg')))]
+    names = sys.argv[1:] or [n for n in ASSETS if not os.path.exists(os.path.join(OUT, n + '.webp'))]
     for n in names:
         prompt, aspect, keyed = ASSETS[n]
         raw = os.path.join(RAW, n + '.bin')
@@ -107,8 +107,8 @@ def main():
             if n in sys.argv[1:] or not os.path.exists(raw):
                 io.open(raw, 'wb').write(call(prompt, aspect))
             img = Image.open(raw)
-            if keyed: key_out(img, 256).save(os.path.join(OUT, n + '.png'), optimize=True)
-            else: img.convert('RGB').resize((1920, 1080), Image.LANCZOS).save(os.path.join(OUT, n + '.jpg'), quality=86)
+            if keyed: key_out(img, 256).save(os.path.join(OUT, n + '.webp'), 'WEBP', quality=82, method=6)
+            else: img.convert('RGB').resize((1920, 1080), Image.LANCZOS).save(os.path.join(OUT, n + '.webp'), 'WEBP', quality=74, method=6)
             print('ok', n, flush=True)
         except Exception as e:
             print('NG', n, str(e)[:200], flush=True)

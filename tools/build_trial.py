@@ -94,14 +94,14 @@ def main() -> None:
         img_bytes += len(raw)
         return f'url({data_uri("image/webp", raw)})'
 
-    css = re.sub(r'url\(["\']?[^)"\']*?/img/([\w.-]+\.jpg)["\']?\)', bg, css)
+    css = re.sub(r'url\(["\']?[^)"\']*?/img/([\w.-]+\.webp)["\']?\)', bg, css)
     assert '/img/' not in css, 'CSS に、埋め込めていない画像が残っている'
     sprites = {}
     for name in sorted(os.listdir(img_dir)):
-        if name.endswith('.png'):
+        if name.endswith('.webp') and not name.startswith('bg_'):
             raw = webp(os.path.join(img_dir, name), 80)
             img_bytes += len(raw)
-            sprites[name[:-4]] = data_uri('image/webp', raw)
+            sprites[name[:-5]] = data_uri('image/webp', raw)
     icon = open(os.path.join(ROOT, 'public', 'favicon.svg'), 'rb').read()
 
     # ---- 1つのHTMLにまとめる ----

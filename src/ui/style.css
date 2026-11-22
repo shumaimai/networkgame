@@ -115,7 +115,7 @@ p.hint { padding-left: 16px; }
 .bar nav { display: flex; gap: 8px; }
 
 /* ---------- 事務所 ---------- */
-.hub { position: absolute; inset: 0; display: grid; grid-template-rows: 68px 1fr; background: linear-gradient(rgba(9, 14, 27, .8), rgba(9, 14, 27, .93)), url(/img/bg_office.jpg) center/cover; }
+.hub { position: absolute; inset: 0; display: grid; grid-template-rows: 68px 1fr; background: linear-gradient(rgba(9, 14, 27, .8), rgba(9, 14, 27, .93)), url(/img/bg_office.webp) center/cover; }
 .hub-main { padding: 34px 60px; overflow: auto; }
 .board-head { display: flex; align-items: center; gap: 24px; margin: 6px 0 22px; }
 .board-head h2 { font-size: 32px; white-space: nowrap; }
@@ -370,7 +370,7 @@ svg.desk text { font-family: var(--sans); fill: var(--text); text-anchor: middle
 .card p.card-sum { font-size: 14px; color: var(--mute); line-height: 1.5; margin-top: -4px; }
 
 /* ---------- タイトル ---------- */
-.title { position: absolute; inset: 0; background: url(/img/bg_shop.jpg) center/cover; }
+.title { position: absolute; inset: 0; background: url(/img/bg_shop.webp) center/cover; }
 .title-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6, 9, 18, .72) 0%, rgba(6, 9, 18, .1) 38%, rgba(6, 9, 18, .2) 60%, rgba(6, 9, 18, .9) 100%); }
 .sign { position: absolute; left: 0; right: 0; top: 70px; text-align: center; }
 .sign-wire { width: 520px; height: 40px; display: block; margin: 0 auto 4px; }
