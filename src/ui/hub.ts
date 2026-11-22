@@ -1,6 +1,7 @@
 // 受注: 研修と、今週の依頼の一覧
 import { Job, KIND_LABEL } from '../core/job';
-import { Game, LEVELS, MAX_LEVEL, Offer, xpFor } from '../game/state';
+import { MODEL } from '../core/model';
+import { Game, LEVELS, MAX_LEVEL, Offer, PriceMove, xpFor } from '../game/state';
 import { TUTORIALS, tutorialJob } from '../game/tutorial';
 import type { App } from './app';
 import { setVolume, sfx } from './audio';
@@ -17,7 +18,7 @@ export function statusBar(game: Game, here: string): string {
     <div class="lv"><b>Lv.${game.level}</b><span>${esc(game.levelInfo.title)}</span><div class="xpbar small"><i style="width:${Math.round(game.xpProgress * 100)}%"></i></div>
       <small>${game.level >= MAX_LEVEL ? '最高レベル' : `次まで ${xpFor(game.level + 1) - game.s.xp}`}</small></div>
     <div class="rep" title="評判が高いほど契約金が増えます">評判 <span class="repstars">${'★'.repeat(full)}${half ? '<i>★</i>' : ''}<u>${'★'.repeat(5 - full - (half ? 1 : 0))}</u></span></div>
-    <div class="week">第${game.s.week}週</div>
+    <div class="week">${game.s.week}週目</div>
     <div class="spacer"></div>
     <div class="money">資金 <b>${yen(game.s.money)}</b></div>
     <nav>
@@ -54,6 +55,32 @@ function summary(j: Job): string {
   return `${parts.join('・')}${nets > 1 ? ` / ネットワーク ${nets}つ` : ''}${j.kind === 'trouble' ? ` / 不具合 ${j.faults.length}か所` : ''}`;
 }
 
+const moveChip = (x: PriceMove, cls: string) => `<span class="move ${cls}">${MODEL[x.model].short} <s>${yen(x.before)}</s> → <b>${yen(x.now)}</b></span>`;
+// 今週の値動き(受注画面の見出しの下に出す1行)
+function weekStrip(game: Game): string {
+  const { down, up } = game.priceMoves(2);
+  const moves = down.length || up.length
+    ? `${down.length ? `<span class="mv-h down">値下がり</span>${down.map(x => moveChip(x, 'down')).join('')}` : ''}${up.length ? `<span class="mv-h up">値上がり</span>${up.map(x => moveChip(x, 'up')).join('')}` : ''}`
+    : `<span class="mute">${game.s.week === 1 ? '機材の値段は、週が変わるたびに動きます。' : '今週は、機材の値段に大きな動きがありません。'}</span>`;
+  return `<div class="week-strip"><b class="wk">〜 ${game.s.week}週目 〜</b><div class="moves">${moves}</div><small>値段は「仕入れ」で確かめられます</small></div>`;
+}
+/** 週が変わったあと、最初に受注画面を開いたときに出す知らせ。数秒で消え、下のボタンは押せる */
+function weekBanner(app: App, root: HTMLElement): void {
+  const game = app.game;
+  if (!game.tutorialFinished || game.s.weekSeen === game.s.week) return;
+  game.s.weekSeen = game.s.week;
+  game.save();
+  const { down, up } = game.priceMoves(3), fee = game.s.week > 1 ? game.s.lastFee ?? 0 : 0;
+  const el = document.createElement('div');
+  el.className = 'week-banner';
+  el.innerHTML = `<div class="wb-in"><div class="wb-title">〜 ${game.s.week}週目 〜</div>
+    <p>${game.s.week === 1 ? '依頼を1件納品すると、次の週になります。週が変わるたびに、依頼と機材の値段が入れ替わります。' : '週が変わり、依頼と機材の値段が入れ替わりました。'}</p>
+    ${down.length || up.length ? `<div class="wb-moves">${down.map(x => moveChip(x, 'down')).join('')}${up.map(x => moveChip(x, 'up')).join('')}</div>` : ''}
+    <small>${fee ? `倉庫代 ${yen(fee)} を支払いました。` : ''}安い週に仕入れて倉庫に置くと、あとの依頼で使えます。</small></div>`;
+  root.querySelector('.hub')?.appendChild(el);
+  setTimeout(() => el.remove(), 4600);
+}
+
 export function mountHub(app: App, root: HTMLElement): () => void {
   const game = app.game;
   if (game.tutorialFinished && !game.s.board.length) { game.refreshBoard(); game.save(); }
@@ -74,23 +101,29 @@ export function mountHub(app: App, root: HTMLElement): () => void {
           return `<button class="card ${done ? 'done' : open ? '' : 'locked'}" ${open && !active ? `data-act="tutorial" data-id="${t.id}"` : 'disabled'}>
             <div class="card-top"><span class="chip tutorial">研修 ${i + 1}</span>${done ? '<span class="chip ok">修了</span>' : ''}</div>
             <h3>${esc(t.title)}</h3><p>${esc(t.summary)}</p>
+            <div class="card-learn"><small>この研修で扱うこと</small><ul>${t.learn.map(x => `<li>${esc(x)}</li>`).join('')}</ul><div class="learn-guide"><img src="./img/p_guide.png" alt=""><span>画面の案内に沿って、${t.steps.length}ステップで進めます。</span></div></div>
             <div class="card-foot"><span>契約金 <b>${yen(tutorialJob(t.id).reward)}</b></span><span>経験値 <b>+${t.xp}</b></span></div></button>`;
         }).join('')}</div>`;
     } else {
       main += `<div class="board-head"><h2>受注</h2><p>今週の依頼です。1件納品すると次の週になり、依頼と機材の値段が入れ替わります。</p>
         <button class="btn" data-act="week">受けずに次の週へ${game.weeklyFee ? `(倉庫代 ${yen(game.weeklyFee)})` : ''}</button></div>
+        ${weekStrip(game)}
         <div class="cards">${game.s.board.map(o => {
           const j = game.job(o);
           return `<button class="card" data-act="offer" data-id="${o.id}">
             <div class="card-top">${kindChip(j)}${diffStars(j.difficulty.stars)}</div>
             <div class="card-client"><img src="${portrait(j.industry)}" alt=""><div><b>${esc(j.client)}</b><small>${esc(j.industry)}</small></div></div>
             <h3>${esc(j.title)}</h3>
+            <p class="card-brief">${esc(j.brief)}</p>
             <p class="card-sum">${summary(j)}</p>
             <div class="tags">${j.tags.slice(0, 8).map(t => `<i>${esc(t)}</i>`).join('')}</div>
+            <div class="card-checks"><small>検収テスト ${j.checks.length}項目</small><ul>${j.checks.map(c => `<li>${esc(c.label)}</li>`).join('')}</ul></div>
+            <div class="card-facts"><div><span>難易度の点数</span><b>${j.difficulty.score}点</b></div><div><span>経験値</span><b>+${Math.round(j.xp * 0.8)}〜${Math.round(j.xp * 1.2)}</b></div><div><span>納期(チャレンジ)</span><b>${j.minutes}分</b></div></div>
             <div class="card-foot"><span>契約金 <b>${yen(game.rewardOf(j))}</b></span>${j.kind !== 'trouble' ? `<span>機材費の目安 ${yen(game.parNow(j))}</span>` : '<span>機材はほとんど要りません</span>'}</div></button>`;
         }).join('')}</div>`;
     }
     root.innerHTML = `<div class="hub">${statusBar(game, 'hub')}<div class="hub-main">${main}</div></div>`;
+    weekBanner(app, root);
   }
 
   function openOffer(o: Offer): void {
@@ -131,7 +164,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
         onAct(m, x => { if (x === 'do-skip') { if (game.s.active) game.abandon(); game.skipTutorial(); app.closeModal(); render(); } });
         break;
       }
-      case 'week': sfx('click'); game.nextWeek(); app.toast(`第${game.s.week}週になりました。`); render(); break;
+      case 'week': sfx('click'); game.nextWeek(); render(); break;
       case 'offer': sfx('open'); openOffer(game.s.board.find(o => o.id === el.dataset.id)!); break;
     }
   });
@@ -147,7 +180,7 @@ export function openHistory(app: App): void {
     ${next ? `<h3>次のレベル(Lv.${next.level})で増えるもの</h3><div class="unlocks"><div>${next.unlocks.map(esc).join(' / ')}</div></div>` : ''}
     <h3>これまでに増えたもの</h3><div class="unlocks">${LEVELS.filter(l => l.level <= g.level).map(l => `<div><b>Lv.${l.level}</b>${l.unlocks.map(esc).join(' / ')}</div>`).join('')}</div>
     <h3>最近の納品</h3>
-    ${h.length ? `<table class="hist">${h.slice(0, 12).map(x => `<tr><td>第${x.week}週</td><td>${esc(x.client)}</td><td>${esc(x.title)}</td><td class="st">${stars(x.stars)}</td><td class="${x.profit < 0 ? 'neg' : ''}">${yen(x.profit)}</td></tr>`).join('')}</table>` : '<p class="mute">納品した依頼はまだありません。</p>'}
+    ${h.length ? `<table class="hist">${h.slice(0, 12).map(x => `<tr><td>${x.week}週目</td><td>${esc(x.client)}</td><td>${esc(x.title)}</td><td class="st">${stars(x.stars)}</td><td class="${x.profit < 0 ? 'neg' : ''}">${yen(x.profit)}</td></tr>`).join('')}</table>` : '<p class="mute">納品した依頼はまだありません。</p>'}
     <div class="modal-btns"><button class="btn primary" data-act="close">閉じる</button></div>`, { wide: true });
 }
 

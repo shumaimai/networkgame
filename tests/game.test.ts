@@ -74,6 +74,22 @@ describe('ゲームの進行', () => {
     expect(g.s.money).toBeLessThan(m);
     expect(g.s.rep).toBe(45);
   });
+  it('週が変わると、前の週からの値動きが分かる', () => {
+    const g = new Game(newSave(6));
+    g.skipTutorial();
+    expect(g.priceMoves()).toEqual({ down: [], up: [] });
+    g.s.xp = xpFor(12);
+    let seen = 0;
+    for (let i = 0; i < 20; i++) {
+      g.nextWeek();
+      const m = g.priceMoves(3);
+      for (const x of m.down) expect(x.now).toBeLessThan(x.before);
+      for (const x of m.up) expect(x.now).toBeGreaterThan(x.before);
+      expect(m.down.length).toBeLessThanOrEqual(3);
+      seen += m.down.length + m.up.length;
+    }
+    expect(seen).toBeGreaterThan(10);
+  });
   it('相場は 0.5〜2 倍の間で動く', () => {
     const g = new Game(newSave(5));
     g.skipTutorial();

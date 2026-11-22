@@ -11,7 +11,7 @@ await page.waitForSelector('.title');
 const S = {
   title: async () => {},
   hub: async () => { await page.click('[data-act="new"]'); },
-  board: async () => { await page.click('[data-act="new"]'); await page.click('[data-act="skip"]'); await page.click('[data-act="do-skip"]'); },
+  board: async () => { await page.click('[data-act="new"]'); await page.click('[data-act="skip"]'); await page.click('[data-act="do-skip"]'); if (process.argv[3]) { await page.evaluate(lv => { const g = window.app.game; g.s.xp = 45 * (lv - 1) * (lv + 2); g.s.money = 400000; g.setPlan('s'); g.buyStock('l2-8', 3); g.nextWeek(); g.nextWeek(); window.app.show('hub'); }, Number(process.argv[3])); if (process.argv[4] !== 'banner') await page.waitForTimeout(5000); } else await page.waitForTimeout(5000); },
   offer: async () => { await S.board(); await page.click('.card >> nth=2'); },
   t1: async () => { await page.click('[data-act="new"]'); await page.click('[data-act="tutorial"]'); },
   shop: async () => { await S.board(); await page.click('[data-act="go-shop"]'); },

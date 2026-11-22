@@ -58,6 +58,7 @@ export interface Active {
   par?: number;
 }
 export interface StockItem { qty: number; cost: number }
+export interface PriceMove { model: string; before: number; now: number }
 export type PlanId = 'none' | 's' | 'm' | 'l' | 'custom';
 export const PLANS: Record<Exclude<PlanId, 'custom'>, { label: string; fee: number; cap: number }> = {
   none: { label: '店の棚', fee: 0, cap: 6 },
@@ -82,6 +83,12 @@ export interface Save {
   active: Active | null;
   history: HistoryItem[];
   seenDict: string[];
+  /** 前の週の相場(値動きの表示に使う) */
+  prevMarket?: Record<string, number>;
+  /** 週の変わり目の知らせを出し終えた週 */
+  weekSeen?: number;
+  /** 直前の週の変わり目に払った倉庫代 */
+  lastFee?: number;
   settings: { sfx: number; bgm: number };
 }
 
@@ -141,6 +148,15 @@ export class Game {
   get catalog(): string[] { return MODELS.filter(m => m.price > 0 && m.level <= this.level).map(m => m.id); }
   get capacity(): number { return this.s.plan === 'custom' ? Math.floor(this.s.planFee / CUSTOM_RATE) : PLANS[this.s.plan].cap; }
   get weeklyFee(): number { return this.s.plan === 'custom' ? this.s.planFee : PLANS[this.s.plan].fee; }
+  /** 前の週から値段が大きく動いた機材。値下がりと値上がりを、動きの大きい順に返す */
+  priceMoves(max = 3): { down: PriceMove[]; up: PriceMove[] } {
+    const prev = this.s.prevMarket;
+    if (!prev) return { down: [], up: [] };
+    const at = (m: string, k: number) => Math.round((MODEL[m].price * k) / 100) * 100;
+    const list = this.catalog.map(m => ({ model: m, before: at(m, prev[m] ?? 1), now: this.price(m) })).filter(x => Math.abs(x.now / x.before - 1) >= 0.1);
+    list.sort((a, b) => a.now / a.before - b.now / b.before);
+    return { down: list.filter(x => x.now < x.before).slice(0, max), up: list.filter(x => x.now > x.before).reverse().slice(0, max) };
+  }
   get stockUsed(): number { return Object.entries(this.s.stock).reduce((t, [m, i]) => t + MODEL[m].size * i.qty, 0); }
   stockQty(model: string): number { return this.s.stock[model]?.qty ?? 0; }
 
@@ -194,6 +210,7 @@ export class Game {
   // ---- 週と受注ボード ----
   private rollMarket(): void {
     const r = mulberry(this.s.seed + this.s.week * 7717);
+    if (Object.keys(this.s.market).length) this.s.prevMarket = { ...this.s.market };
     for (const m of MODELS) {
       if (!m.price) continue;
       const cur = this.mult(m.id);
@@ -215,6 +232,7 @@ export class Game {
   /** 1週間進める: 倉庫代を払い、相場とボードが変わる */
   nextWeek(): void {
     this.s.week++;
+    this.s.lastFee = this.weeklyFee;
     this.s.money -= this.weeklyFee;
     this.rollMarket();
     this.refreshBoard();

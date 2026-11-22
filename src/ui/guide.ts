@@ -12,9 +12,9 @@ export function openGuide(app: App, id?: string): void {
   let desk: Desk | null = null;
   const m = app.modal('', { wide: true, cls: 'guide' });
 
-  function body(e: Entry): string {
+  function body(lines: string[]): string {
     let h = '', list = false;
-    for (const p of e.body) {
+    for (const p of lines) {
       const li = p.startsWith('・');
       if (li && !list) h += '<ul>';
       if (!li && list) h += '</ul>';
@@ -35,7 +35,8 @@ export function openGuide(app: App, id?: string): void {
         <p class="g-lead">${esc(cur.lead)}</p>
         ${cur.demo ? '<div class="demo"><svg class="desk" id="demo"></svg><div class="caption" id="caption"></div></div>' : ''}
         <div class="text">
-          <h3>しくみ</h3>${body(cur)}
+          ${cur.example ? `<h3>具体例でたどる</h3><div class="g-example">${body(cur.example)}</div>` : ''}
+          <h3>しくみ</h3>${body(cur.body)}
           ${cur.setup ? `<h3>設定のしかた</h3><ol>${cur.setup.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : ''}
           ${cur.trouble ? `<h3>つまずきやすい点</h3><ul class="warn">${cur.trouble.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
           ${cur.terms ? `<h3>用語</h3><dl>${cur.terms.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}

@@ -1,5 +1,5 @@
 // 倉庫: 契約(スロットの数)と在庫
-import { MODEL } from '../core/model';
+import { MODEL, MODELS } from '../core/model';
 import { CUSTOM_RATE, PLANS, PlanId } from '../game/state';
 import type { App } from './app';
 import { sfx } from './audio';
@@ -12,7 +12,12 @@ export function mountWare(app: App, root: HTMLElement): () => void {
 
   function render(): void {
     const used = game.stockUsed, cap = game.capacity;
-    const cells = Array.from({ length: Math.min(cap, 150) }, (_, i) => `<i class="${i < used ? 'on' : ''}"></i>`).join('');
+    // スロットのマス目。在庫の機材が、使っているスロットの数だけ並ぶ
+    const filled = Object.entries(game.s.stock).flatMap(([m, it]) => Array<string>(MODEL[m].size * it.qty).fill(m));
+    const cols = cap <= 6 ? 6 : cap <= 20 ? 10 : cap <= 60 ? 15 : 25;
+    const cells = Array.from({ length: Math.min(cap, 150) }, (_, i) => (filled[i] ? `<i class="on" title="${esc(MODEL[filled[i]].label)}"><img src="${img(MODEL[filled[i]].kind)}" alt=""></i>` : '<i></i>')).join('');
+    const free = cap - used;
+    const sizes = MODELS.filter(m => m.price > 0 && m.level <= game.level).map(m => `<div class="size-row"><img src="${img(m.kind)}" alt=""><b>${esc(m.label)}</b><span>1台 ${m.size}スロット</span><span class="${Math.floor(free / m.size) ? '' : 'none'}">あと ${Math.floor(free / m.size)}台</span></div>`).join('');
     const stock = Object.entries(game.s.stock).map(([m, it]) => `<div class="stock-row"><img src="${img(MODEL[m].kind)}" alt="">
       <div><b>${esc(MODEL[m].label)}</b><small>${it.qty}台 ・ ${MODEL[m].size * it.qty}スロット ・ 仕入れ値の平均 ${yen(it.cost / it.qty)}</small></div>
       <button class="btn small" data-act="sell" data-m="${m}">1台売る ${yen(game.sellPrice(m))}</button></div>`).join('');
@@ -26,10 +31,12 @@ export function mountWare(app: App, root: HTMLElement): () => void {
           <div class="plan custom ${game.s.plan === 'custom' ? 'on' : ''}"><b>金額を決めて借りる</b>
             <div class="custom-row"><input type="number" id="custom-fee" min="1000" step="500" value="${customFee}"><span>円 / 週 で <b id="custom-cap">${Math.floor(customFee / CUSTOM_RATE)}</b> スロット</span><button class="btn small" data-act="plan" data-id="custom">この金額で借りる</button></div>
             <small>1スロットあたり ${CUSTOM_RATE}円。定額の倉庫より割高ですが、スロットをいくらでも増やせます。</small></div>
+          <h3>機材が使うスロット<small>空きは ${free}スロット</small></h3>
+          <div class="size-list">${sizes}</div>
         </section>
         <section>
           <h3>スロット<small>${used} / ${cap} を使用中</small></h3>
-          <div class="slots">${cells}${cap > 150 ? `<span>ほか ${cap - 150}</span>` : ''}</div>
+          <div class="slots" style="grid-template-columns: repeat(${cols}, minmax(0, 64px))">${cells}${cap > 150 ? `<span>ほか ${cap - 150}</span>` : ''}</div>
           <h3>在庫</h3><div class="stock">${stock || '<p class="mute">在庫はありません。「仕入れ」で機材を買うと、ここに入ります。</p>'}</div>
         </section>
       </div></div>`;

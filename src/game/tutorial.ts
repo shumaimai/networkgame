@@ -10,7 +10,7 @@ export interface Step {
   target?: string;
   done: (c: StepCtx) => boolean;
 }
-export interface Tutorial { id: string; title: string; summary: string; xp: number; steps: Step[] }
+export interface Tutorial { id: string; title: string; summary: string; /** この研修で扱うこと(受注画面のカードに出す) */ learn: string[]; xp: number; steps: Step[] }
 
 const has = (c: StepCtx, id: string) => c.world.devices.some(d => d.id === id);
 const kind = (c: StepCtx, k: string) => c.world.devices.find(d => d.kind === k);
@@ -21,7 +21,7 @@ const never = () => false;
 
 export const TUTORIALS: Tutorial[] = [
   {
-    id: 't1', title: 'はじめての配線', summary: 'PC2台をL2スイッチでつなぎ、IPアドレスを設定します。', xp: 180,
+    id: 't1', title: 'はじめての配線', summary: 'PC2台をL2スイッチでつなぎ、IPアドレスを設定します。', learn: ['機器を机に置く', 'LANケーブルでつなぐ', 'IPアドレスを設定する', 'ping で通信を確かめる'], xp: 180,
     steps: [
       { text: '最初の仕事は、PC2台を通信できるようにすることです。右の「お客様の機器」から PC-1 を机の上にドラッグしてください。', target: '[data-pal="sup:pc1"]', done: c => has(c, 'pc1') },
       { text: '同じように PC-2 も机に置きます。', target: '[data-pal="sup:pc2"]', done: c => has(c, 'pc2') },
@@ -35,7 +35,7 @@ export const TUTORIALS: Tutorial[] = [
     ],
   },
   {
-    id: 't2', title: 'インターネットにつなぐ', summary: 'ルーターを使って、事務所のPCをインターネットにつなぎます。', xp: 270,
+    id: 't2', title: 'インターネットにつなぐ', summary: 'ルーターを使って、事務所のPCをインターネットにつなぎます。', learn: ['ルーターを回線につなぐ', 'ゲートウェイを設定する', 'DNSサーバーを設定する', '機材費と評価(★)の関係'], xp: 270,
     steps: [
       { text: '今度はインターネットにつなぎます。机の奥の雲が、契約済みの回線です。まず PC-1、PC-2、プリンタ を机に置いてください。', target: '#palette', done: c => ['pc1', 'pc2', 'prn'].every(x => has(c, x)) },
       { text: 'L2スイッチ と ルーター を購入して机に置きます。ルーターは、社内のネットワークとインターネットをつなぐ機器です。', target: '[data-pal="buy:router"]', done: c => !!kind(c, 'l2') && !!kind(c, 'router') },
@@ -48,7 +48,7 @@ export const TUTORIALS: Tutorial[] = [
     ],
   },
   {
-    id: 't3', title: '故障を直す', summary: '動かなくなったネットワークの原因を、診断ツールで探して直します。', xp: 60,
+    id: 't3', title: '故障を直す', summary: '動かなくなったネットワークの原因を、診断ツールで探して直します。', learn: ['検収テストで不具合を絞る', 'tracert で止まった場所を調べる', 'ヘルプとガイドを使う'], xp: 60,
     steps: [
       { text: '最後はトラブル対応です。すでに組まれたネットワークのどこかが壊れています。まず左の検収テストで、不合格の項目を確かめてください。配線から見ていきます。プリンタのケーブルが抜けているので、スイッチにつなぎ直しましょう。', target: '[data-dev="prn"]', done: c => linked(c, 'prn', 'sw') },
       { text: '印刷は直りました。次に PC-2 を選び、診断ツールで 8.8.8.8 に「tracert」を打ってみてください。通信がどこまで進んだかが分かります。', target: '[data-diag="tracert"]', done: c => [...c.diag].some(x => x.startsWith('tracert')) },

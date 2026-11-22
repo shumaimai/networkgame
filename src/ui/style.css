@@ -478,3 +478,65 @@ svg.desk text { font-family: var(--sans); fill: var(--text); text-anchor: middle
 .site-zone.cloud text { fill: #7fbccd; }
 .wifi.net { stroke: #6f86b8; stroke-dasharray: 2 9; }
 path.wifi { fill: none; }
+
+/* 受注と倉庫を画面の下まで使う。週の見出しと、週が変わったときの知らせ */
+.hub-main { display: flex; flex-direction: column; min-height: 0; }
+.hub-main > * { flex: none; }
+.hub-main > .cards { flex: 1 1 0; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+.cards .card, .cards.tut .card { min-height: 0; overflow: hidden; }
+.cards.tut { max-width: none; }
+.card > * { flex: none; }
+.card p.card-brief { font-size: 15px; line-height: 1.7; color: #c9d4ee; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; }
+.card-checks { flex: 1 1 0 !important; min-height: 0; overflow: hidden; background: #101831; border-radius: 12px; padding: 10px 14px 0; display: flex; flex-direction: column; gap: 4px;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 30px), transparent); mask-image: linear-gradient(#000 calc(100% - 30px), transparent); }
+.card-checks small { color: var(--dim); font-size: 13px; font-weight: 700; }
+.card-checks ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.6; color: #b9c6e6; }
+.card-checks li { margin-bottom: 4px; }
+.card-checks li::marker { color: var(--teal2); }
+.card .tags { flex: none; }
+.card-facts { display: grid; gap: 3px; font-size: 14px; color: var(--mute); }
+.card-facts div { display: flex; justify-content: space-between; }
+.card-facts b { color: #dfe8ff; font-variant-numeric: tabular-nums; }
+.card-learn { flex: 1 1 0 !important; min-height: 0; background: #101831; border-radius: 12px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+.card-learn small { color: var(--dim); font-size: 13px; }
+.card-learn ul { flex: 1; margin: 0; padding-left: 22px; font-size: 17px; line-height: 2; color: #dfe8ff; }
+.card-learn li::marker { color: var(--teal); }
+.cards.tut .card h3 { font-size: 24px; }
+.week-strip { display: flex; align-items: center; gap: 18px; background: rgba(16, 24, 49, .9); border: 1px solid var(--line); border-radius: 14px; padding: 9px 20px; margin-bottom: 18px; }
+.week-strip .wk { font-size: 20px; color: var(--yellow); letter-spacing: .08em; white-space: nowrap; }
+.week-strip .moves { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
+.week-strip small { color: var(--dim); font-size: 13px; white-space: nowrap; }
+.mv-h { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 1px 8px; }
+.mv-h.down { background: #14553b; color: #8ff0c0; }
+.mv-h.up { background: #5a1f28; color: #ffb3b3; }
+.move { background: #17223f; border: 1px solid var(--line); border-radius: 8px; padding: 2px 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.move s { color: var(--dim); }
+.move.down b { color: #7ee2a8; }
+.move.up b { color: #ff9b9b; }
+.week-banner { position: absolute; left: 0; right: 0; top: 300px; z-index: 30; pointer-events: none; display: flex; justify-content: center; animation: week-banner 4.6s forwards;
+  background: linear-gradient(90deg, transparent, rgba(6, 10, 22, .94) 18%, rgba(6, 10, 22, .94) 82%, transparent); padding: 34px 0 30px; }
+.wb-in { text-align: center; display: grid; gap: 12px; justify-items: center; }
+.wb-title { font-size: 64px; font-weight: 900; color: var(--yellow); letter-spacing: .14em; text-shadow: 0 4px 24px rgba(255, 209, 102, .35); }
+.wb-in p { font-size: 22px; color: #fff; }
+.wb-moves { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; font-size: 17px; max-width: 1300px; }
+.wb-in small { font-size: 16px; color: var(--mute); }
+@keyframes week-banner { 0% { opacity: 0; transform: translateY(18px); } 7%, 84% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.hub > .page { min-height: 0; }
+.ware-page { height: 100%; grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+.ware-page section { display: flex; flex-direction: column; min-height: 0; }
+.ware-page section > * { flex: none; }
+.ware-page .stock, .ware-page .size-list { flex: 1 1 0; min-height: 0; overflow: auto; }
+.slots { gap: 6px; justify-content: start; }
+.slots i { display: grid; place-items: center; border-radius: 8px; }
+.slots i.on { background: #3a2a14; border-color: var(--orange); }
+.slots i img { width: 78%; height: 78%; object-fit: contain; }
+.size-row { display: grid; grid-template-columns: 40px 1fr 130px 90px; gap: 14px; align-items: center; padding: 7px 0; border-bottom: 1px solid #22304f; font-size: 15px; }
+.size-row img { width: 40px; height: 40px; }
+.size-row span { color: var(--mute); text-align: right; font-variant-numeric: tabular-nums; }
+.size-row span:last-child { color: #8ff0c0; }
+.size-row span.none { color: var(--dim); }
+.g-example { background: #101a33; border: 1px solid var(--line); border-left: 5px solid var(--yellow); border-radius: 0 14px 14px 0; padding: 16px 22px 6px; }
+
+.card-learn ul { font-size: 20px; line-height: 2.2; }
+.learn-guide { display: flex; align-items: center; gap: 16px; color: var(--mute); font-size: 16px; }
+.learn-guide img { width: 110px; height: 110px; }

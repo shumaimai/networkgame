@@ -122,6 +122,12 @@ try {
   await page.click('[data-act="hub"]');
   s = await state();
   ok(s.week === 2 && s.rep > 50, `納品で週が進み評判が上がる ${JSON.stringify(s)}`);
+  ok(/2週目/.test(await txt('.week-banner')) && /値段/.test(await txt('.week-banner')), '週が変わると、週と値段の知らせが出る');
+  ok(/2週目/.test(await txt('.week-strip')), '受注画面に週の見出しが出る');
+  const cardBox = await page.locator('.cards .card').first().boundingBox(), stageBox = await page.locator('#stage').boundingBox();
+  ok(cardBox.y + cardBox.height > stageBox.y + stageBox.height * 0.92, '依頼のカードが画面の下まで伸びている');
+  await page.click('[data-act="go-shop"]'); await page.click('[data-act="go-hub"]');
+  ok(await page.locator('.week-banner').count() === 0, '同じ週の知らせは1回だけ');
 
   // ---- 仕入れと倉庫 ----
   await page.click('[data-act="go-shop"]');
@@ -136,6 +142,8 @@ try {
   await page.click('[data-act="buy"][data-m="l2-8"]');
   await page.click('[data-act="go-ware"]');
   ok(/3台/.test(await txt('.stock')) && await page.locator('.slots i.on').count() === 3, '倉庫の在庫とスロットに入る');
+  const wareBox = await page.locator('.ware-page section').first().boundingBox();
+  ok(wareBox.y + wareBox.height > stageBox.y + stageBox.height * 0.92 && /あと \d+台/.test(await txt('.size-list')), '倉庫の画面が下まで伸び、機材ごとのスロット数が出る');
   await page.click('[data-act="go-hub"]');
   await page.click('.card >> nth=2'); await page.click('[data-act="accept"]');
   ok(await page.locator('[data-pal="stk:l2-8"]').count() === 1, '作業画面のパレットに在庫が出る');

@@ -21,7 +21,7 @@ export function mountTitle(app: App, root: HTMLElement): () => void {
         <p>社内ネットワークの構築と修理を請け負う仕事のゲーム</p>
       </div>
       <nav class="menu">
-        ${has ? item('continue', 'つづきから', `Lv.${g.level} ・ 第${s.week}週 ・ 資金 ${yen(s.money)}${s.active ? ' ・ 作業中の依頼あり' : ''}`) : ''}
+        ${has ? item('continue', 'つづきから', `Lv.${g.level} ・ ${s.week}週目 ・ 資金 ${yen(s.money)}${s.active ? ' ・ 作業中の依頼あり' : ''}`) : ''}
         ${item('new', 'はじめから', has ? 'いまのセーブデータは消えます' : '研修から始めます')}
         ${item('settings', '設定')}
       </nav>
