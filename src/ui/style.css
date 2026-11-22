@@ -716,3 +716,8 @@ p, li, td, dd, .brief, .info, .sl, .card h3, .coach p { word-break: auto-phrase;
 .offer .modal-btns .toggle.challenge { flex: 1; margin: 0; font-size: 13.5px; line-height: 1.55; text-align: left; }
 .offer .modal-btns .btn { flex: none; }
 .offer .modal-btns .mute { max-width: 220px; font-size: 13px; }
+
+/* お試し版の表示 */
+.trial-tag { background: #3d2f6e; color: #d9ccff; border-radius: 99px; padding: 4px 14px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.trial-note { display: inline-block; margin-top: 18px; background: rgba(61, 47, 110, .92); border: 1px solid #8f7be0; color: #efe9ff; border-radius: 99px; padding: 6px 26px; font-size: 20px; font-weight: 700; letter-spacing: .08em; }
+.trial-end { margin-top: 12px; background: #241c45; border: 1px solid #8f7be0; border-radius: 14px; padding: 12px 18px; font-size: 15px; line-height: 1.7; color: #e3dcff; text-align: left; }

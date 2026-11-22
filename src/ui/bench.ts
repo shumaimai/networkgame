@@ -4,6 +4,7 @@ import { ipStr, parseIp } from '../core/ip';
 import { Job, KIND_LABEL, worldCost } from '../core/job';
 import { CABLE_PRICE, Device, GwCfg, L3Cfg, MODEL, MODELS, PortRef, ServerCfg, SVC, SwitchCfg, defaultCfg, dkimKey, fillCfg, isGateway, isHost, linkError, makeDevice } from '../core/model';
 import { Net, arpTable, browse, build, reach, resolve, traceroute } from '../core/sim';
+import { LEVEL_CAP, TRIAL, TRIAL_END } from '../game/edition';
 import { ReviewItem, review } from '../game/review';
 import { Active, Game, HELP_COST, HelpUse, MAX_LEVEL, Outcome, PLAY_JOB, streakMult } from '../game/state';
 import { Step, StepCtx, TUTORIALS } from '../game/tutorial';
@@ -39,9 +40,10 @@ const specLines = (body: string, copy: boolean): string => body.split('\n').map(
 let leftAt: { key: string; t: number } | null = null;
 // プレイグラウンドで置ける機器。値段のない機器(端末、回線、クラウド)も置ける
 const PLAY_GROUPS: [string, string[]][] = [
-  ['端末', ['pc', 'printer', 'phone', 'camera', 'pos', 'home']],
-  ['ネットワーク機器とサーバー', MODELS.filter(m => m.price > 0).map(m => m.id)],
-  ['回線とクラウド', ['internet', 'internet-2', 'internet-3', 'wan', 'cloud', 'vserver']],
+  ['端末', TRIAL ? ['pc', 'printer', 'phone', 'camera', 'pos'] : ['pc', 'printer', 'phone', 'camera', 'pos', 'home']],
+  ['ネットワーク機器とサーバー', MODELS.filter(m => m.price > 0 && m.level <= LEVEL_CAP).map(m => m.id)],
+  // お試し版では、上限のレベルまでに出てくる機器だけを置ける
+  [TRIAL ? '回線' : '回線とクラウド', TRIAL ? ['internet'] : ['internet', 'internet-2', 'internet-3', 'wan', 'cloud', 'vserver']],
 ];
 // クリックで置いたときの場所(回線やクラウドは、机の上のほうに置く)
 const PLAY_SPOT: Record<string, [number, number][]> = { internet: [[700, 80], [460, 80], [940, 80]], cloud: [[1180, 100], [1180, 480], [940, 480], [700, 480]], wan: [[280, 100], [280, 480], [520, 480]] };
@@ -82,7 +84,7 @@ export function mountBench(app: App, root: HTMLElement, sandbox = false): () => 
       </header>
       <aside class="col left">${sandbox ? `
         <h3>プレイグラウンド</h3>
-        <div class="brief">依頼もお金もない机です。作中に出てくる機器を、レベルに関係なく、何台でも置けます。組んだものは残るので、あとで続きから触れます。</div>
+        <div class="brief">依頼もお金もない机です。${TRIAL ? 'お試し版に出てくる機器(Lv.5 まで)を' : '作中に出てくる機器を'}、レベルに関係なく、何台でも置けます。組んだものは残るので、あとで続きから触れます。</div>
         <h3>できること</h3>
         <ul class="plain small play-tips">
           <li>右の一覧から機器を置き、ポート同士をクリックしてつなぐ。</li>
@@ -111,7 +113,7 @@ export function mountBench(app: App, root: HTMLElement, sandbox = false): () => 
         </div>
         <div id="coach" class="coach hidden"></div>
         <div class="under">
-          <div class="pane"><h3>${sandbox ? '確かめ方' : '検収テスト'} <span id="pass"${sandbox ? ' class="hidden"' : ''}></span></h3>${sandbox ? '<ul class="plain small play-tips"><li>ここには検収テストがありません。通信できるかは、診断ツールの結果とコンソールで確かめます。</li><li>インターネットを使う構成では、「回線とクラウド」の回線を置き、ルーターのWANをつなぎます。</li><li>公開DNSのレコードは、回線を選ぶと編集できます(ドメインは play.example.jp)。</li></ul>' : ''}<ul id="checks" class="checks${sandbox ? ' hidden' : ''}"></ul></div>
+          <div class="pane"><h3>${sandbox ? '確かめ方' : '検収テスト'} <span id="pass"${sandbox ? ' class="hidden"' : ''}></span></h3>${sandbox ? '<ul class="plain small play-tips"><li>ここには検収テストがありません。通信できるかは、診断ツールの結果とコンソールで確かめます。</li><li>インターネットを使う構成では、右の一覧の回線を置き、ルーターのWANをつなぎます。</li><li>公開DNSのレコードは、回線を選ぶと編集できます(ドメインは play.example.jp)。</li></ul>' : ''}<ul id="checks" class="checks${sandbox ? ' hidden' : ''}"></ul></div>
           <div class="pane"><h3>コンソール</h3><div id="console" class="console"></div></div>
         </div>
       </section>
@@ -751,6 +753,7 @@ function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[], answe
       ${out.xpMult > 1 ? `<div class="r-streak">次もハードモードで納期に間に合うと、経験値は <b>×${streakMult(out.streak + 1)}</b> です。</div>` : ''}
       <div class="xpbar"><i style="width:${Math.round(game.xpProgress * 100)}%"></i><span>Lv.${game.level} ${esc(game.levelInfo.title)}</span></div>
       ${up ? `<div class="levelup"><b>レベルアップ! Lv.${out.levelAfter}</b><ul>${out.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><small>機材とガイドのページが増えました。</small></div>` : ''}
+      ${TRIAL && up && out.levelAfter >= LEVEL_CAP ? `<div class="trial-end">${esc(TRIAL_END)}</div>` : ''}
       </div>
       ${notes.length ? `<div class="r-review"><h3>振り返り</h3>${notes.map(n => `<div><b>${esc(n.head)}</b><span>${esc(n.body)}</span></div>`).join('')}${answer ? `<details class="r-answer"><summary>模範解答の機器と設定を見る</summary><section>${answer}</section></details>` : ''}</div>` : ''}
       <div class="modal-btns"><button class="btn primary big" data-act="hub">受注へ戻る</button></div>

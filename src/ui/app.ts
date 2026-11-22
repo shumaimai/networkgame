@@ -1,4 +1,5 @@
 // 画面の切り替え、16:9 の固定ステージ、モーダル、セーブの読み書き
+import { SAVE_KEY } from '../game/edition';
 import { Game, Save, newSave } from '../game/state';
 import { setBgm, setVolume, sfx } from './audio';
 import { mountBench } from './bench';
@@ -8,7 +9,6 @@ import { mountShop } from './shop';
 import { mountTitle } from './title';
 import { mountWare } from './ware';
 
-const SAVE_KEY = 'netshop-save';
 export const STAGE_W = 1920, STAGE_H = 1080;
 export type ScreenId = 'title' | 'hub' | 'bench' | 'shop' | 'ware' | 'play';
 const SCREENS: Record<ScreenId, (app: App, root: HTMLElement) => () => void> = { title: mountTitle, hub: mountHub, bench: mountBench, shop: mountShop, ware: mountWare, play: (app, root) => mountBench(app, root, true) };

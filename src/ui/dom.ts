@@ -6,7 +6,8 @@ export const clamp = (v: number, lo: number, hi: number): number => Math.max(lo,
 export const stars = (n: number, max = 3): string => '★'.repeat(n) + '☆'.repeat(Math.max(0, max - n));
 export const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document): T => root.querySelector(sel) as T;
 export const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document): T[] => [...root.querySelectorAll(sel)] as T[];
-export const img = (name: string): string => `./img/${name}.png`;
+// 1つのHTMLにまとめた版(お試し版)では、ページに埋め込んだ画像(window.__IMG)を使う
+export const img = (name: string): string => (globalThis as any).__IMG?.[name] ?? `./img/${name}.png`;
 export const nl2br = (s: string): string => esc(s).replace(/\n/g, '<br>');
 
 /** data-act を持つ要素のクリックをまとめて受ける */

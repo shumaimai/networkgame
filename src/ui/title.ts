@@ -1,4 +1,5 @@
 // タイトル画面
+import { TRIAL } from '../game/edition';
 import type { App } from './app';
 import { sfx } from './audio';
 import { onAct, yen } from './dom';
@@ -19,13 +20,14 @@ export function mountTitle(app: App, root: HTMLElement): () => void {
         </svg>
         <h1>ネットワーク屋さん</h1>
         <p>社内ネットワークの構築と修理を請け負う仕事のゲーム</p>
+        ${TRIAL ? '<div class="trial-note">お試し版 ・ Lv.5 まで遊べます</div>' : ''}
       </div>
       <nav class="menu">
         ${has ? item('continue', 'つづきから', `Lv.${g.level} ・ ${s.week}週目 ・ 資金 ${yen(s.money)}${s.active ? ' ・ 作業中の依頼あり' : ''}`) : ''}
         ${item('new', 'はじめから', has ? 'いまのセーブデータは消えます' : '研修から始めます')}
         ${item('settings', '設定')}
       </nav>
-      <div class="title-foot">ver 0.2</div>
+      <div class="title-foot">${TRIAL ? 'お試し版 ・ PCのブラウザ(マウスとキーボード)向けです ・ ' : ''}ver 0.2</div>
     </div>`;
   root.addEventListener('pointerover', e => { if ((e.target as HTMLElement).closest('.menu-item')) sfx('tick'); });
   onAct(root, act => {

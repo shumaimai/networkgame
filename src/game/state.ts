@@ -3,10 +3,11 @@ import { CheckResult } from '../core/checks';
 import { generate } from '../core/gen';
 import { Job, mulberry, worldCost } from '../core/job';
 import { CABLE_PRICE, Device, MODEL, MODELS, World, clone, makeDevice } from '../core/model';
+import { LEVEL_CAP } from './edition';
 import { regularJob } from './regular';
 import { TUTORIALS, tutorialJob } from './tutorial';
 
-export const MAX_LEVEL = 24;
+export const MAX_LEVEL = LEVEL_CAP;
 export const START_MONEY = 30000;
 /** レベル n になるのに必要な累計経験値 */
 export const xpFor = (n: number): number => 45 * (n - 1) * (n + 2);
@@ -230,7 +231,7 @@ export class Game {
   }
   /** 次に機材が増えるレベルで、買えるようになるもの */
   upcoming(): string[] {
-    const next = MODELS.filter(m => m.price > 0 && m.level > this.level).map(m => m.level).sort((a, b) => a - b)[0];
+    const next = MODELS.filter(m => m.price > 0 && m.level > this.level && m.level <= MAX_LEVEL).map(m => m.level).sort((a, b) => a - b)[0];
     return next == null ? [] : MODELS.filter(m => m.price > 0 && m.level === next).map(m => m.id);
   }
   get stockUsed(): number { return Object.entries(this.s.stock).reduce((t, [m, i]) => t + MODEL[m].size * i.qty, 0); }

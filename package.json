@@ -11,7 +11,8 @@
     "test": "vitest run",
     "app": "vite build && electron .",
     "e2e": "node e2e/run.mjs",
-    "package": "vite build && electron-packager . NetworkShop --platform=win32 --arch=x64 --out=release --overwrite --ignore=\"^/(src|tests|e2e|tools|assets|shots|public|release|\\.devin|node_modules/(?!\\.bin))\""
+    "trial": "python tools/build_trial.py",
+    "package": "vite build && electron-packager . NetworkShop --platform=win32 --arch=x64 --out=release --overwrite --ignore=\"^/(src|tests|e2e|tools|assets|shots|public|release|trial|dist-trial|saves|\\.devin|node_modules/(?!\\.bin))\""
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",

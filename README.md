@@ -25,6 +25,7 @@ Node.js が必要です。
     npm run dev        # http://127.0.0.1:5173 をブラウザで開く
     npm run app        # デスクトップアプリとして起動
     npm run package    # release/NetworkShop-win32-x64/NetworkShop.exe を作る
+    npm run trial      # Webで公開するお試し版(Lv.5 まで)を trial/index.html に作る
 
 ## テスト
     npm run typecheck

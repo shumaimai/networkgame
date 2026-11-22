@@ -1,12 +1,13 @@
 // 受注: 研修と、今週の依頼の一覧
 import { Job, KIND_LABEL } from '../core/job';
 import { MODEL } from '../core/model';
+import { TRIAL } from '../game/edition';
 import { Game, LEVELS, MAX_LEVEL, Offer, PriceMove, STREAK_XP, streakMult, xpFor } from '../game/state';
 import { TUTORIALS, tutorialJob } from '../game/tutorial';
 import type { App } from './app';
 import { setBgm, setVolume, sfx } from './audio';
 import { portrait } from './bench';
-import { esc, nl2br, onAct, stars, yen } from './dom';
+import { esc, img, nl2br, onAct, stars, yen } from './dom';
 import { guideChips, openGuide } from './guide';
 
 const TABS: [string, string][] = [['hub', '受注'], ['shop', '仕入れ'], ['ware', '倉庫']];
@@ -16,9 +17,9 @@ export function statusBar(game: Game, here: string): string {
   return `<header class="bar hubbar">
     <nav class="tabs">${TABS.map(([id, label]) => `<button class="tab ${here === id ? 'on' : ''}" data-act="go-${id}">${label}</button>`).join('')}</nav>
     <div class="lv"><b>Lv.${game.level}</b><span>${esc(game.levelInfo.title)}</span><div class="xpbar small"><i style="width:${Math.round(game.xpProgress * 100)}%"></i></div>
-      <small>${game.level >= MAX_LEVEL ? '最高レベル' : `次まで ${xpFor(game.level + 1) - game.s.xp}`}</small></div>
+      <small>${game.level >= MAX_LEVEL ? (TRIAL ? 'お試し版はここまで' : '最高レベル') : `次まで ${xpFor(game.level + 1) - game.s.xp}`}</small></div>
     <div class="rep" title="評判が高いほど契約金が増えます">評判 <span class="repstars">${'★'.repeat(full)}${half ? '<i>★</i>' : ''}<u>${'★'.repeat(5 - full - (half ? 1 : 0))}</u></span></div>
-    <div class="week">${game.s.week}週目</div>
+    <div class="week">${game.s.week}週目</div>${TRIAL ? '<div class="trial-tag" title="お試し版では、Lv.5 まで上がります">お試し版</div>' : ''}
     ${game.streak ? `<div class="streak" title="ハードモードで、納期に間に合った納品が続いている回数です。遅れるか、取り下げると0に戻ります。">ハード <b>${game.streak}</b>回連続<i>次は経験値 ×${streakMult(game.streak + 1)}</i></div>` : ''}
     <div class="spacer"></div>
     <div class="money">資金 <b>${yen(game.s.money)}</b></div>
@@ -102,7 +103,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
           return `<button class="card ${done ? 'done' : open ? '' : 'locked'}" ${open && !active ? `data-act="tutorial" data-id="${t.id}"` : 'disabled'}>
             <div class="card-top"><span class="chip tutorial">研修 ${i + 1}</span>${done ? '<span class="chip ok">修了</span>' : ''}</div>
             <h3>${esc(t.title)}</h3><p>${esc(t.summary)}</p>
-            <div class="card-learn"><small>この研修で扱うこと</small><ul>${t.learn.map(x => `<li>${esc(x)}</li>`).join('')}</ul><div class="learn-guide"><img src="./img/p_guide.png" alt=""><span>画面の案内に沿って、${t.steps.length}ステップで進めます。</span></div></div>
+            <div class="card-learn"><small>この研修で扱うこと</small><ul>${t.learn.map(x => `<li>${esc(x)}</li>`).join('')}</ul><div class="learn-guide"><img src="${img('p_guide')}" alt=""><span>画面の案内に沿って、${t.steps.length}ステップで進めます。</span></div></div>
             <div class="card-foot"><span>契約金 <b>${yen(tutorialJob(t.id).reward)}</b></span><span>経験値 <b>+${t.xp}</b></span></div></button>`;
         }).join('')}</div>`;
     } else {
@@ -182,7 +183,7 @@ export function mountHub(app: App, root: HTMLElement): () => void {
 
 export function openHistory(app: App): void {
   const g = app.game, h = g.s.history;
-  const t = g.totals, next = LEVELS[g.level];
+  const t = g.totals, next = g.level < MAX_LEVEL ? LEVELS[g.level] : undefined;
   const m = app.modal(`<h2>実績</h2>
     <div class="stats"><div><small>納品した依頼</small><b>${t.n}件</b></div><div><small>利益の合計</small><b>${yen(t.profit)}</b></div><div><small>★3の納品</small><b>${t.star3}件</b></div><div><small>レベル</small><b>${g.level}</b></div></div>
     ${next ? `<h3>次のレベル(Lv.${next.level})で増えるもの</h3><div class="unlocks"><div>${next.unlocks.map(esc).join(' / ')}</div></div>` : ''}

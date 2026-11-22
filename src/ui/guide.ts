@@ -1,7 +1,7 @@
 // ガイドの画面: 左に項目(キーワードで絞り込める)、右に説明と動く図解
 import { build } from '../core/sim';
 import { CATS, ENTRIES, ENTRY, Entry, TAG_GUIDE } from '../game/guide';
-import type { Game } from '../game/state';
+import { Game, MAX_LEVEL } from '../game/state';
 import type { App } from './app';
 import { sfx } from './audio';
 import { Desk } from './desk';
@@ -44,7 +44,7 @@ export function openGuide(app: App, id?: string, onClose?: () => void): void {
       const first = hit.filter(e => e.title.toLowerCase().includes(q));
       h = hit.length ? `<h4>「${esc(query.trim())}」を含む項目 ${hit.length}件</h4>${[...first, ...hit.filter(e => !first.includes(e))].map(btn).join('')}` : '<p class="none">当てはまる項目がありません。</p>';
     } else {
-      h = CATS.map(c => `<h4>${c}</h4>${ENTRIES.filter(e => e.cat === c).map(e => (e.level <= level ? btn(e) : `<button disabled>Lv.${e.level} で読めます</button>`)).join('')}`).join('');
+      h = CATS.map(c => `<h4>${c}</h4>${ENTRIES.filter(e => e.cat === c).map(e => (e.level <= level ? btn(e) : `<button disabled>${e.level > MAX_LEVEL ? '製品版で読めます' : `Lv.${e.level} で読めます`}</button>`)).join('')}`).join('');
     }
     $('#guide-list', m).innerHTML = h;
   }
