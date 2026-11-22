@@ -58,6 +58,13 @@ try {
   c = await cfg('l3');
   ok(c.portVlan[0] === 10 && c.portMode[7] === 'trunk' && c.svis[0].ip === '192.168.10.254' && c.svis[0].relay === '192.168.1.53', 'L3: VLAN・トランク・VLANインターフェース ' + JSON.stringify(c.svis));
   ok(await page.locator('[data-bind="portVlan.7"]').isDisabled(), 'トランクのポートはVLAN番号を入力できない');
+  // VLANインターフェースのVLAN番号の上下のボタン
+  await page.click('.row.svi .stp [data-d="1"]'); await page.click('.row.svi .stp [data-d="1"]');
+  ok((await cfg('l3')).svis[0].vlan === 12 && await page.inputValue('[data-bind="svis.0.vlan"]') === '12', 'VLANインターフェース: ▲ を2回押すと、VLAN番号が 10 → 12 になる');
+  await page.click('.row.svi .stp [data-d="-1"]'); await page.click('.row.svi .stp [data-d="-1"]');
+  ok((await cfg('l3')).svis[0].vlan === 10 && (await cfg('l3')).svis[0].ip === '192.168.10.254', 'VLANインターフェース: ▼ で戻り、ほかの欄はそのまま');
+  const sb = await page.locator('.row.svi .numstep').boundingBox(), ib = await page.locator('[data-bind="svis.0.ip"]').boundingBox();
+  ok(sb.x + sb.width <= ib.x + 1 && sb.height < 40, 'VLAN番号の欄とボタンが、IPアドレスの欄に重ならない');
   // VLAN番号の上下のボタン
   await page.click('.vp:nth-child(2) [data-d="1"]'); await page.click('.vp:nth-child(2) [data-d="1"]'); await page.click('.vp:nth-child(2) [data-d="1"]');
   ok((await cfg('l3')).portVlan[1] === 4 && await page.inputValue('[data-bind="portVlan.1"]') === '4', '▲ を3回押すと、VLAN番号が 1 → 4 になる');

@@ -212,7 +212,7 @@ function panelBody(d: Device, ctx: PanelCtx): string {
     if (d.kind === 'l3') {
       const l = c as L3Cfg;
       h += '<h3>VLANインターフェース<small>各VLANのゲートウェイになる</small></h3><div class="colhead svi"><span>VLAN</span><span>IPアドレス</span><span>マスク</span><span></span></div>'
-        + l.svis.map((_, i) => `<div class="row svi"><input type="number" min="1" max="4094" data-bind="svis.${i}.vlan" data-num value="${val(`svis.${i}.vlan`)}">${inp(`svis.${i}.ip`, 'ip', '192.168.10.254')}${maskSel(`svis.${i}.prefix`, true)}${del('svis', i)}
+        + l.svis.map((_, i) => `<div class="row svi"><span class="numstep"><input type="number" min="1" max="4094" data-bind="svis.${i}.vlan" data-num value="${val(`svis.${i}.vlan`)}"><span class="stp"><button data-act="step" data-for="svis.${i}.vlan" data-d="1" title="1 増やす">▲</button><button data-act="step" data-for="svis.${i}.vlan" data-d="-1" title="1 減らす">▼</button></span></span>${inp(`svis.${i}.ip`, 'ip', '192.168.10.254')}${maskSel(`svis.${i}.prefix`, true)}${del('svis', i)}
           <span class="relay-l">DHCPリレー</span>${inp(`svis.${i}.relay`, 'ip', 'DHCPサーバーのIP(使わないなら空欄)')}
           ${ctx.level >= 21 || l.svis[i].vip ? `<span class="vip-l">仮想IP</span>${inp(`svis.${i}.vip`, 'ip', '2台で同じアドレス(冗長化)')}<input type="number" min="1" max="254" data-bind="svis.${i}.prio" data-num value="${esc(l.svis[i].prio ?? 100)}" title="優先度。大きいほうが、ふだん仮想IPアドレスを受け持つ">` : ''}</div>`).join('')
         + addBtn('svis', 'VLANインターフェースを追加') + routes() + rules(false);
