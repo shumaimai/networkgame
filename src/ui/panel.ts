@@ -22,6 +22,7 @@ export const ROW_TEMPLATE: Record<string, () => any> = {
   records: () => ({ name: '', ip: '' }),
   pools: () => ({ start: '', end: '', prefix: 24, gw: '', dns: '' }),
   forwards: () => ({ svc: 'web', to: '' }),
+  zone: () => ({ type: 'A', name: '', value: '' }),
 };
 export const getPath = (o: any, path: string): any => path.split('.').reduce((x, k) => x[k], o);
 export function setPath(o: any, path: string, v: any): void {
@@ -105,6 +106,7 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
       if (s.proxyOn) h += '<div class="svc">' + num('待受ポート', 'proxyPort') + field('利用を許可', 'proxyAllow', 'list', '空欄=すべて 例 192.168.10.0/24')
         + '<div class="info">このサーバー自身が名前解決(参照DNS)とインターネット接続をできる必要があります。</div></div>';
       h += '<h3>Webサービス</h3>' + toggle('webOn', 'Webサイトを公開する (80/443)');
+      if (s.webOn) h += '<div class="svc">' + field('証明書の名前', 'cert', 'host', 'HTTPSで公開する名前(使わないなら空欄)') + '</div>';
     }
     h += '<h3>ファイル共有</h3>' + toggle('fileOn', '共有フォルダを使えるようにする (445)');
     if (s.fileOn) h += '<div class="svc">' + field('利用を許可', 'fileAllow', 'list', '空欄=すべて 例 192.168.10.0/24') + '</div>';
@@ -150,8 +152,18 @@ export function devicePanel(d: Device, ctx: PanelCtx): string {
   } else if (d.kind === 'ap') {
     h += '<h3>無線LAN</h3>' + field('SSID', 'ssid', '', 'ネットワーク名') + field('暗号化キー', 'key', '', 'パスワード')
       + '<div class="info">SSIDと暗号化キーが同じPCを、有線LANにつなぎます。</div>';
+  } else if (d.kind === 'lb') {
+    h += '<h3>ネットワーク設定</h3>' + field('IPアドレス', 'ip', 'ip') + mask('prefix') + field('ゲートウェイ', 'gw', 'ip')
+      + '<h3>振り分け先</h3>' + field('Webサーバー', 'backends', 'list', '例 172.16.1.81, 172.16.1.82')
+      + '<div class="info">このアドレスに届いたWebアクセスを、振り分け先のWebサーバーへ順に渡します。応答しないサーバーは外して、残りで続けます。</div>';
   } else if (d.kind === 'internet') {
-    h += `<h3>説明</h3><div class="info">契約済みのインターネット回線です。ルーターやファイアウォールの外側のポートにつなぎます。<br>公開DNS: <code>${PUBLIC_DNS}</code><br>Webサイト: ${Object.keys(EXTERNAL).map(n => `<code>${n}</code>`).join(' ')}</div>`;
+    h += `<h3>回線</h3><div class="info">契約済みのインターネット回線です。ルーターやファイアウォールの外側のポートにつなぎます。<br>会社の外側のアドレス: <code>203.0.113.2</code><br>公開DNS: <code>${PUBLIC_DNS}</code><br>Webサイト: ${Object.keys(EXTERNAL).map(n => `<code>${n}</code>`).join(' ')}</div>`;
+    if (c.domain) {
+      h += `<h3>公開DNS<small>${esc(c.domain)}</small></h3><div class="colhead zone"><span>種類</span><span>名前</span><span>値</span><span></span></div>`
+        + (c.zone as any[]).map((_, i) => `<div class="row zone">${sel(`zone.${i}.type`, [['A', 'A'], ['MX', 'MX'], ['TXT', 'TXT']])}${inp(`zone.${i}.name`, '', 'www')}${inp(`zone.${i}.value`, '', '値')}${del('zone', i)}</div>`).join('')
+        + addBtn('zone', 'レコードを追加')
+        + `<div class="info">インターネット上のだれもが引ける、自社ドメインの名前です。名前の <code>@</code> はドメインそのもの(${esc(c.domain)})を表します。<br><b>A</b> 名前 → IPアドレス<br><b>MX</b> メールの届け先のサーバー名<br><b>TXT</b> SPFなどの文字列 例 <code>v=spf1 ip4:203.0.113.2 -all</code></div>`;
+    }
   }
 
   if (isHost(d.kind)) {

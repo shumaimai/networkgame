@@ -2,7 +2,7 @@
 
 export type Kind =
   | 'pc' | 'printer' | 'phone' | 'camera' | 'pos'   // お客様の端末
-  | 'server' | 'nas'                                // サービスを動かす機器
+  | 'server' | 'nas' | 'lb'                         // サービスを動かす機器
   | 'l2' | 'l2m' | 'l3' | 'router' | 'fw' | 'ap'    // ネットワーク機器
   | 'home'                                          // 社外(自宅)からVPNでつなぐPC
   | 'internet';
@@ -38,7 +38,12 @@ export interface ServerCfg extends HostCfg {
   webOn: boolean;
   fileOn: boolean; fileAllow: string;
   mailOn: boolean;
+  /** HTTPSのサーバー証明書に書かれた名前 */
+  cert: string;
 }
+export interface ZoneRec { type: 'A' | 'MX' | 'TXT'; name: string; value: string }
+/** 回線(プロバイダ)側の設定: 契約しているドメインと、その公開DNSのレコード */
+export interface InetCfg { domain: string; zone: ZoneRec[] }
 export interface SwitchCfg {
   portMode: ('access' | 'trunk')[];
   portVlan: number[];
@@ -111,6 +116,7 @@ export const MODELS: Model[] = [
   { id: 'l3-24', kind: 'l3', label: 'L3スイッチ 24ポート', short: 'L3 24p', ports: nums(24), price: 98000, size: 3, level: 12, prefix: 'L3SW', desc: '24ポートのL3スイッチ。' },
   { id: 'ap', kind: 'ap', label: '無線アクセスポイント', short: '無線AP', ports: ['eth0'], price: 12000, size: 1, level: 13, prefix: 'AP', desc: '無線LANの親機。SSIDと暗号化キーが合う端末を有線LANにつなぐ。' },
 
+  { id: 'lb', kind: 'lb', label: '負荷分散装置', short: '負荷分散', ports: ['eth0'], price: 40000, size: 2, level: 16, prefix: 'LB', desc: '届いたWebアクセスを、複数のWebサーバーに振り分ける。1台が止まっても、残りで応答を続けられる。' },
   { id: 'home', kind: 'home', label: '自宅PC', short: '自宅PC', ports: [], price: 0, size: 0, level: 1, prefix: '', desc: '社員の自宅にあるPC。インターネットの向こうから、VPNで社内につなぐ。' },
   { id: 'internet', kind: 'internet', label: 'インターネット回線', short: '回線', ports: ['ISP'], price: 0, size: 0, level: 1, prefix: '', desc: '契約済みのインターネット回線。' },
 ];
@@ -119,7 +125,7 @@ export const CABLE_PRICE = 500;
 
 export const isEndpoint = (k: Kind): boolean => k === 'pc' || k === 'printer' || k === 'phone' || k === 'camera' || k === 'pos';
 /** 自分のIPアドレスを1つ持ち、ゲートウェイ経由で通信する機器 */
-export const isHost = (k: Kind): boolean => isEndpoint(k) || k === 'server' || k === 'nas' || k === 'home';
+export const isHost = (k: Kind): boolean => isEndpoint(k) || k === 'server' || k === 'nas' || k === 'lb' || k === 'home';
 export const isGateway = (k: Kind): boolean => k === 'router' || k === 'fw';
 export const isManaged = (k: Kind): boolean => k === 'l2m' || k === 'l3';
 export const isRouting = (k: Kind): boolean => isGateway(k) || k === 'l3' || k === 'internet';
@@ -139,7 +145,7 @@ export function defaultCfg(m: Model): any {
         dhcpOn: false, pools: [],
         webOn: false,
         fileOn: m.kind === 'nas', fileAllow: '',
-        mailOn: false,
+        mailOn: false, cert: '',
       };
       return c;
     }
@@ -150,6 +156,10 @@ export function defaultCfg(m: Model): any {
     case 'router':
     case 'fw':
       return { wan: { mode: 'auto', ip: '', prefix: 30, gw: '' }, nat: true, lan: m.ports.slice(1).map(lanIf), routes: [], rules: [], forwards: [], vpn: { on: false, key: '', ip: '' } } satisfies GwCfg;
+    case 'lb':
+      return { ...hostCfg(), backends: '' };
+    case 'internet':
+      return { domain: '', zone: [] } satisfies InetCfg;
     case 'home':
       return { vpn: { server: '', key: '' }, dns: '' };
     case 'ap':

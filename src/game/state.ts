@@ -5,7 +5,7 @@ import { Job, mulberry, worldCost } from '../core/job';
 import { CABLE_PRICE, Device, MODEL, MODELS, World, clone, makeDevice } from '../core/model';
 import { TUTORIALS, tutorialJob } from './tutorial';
 
-export const MAX_LEVEL = 14;
+export const MAX_LEVEL = 16;
 export const START_MONEY = 30000;
 /** レベル n になるのに必要な累計経験値 */
 export const xpFor = (n: number): number => 45 * (n - 1) * (n + 2);
@@ -26,6 +26,8 @@ export const LEVELS: LevelInfo[] = [
   { level: 12, title: 'ベテラン', unlocks: ['ループと冗長化', 'メールサービス', 'L3スイッチ 24ポート'] },
   { level: 13, title: '匠', unlocks: ['無線アクセスポイント、無線LAN'] },
   { level: 14, title: '匠', unlocks: ['VPN(テレワーク)'] },
+  { level: 15, title: '名人', unlocks: ['公開DNS(A・MX・TXTレコード)', 'HTTPSと証明書', 'SPF(メールの送信元の証明)'] },
+  { level: 16, title: '名人', unlocks: ['負荷分散装置'] },
 ];
 
 export interface Offer { id: string; seed: number; level: number; kind: 'build' | 'trouble'; ease: number }
@@ -43,6 +45,9 @@ export interface Active {
   elapsed: number;
   help: HelpUse;
   advance: number;
+  /** 受注したときの契約金と、その週の相場で見た模範解答の機材費 */
+  reward?: number;
+  par?: number;
 }
 export interface StockItem { qty: number; cost: number }
 export type PlanId = 'none' | 's' | 'm' | 'l' | 'custom';
@@ -217,15 +222,33 @@ export class Game {
     return !a ? null : a.tutorial ? tutorialJob(a.tutorial) : this.job(a.offer!);
   }
   /** 報酬(評判による増減込み)。前金はその半分 */
-  rewardOf(job: Job): number { return job.tutorial ? job.reward : Math.round((job.reward * this.repMult) / 500) * 500; }
+  rewardOf(job: Job): number {
+    if (job.tutorial) return job.reward;
+    const a = this.s.active;
+    if (a && a.reward != null && !a.tutorial && this.job(a.offer!) === job) return a.reward;
+    // 機材が値上がりしている週は、そのぶん契約金も上がる
+    return Math.round(((job.reward + Math.max(0, this.parNow(job) - job.par)) * this.repMult) / 500) * 500;
+  }
+  /** 今週の相場で、模範解答どおりに機材を買ったときの費用 */
+  parNow(job: Job): number {
+    if (job.kind === 'trouble') return 0;
+    return job.solution.devices.reduce((t, d) => t + (d.own === 'bought' ? this.price(d.model) : 0), 0) + job.solution.cables.filter(c => !c.free).length * CABLE_PRICE;
+  }
+  /** ★3 と ★2 になる機材費の上限 */
+  starLimits(job: Job): [number, number] {
+    if (job.kind === 'trouble') return [1500, 12000];
+    const par = this.s.active?.par ?? this.parNow(job);
+    return [Math.round(par * 1.12) + 500, Math.round(par * 1.4) + 3000];
+  }
 
   // ---- 受注 ----
   private begin(job: Job, a: Pick<Active, 'offer' | 'tutorial' | 'challenge'>): void {
-    const advance = Math.round(this.rewardOf(job) / 2 / 500) * 500;
+    const reward = this.rewardOf(job), par = job.tutorial ? job.par : this.parNow(job);
+    const advance = Math.round(reward / 2 / 500) * 500;
     this.s.money += advance;
     this.s.active = {
       ...a, world: clone(job.initial), shelf: {}, spare: 0, seq: 1, elapsed: 0,
-      help: { plan: false, reasons: false, answer: false }, advance,
+      help: { plan: false, reasons: false, answer: false }, advance, reward, par,
     };
     this.save();
   }
@@ -293,16 +316,12 @@ export class Game {
     return h ? (Object.keys(HELP_COST) as (keyof HelpUse)[]).reduce((t, k) => t + (h[k] ? HELP_COST[k] : 0), 0) : 0;
   }
 
-  /** ★の基準になる機材費 */
-  static starLimits(job: Job): [number, number] {
-    return job.kind === 'trouble' ? [1500, 12000] : [Math.round(job.par * 1.1), Math.round(job.par * 1.4 + 3000)];
-  }
 
   // ---- 納品 ----
   deliver(results: CheckResult[]): Outcome | null {
     const a = this.s.active, job = this.activeJob;
     if (!a || !job || !results.every(r => r.ok)) return null;
-    const cost = worldCost(a.world), [l3, l2] = Game.starLimits(job);
+    const cost = worldCost(a.world), [l3, l2] = this.starLimits(job);
     let stars = cost <= l3 ? 3 : cost <= l2 ? 2 : 1;
     if (a.help.answer) stars = Math.max(1, stars - 1);
     const base = this.rewardOf(job), parts: Outcome['parts'] = [{ label: '契約金', amount: base }];

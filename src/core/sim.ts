@@ -3,7 +3,7 @@
 // L3: ホストのゲートウェイ、経路表、NAT、ポート転送、フィルタールールを評価する
 // サービス: DHCP、DNS(レコード・フォワーダー)、プロキシ、Web、ファイル共有など
 import { inCidr, inNet, ipStr, isHostAddr, isPrivate, parseCidr, parseCidrList, parseIp } from './ip';
-import { Cable, Device, GwCfg, L3Cfg, Pool, Rule, ServerCfg, Svc, SVC, SwitchCfg, isGateway, isHost, isRouting } from './model';
+import { Cable, Device, GwCfg, InetCfg, L3Cfg, Pool, Rule, ServerCfg, Svc, SVC, SwitchCfg, isGateway, isHost, isRouting } from './model';
 
 export const WAN_IP = parseIp('203.0.113.2')!;
 export const ISP_IP = parseIp('203.0.113.1')!;
@@ -43,6 +43,38 @@ export interface Net {
 }
 export type Fail = { ok: false; reason: string };
 const fail = <T extends object>(reason: string, extra?: T): Fail & T => ({ ok: false, reason, ...(extra as T) });
+
+/** 社外のメールサーバー(送り先の確認に使う) */
+export const EXT_MAIL = 'mail.example.net';
+
+const inetOf = (net: Net): Device | undefined => net.devices.find(d => d.kind === 'internet');
+const zoneOf = (net: Net): InetCfg => { const c = inetOf(net)?.cfg ?? {}; return { domain: String(c.domain ?? ''), zone: c.zone ?? [] }; };
+const fqdn = (name: string, domain: string): string => { const n = String(name).trim().toLowerCase(); return n === '@' || n === '' ? domain : n.endsWith('.' + domain) || n === domain ? n : `${n}.${domain}`; };
+/** インターネット上の名前(公開DNS)を引く。自社ドメインは、回線側に登録したAレコードを見る */
+export function publicLookup(net: Net, name: string): number | null {
+  const z = zoneOf(net), n = String(name).trim().toLowerCase();
+  if (z.domain) for (const r of z.zone) if (r.type === 'A' && fqdn(r.name, z.domain) === n) return parseIp(r.value);
+  return EXTERNAL[n] ? parseIp(EXTERNAL[n]) : null;
+}
+/** 自社ドメインのSPFレコードで、その送信元が許可されているか */
+export function spfResult(net: Net, ip: number): { res: 'pass' | 'fail' | 'none'; why: string } {
+  const z = zoneOf(net);
+  const txt = z.zone.filter(r => r.type === 'TXT' && fqdn(r.name, z.domain) === z.domain && /^v=spf1(\s|$)/i.test(r.value.trim()));
+  if (!txt.length) return { res: 'none', why: `${z.domain} にSPFレコード(TXT)がありません` };
+  if (txt.length > 1) return { res: 'fail', why: 'SPFレコードが2つ以上あります(1つにまとめます)' };
+  for (const tok of txt[0].value.trim().split(/\s+/).slice(1)) {
+    const m = tok.match(/^([+\-~?]?)(all|a|mx|ip4)(?::(.+))?$/i);
+    if (!m) return { res: 'fail', why: `SPFレコードの書き方が正しくありません(${tok})` };
+    const pass = m[1] === '' || m[1] === '+', kind = m[2].toLowerCase();
+    let hit = false;
+    if (kind === 'all') hit = true;
+    else if (kind === 'ip4') { const c = parseCidr(m[3]); if (!c) return { res: 'fail', why: `SPFレコードのIPアドレスが正しくありません(${tok})` }; hit = inCidr(ip, c); }
+    else if (kind === 'a') hit = publicLookup(net, m[3] ?? z.domain) === ip;
+    else if (kind === 'mx') hit = z.zone.some(r => r.type === 'MX' && publicLookup(net, fqdn(r.value, z.domain)) === ip);
+    if (hit) return pass ? { res: 'pass', why: '' } : { res: 'fail', why: `SPFレコードが ${ipStr(ip)} からの送信を認めていません` };
+  }
+  return { res: 'none', why: 'SPFレコードの最後に -all がなく、載っていない送信元の扱いが決まっていません' };
+}
 
 const hasDns = (d: Device): boolean => d.kind === 'server' && !!d.cfg.dnsOn;
 const hasProxy = (d: Device): boolean => d.kind === 'server' && !!d.cfg.proxyOn;
@@ -407,10 +439,24 @@ export function traceroute(net: Net, src: Device, dst: number): { ok: boolean; h
 }
 
 // 届いた先の機器が、そのサービスを受け付けるか
-function accepts(end: Device, svc: Svc, srcSeen: number): string | null {
+/** 負荷分散装置の振り分け先のうち、Webに応答できるサーバー */
+export function lbAlive(net: Net, lb: Device): { all: number; alive: Device[] } {
+  const ips = String(lb.cfg.backends ?? '').split(/[\s,、]+/).map(parseIp).filter((x): x is number => x != null);
+  const alive: Device[] = [];
+  for (const b of ips) {
+    const r = reach(net, lb, b, { svc: 'web', label: '振り分け' });
+    if (r.ok && r.end.kind === 'server' && r.end.cfg.webOn) alive.push(r.end);
+  }
+  return { all: ips.length, alive };
+}
+/** そのアクセスに実際に応答するWebサーバー */
+export function webServers(net: Net, end: Device): Device[] { return end.kind === 'lb' ? lbAlive(net, end).alive : [end]; }
+
+function accepts(net: Net, end: Device, svc: Svc, srcSeen: number): string | null {
   switch (svc) {
     case 'ping': return null;
     case 'web':
+      if (end.kind === 'lb') return lbAlive(net, end).alive.length ? null : `${end.name} の振り分け先に、応答できるWebサーバーがありません`;
       if (end.kind === 'internet' || (end.kind === 'server' && end.cfg.webOn)) return null;
       return `${end.name} ではWebサービスが動いていません`;
     case 'file': {
@@ -437,7 +483,7 @@ export function connect(net: Net, src: Device, host: string | number, svc: Svc, 
   }
   const r = reach(net, src, ip, { svc, label });
   if (!r.ok) return fail(r.reason);
-  const why = accepts(r.end, svc, r.srcSeen);
+  const why = accepts(net, r.end, svc, r.srcSeen);
   return why ? fail(why) : { ok: true, end: r.end, hops: r.hops, ip };
 }
 
@@ -445,7 +491,8 @@ export function connect(net: Net, src: Device, host: string | number, svc: Svc, 
 export function resolve(net: Net, src: Device, name: string): { ok: true; ip: number } | Fail {
   name = String(name).trim().toLowerCase();
   if (src.kind === 'internet') {
-    return EXTERNAL[name] ? { ok: true, ip: parseIp(EXTERNAL[name])! } : fail(`公開DNSは ${name} を知りません`);
+    const pub = publicLookup(net, name);
+    return pub != null ? { ok: true, ip: pub } : fail(`公開DNSは ${name} を知りません(自社ドメインの名前は、回線の「公開DNS」にAレコードを登録します)`);
   }
   const dnsIp = net.eff.get(src.id)?.dns ?? null;
   if (dnsIp == null) return hasDns(src) ? lookupOn(net, src, name, 0) : fail(`${src.name} にDNSサーバーが設定されていません`);
@@ -456,8 +503,9 @@ export function resolve(net: Net, src: Device, name: string): { ok: true; ip: nu
 function answer(net: Net, server: Device, addr: string, name: string, depth: number): { ok: true; ip: number } | Fail {
   if (server.kind === 'internet') {
     if (addr !== PUBLIC_DNS) return fail(`${addr} はDNSサーバーではありません`);
-    if (!EXTERNAL[name]) return fail(`公開DNSは ${name} を知りません(社内の名前は社内のDNSサーバーに登録します)`);
-    return { ok: true, ip: parseIp(EXTERNAL[name])! };
+    const pub = publicLookup(net, name);
+    if (pub == null) return fail(`公開DNSは ${name} を知りません(社内の名前は社内のDNSサーバーに登録します)`);
+    return { ok: true, ip: pub };
   }
   if (!hasDns(server)) return fail(`${server.name} ではDNSサービスが動いていません`);
   return lookupOn(net, server, name, depth);
@@ -478,13 +526,13 @@ function lookupOn(net: Net, server: Device, name: string, depth: number): { ok: 
   return answer(net, f.end, ipStr(fwd), name, depth + 1);
 }
 
-export type BrowseOk = { ok: true; via: 'proxy' | 'direct'; hops: string[] };
+export type BrowseOk = { ok: true; via: 'proxy' | 'direct'; hops: string[]; end: Device };
 /** Web閲覧。PCにプロキシ設定があればプロキシ経由。direct を指定するとプロキシ設定を無視する */
 export function browse(net: Net, src: Device, host: string, direct = false): BrowseOk | Fail {
   const p = direct ? '' : String(src.cfg.proxy ?? '').trim();
   if (!p) {
     const w = connect(net, src, host, 'web', 'Webアクセス');
-    return w.ok ? { ok: true, via: 'direct', hops: w.hops } : w;
+    return w.ok ? { ok: true, via: 'direct', hops: w.hops, end: w.end } : w;
   }
   const m = p.match(/^(.+):(\d+)$/);
   if (!m) return fail(`${src.name} のプロキシ設定は「アドレス:ポート」の形式で入力してください`);
@@ -502,7 +550,32 @@ export function browse(net: Net, src: Device, host: string, direct = false): Bro
   if (!proxyAllows(px, r.srcSeen)) return fail(`${px.name} のプロキシが ${ipStr(r.srcSeen)} からの利用を許可していません`);
   const w = connect(net, px, host, 'web', 'Webアクセス(プロキシから)');
   if (!w.ok) return fail(`${px.name} からWebサイトに届きません: ${w.reason}`);
-  return { ok: true, via: 'proxy', hops: r.hops.concat(w.hops.slice(1)) };
+  return { ok: true, via: 'proxy', hops: r.hops.concat(w.hops.slice(1)), end: w.end };
+}
+
+/** 社外から自社ドメイン宛のメールが届くか: MX → Aレコード → 外側のアドレス → ポート転送 → メールサーバー */
+export function mailIn(net: Net): { ok: true } | Fail {
+  const inet = inetOf(net), z = zoneOf(net);
+  if (!inet) return fail('インターネット回線がありません');
+  const mx = z.zone.find(r => r.type === 'MX' && fqdn(r.name, z.domain) === z.domain);
+  if (!mx) return fail(`公開DNSに ${z.domain} のMXレコードがありません(メールの届け先が分かりません)`);
+  const host = fqdn(mx.value, z.domain), ip = publicLookup(net, host);
+  if (ip == null) return fail(`MXレコードが指す ${host} のAレコードがありません`);
+  const r = connect(net, inet, ip, 'mail', '社外からのメール');
+  return r.ok ? { ok: true } : fail(`${host} (${ipStr(ip)}) にメールを届けられません: ${r.reason}`);
+}
+/** 社内のメールサーバーから社外へ送ったメールが、SPFの検査を通って届くか */
+export function mailOut(net: Net): { ok: true } | Fail {
+  const sv = net.devices.find(d => d.kind === 'server' && d.cfg.mailOn);
+  if (!sv) return fail('メールサービスを動かしているサーバーがありません');
+  const d = resolve(net, sv, EXT_MAIL);
+  if (!d.ok) return fail(`${sv.name} が送り先(${EXT_MAIL})の名前を引けません: ${d.reason}`);
+  const r = reach(net, sv, d.ip, { svc: 'mail', label: '社外へメール' });
+  if (!r.ok) return fail(`${sv.name} から社外のメールサーバーに届きません: ${r.reason}`);
+  const mine = spfResult(net, r.srcSeen);
+  if (mine.res !== 'pass') return fail(`受信側がなりすましと判定します: ${mine.why || `SPFレコードに送信元 ${ipStr(r.srcSeen)} が載っていません`}`);
+  if (spfResult(net, REMOTE_IP).res === 'pass') return fail('SPFレコードが、よその送信元まで認めています(+all は使いません)');
+  return { ok: true };
 }
 
 /** src から使えてしまうプロキシサーバーを探す(分離の確認用) */

@@ -292,6 +292,7 @@ li.ok .badge { background: #14553b; color: #8ff0c0; }
 .pair { grid-template-columns: 1fr 16px 1fr 30px; }
 .pool .pair { grid-template-columns: 1fr 16px 1fr 66px; }
 .svi { grid-template-columns: 62px 1fr 68px 30px; }
+.zone { grid-template-columns: 66px 78px 1fr 30px; }
 .row.svi .relay-l { font-size: 12px; color: var(--dim); }
 .row.svi .relay-l + input { grid-column: 2 / 5; }
 .row.fwd { grid-template-columns: 1fr 16px 1fr 30px; }

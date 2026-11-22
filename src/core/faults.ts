@@ -2,7 +2,7 @@
 // apply は机の上の状態を書き換え、何を壊したかの説明を返す。その構成に当てはまらなければ null
 import { ipStr, parseIp } from './ip';
 import { Rng, pick } from './job';
-import { Device, GwCfg, L3Cfg, ServerCfg, SwitchCfg, World, isEndpoint, isGateway } from './model';
+import { Device, GwCfg, InetCfg, L3Cfg, ServerCfg, SwitchCfg, World, isEndpoint, isGateway } from './model';
 
 export interface Fault { key: string; weight: number; apply: (w: World, r: Rng) => string | null }
 
@@ -13,6 +13,7 @@ const pcs = (w: World): Device[] => w.devices.filter(d => d.kind === 'pc');
 const servers = (w: World, f: (c: ServerCfg) => boolean): Device[] => w.devices.filter(d => (d.kind === 'server' || d.kind === 'nas') && f(d.cfg));
 const gws = (w: World): Device[] => w.devices.filter(d => isGateway(d.kind));
 const cableOf = (w: World, d: Device) => w.cables.findIndex(c => c.a.dev === d.id || c.b.dev === d.id);
+const zone = (w: World): InetCfg | undefined => { const c = w.devices.find(d => d.kind === 'internet')?.cfg; return c?.zone?.length ? c : undefined; };
 const kindOf = (w: World, id: string) => w.devices.find(d => d.id === id)!.kind;
 
 export const faultCatalog: Fault[] = [
@@ -175,6 +176,53 @@ export const faultCatalog: Fault[] = [
     const old = g.cfg.vpn.ip;
     g.cfg.vpn.ip = '10.99.0.5';
     return `${g.name} がVPNで配るアドレス(10.99.0.5)が、LANの範囲にない。元は ${old}`;
+  } },
+  { key: 'zone-a', weight: 2, apply: w => {
+    const a = zone(w)?.zone.find(x => x.type === 'A');
+    if (!a) return null;
+    const old = a.value;
+    a.value = '203.0.113.20';
+    return `公開DNSのAレコード ${a.name} が違うアドレス(${a.value})を指している。正しくは ${old}`;
+  } },
+  { key: 'zone-mx', weight: 3, apply: w => {
+    const z = zone(w), i = z ? z.zone.findIndex(x => x.type === 'MX') : -1;
+    if (!z || i < 0) return null;
+    const gone = z.zone.splice(i, 1)[0];
+    return `公開DNSのMXレコード(${gone.name} → ${gone.value})が消えている`;
+  } },
+  { key: 'spf-missing', weight: 3, apply: w => {
+    const z = zone(w), i = z ? z.zone.findIndex(x => x.type === 'TXT') : -1;
+    if (!z || i < 0) return null;
+    const gone = z.zone.splice(i, 1)[0];
+    return `公開DNSにSPFレコードがない。元は ${gone.value}`;
+  } },
+  { key: 'spf-ip', weight: 3, apply: w => {
+    const t = zone(w)?.zone.find(x => x.type === 'TXT');
+    if (!t) return null;
+    const old = t.value;
+    t.value = 'v=spf1 ip4:203.0.113.20 -all';
+    return `SPFレコードに書かれた送信元(203.0.113.20)が、会社の外側のアドレスと違う。正しくは ${old}`;
+  } },
+  { key: 'spf-all', weight: 3, apply: w => {
+    const t = zone(w)?.zone.find(x => x.type === 'TXT');
+    if (!t) return null;
+    const old = t.value;
+    t.value = 'v=spf1 +all';
+    return `SPFレコードが +all になっていて、どの送信元でも認めてしまう。正しくは ${old}`;
+  } },
+  { key: 'cert-name', weight: 2, apply: w => {
+    const s = servers(w, c => c.webOn && !!c.cert)[0];
+    if (!s) return null;
+    const old = s.cfg.cert;
+    s.cfg.cert = old.replace(/^www\./, 'web.');
+    return `${s.name} の証明書の名前が違う(${s.cfg.cert})。正しくは ${old}`;
+  } },
+  { key: 'lb-backend', weight: 2, apply: w => {
+    const l = w.devices.find(d => d.kind === 'lb' && d.cfg.backends);
+    if (!l) return null;
+    const old = l.cfg.backends;
+    l.cfg.backends = old.split(',')[0].trim();
+    return `${l.name} の振り分け先が1台しか登録されていない。正しくは ${old}`;
   } },
   { key: 'mail-off', weight: 1, apply: w => {
     const s = servers(w, c => c.mailOn)[0];

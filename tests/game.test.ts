@@ -89,7 +89,7 @@ describe('バランス', () => {
     const g = new Game(newSave(77));
     g.skipTutorial();
     let jobs = 0, minMoney = g.s.money;
-    while (g.level < 14 && jobs < 200) {
+    while (g.level < 16 && jobs < 200) {
       // いちばん難しい構築の依頼を受け、模範解答の機材を定価で買ったことにする
       const o = g.s.board.filter(x => x.kind === 'build').pop()!, job = g.job(o);
       g.accept(o, false);
@@ -99,8 +99,8 @@ describe('バランス', () => {
       expect(g.deliver(evaluate(job.solution, job.checks.map(c => c.check)))).not.toBeNull();
       jobs++;
     }
-    console.log(`Lv.14 まで ${jobs}件 / 最少資金 ${minMoney} / 最終資金 ${g.s.money}`);
-    expect(g.level).toBe(14);
+    console.log(`Lv.16 まで ${jobs}件 / 最少資金 ${minMoney} / 最終資金 ${g.s.money}`);
+    expect(g.level).toBe(16);
     expect(minMoney).toBeGreaterThan(0);
     expect(jobs).toBeGreaterThan(30);
   });

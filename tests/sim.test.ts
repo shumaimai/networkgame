@@ -123,3 +123,45 @@ describe('シミュレータ', () => {
     expect(!r.ok && /ループ/.test(r.reason!)).toBe(true);
   });
 });
+
+describe('公開DNS・メール・負荷分散', () => {
+  const make = () => {
+    const b = new Builder(), inet = b.add('internet', 'inet', 'inet', 'fixed'), fw = b.add('fw', 'fw', 'fw'), sw = b.add('l2-5', 'sw', 'sw');
+    const sv = host(b, 'server', 'sv', '192.168.1.53', '192.168.1.1'), w1 = host(b, 'server', 'w1', '172.16.1.81', '172.16.1.1'), w2 = host(b, 'server', 'w2', '172.16.1.82', '172.16.1.1');
+    const lb = host(b, 'lb', 'lb', '172.16.1.80', '172.16.1.1');
+    b.link(inet, 0, fw, 0); b.link(fw, 1, sw, 0); b.link(sv, 0, fw, 2);
+    for (const d of [w1, w2, lb]) b.plug(d, sw);
+    const c = fw.cfg as GwCfg;
+    c.lan[0].ip = '172.16.1.1'; c.lan[1].ip = '192.168.1.1';
+    c.rules.push({ action: 'allow', src: '192.168.1.0/24', dst: 'any', svc: 'any' });
+    c.forwards.push({ svc: 'web', to: '172.16.1.80' }, { svc: 'mail', to: '192.168.1.53' });
+    Object.assign(sv.cfg, { mailOn: true, dnsOn: true, forwarder: '8.8.8.8' });
+    for (const w of [w1, w2]) Object.assign(w.cfg, { webOn: true, cert: 'www.test.example.jp' });
+    lb.cfg.backends = '172.16.1.81, 172.16.1.82';
+    inet.cfg.domain = 'test.example.jp';
+    inet.cfg.zone = [{ type: 'A', name: 'www', value: '203.0.113.2' }, { type: 'A', name: 'mail', value: '203.0.113.2' }, { type: 'MX', name: '@', value: 'mail' }, { type: 'TXT', name: '@', value: 'v=spf1 ip4:203.0.113.2 -all' }];
+    return { b, inet, w1, sv };
+  };
+  const web = { t: 'flow' as const, from: ['inet'], to: { name: 'www.test.example.jp' }, svc: 'web' as const, expect: 'ok' as const, https: true };
+  const run = (b: Builder) => evaluate(b.world(), [web, { t: 'mailIn', domain: 'test.example.jp' }, { t: 'mailOut' }, { t: 'lb', min: 2 }]).map(r => r.ok);
+
+  it('正しい構成は、Web・受信・送信・振り分けのすべてが通る', () => {
+    expect(run(make().b)).toEqual([true, true, true, true]);
+  });
+  it('Aレコード、証明書、MX、SPF、振り分け先の間違いをそれぞれ見つける', () => {
+    let m = make(); m.inet.cfg.zone[0].value = '203.0.113.9';
+    expect(run(m.b)).toEqual([false, true, true, true]);
+    m = make(); m.w1.cfg.cert = 'web.test.example.jp';
+    expect(run(m.b)).toEqual([false, true, true, true]);
+    m = make(); m.inet.cfg.zone.splice(2, 1);
+    expect(run(m.b)).toEqual([true, false, true, true]);
+    m = make(); m.inet.cfg.zone[3].value = 'v=spf1 ip4:203.0.113.9 -all';
+    expect(run(m.b)).toEqual([true, true, false, true]);
+    m = make(); m.inet.cfg.zone[3].value = 'v=spf1 +all';
+    expect(run(m.b)).toEqual([true, true, false, true]);
+    m = make(); m.inet.cfg.zone[3].value = 'v=spf1 mx -all';
+    expect(run(m.b)).toEqual([true, true, true, true]);
+    m = make(); m.w1.cfg.webOn = false;
+    expect(run(m.b)).toEqual([true, true, true, false]);   // 1台止まっても、Webは残りの1台で応答する
+  });
+});

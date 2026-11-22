@@ -1,7 +1,7 @@
 // 検収テスト: 依頼ごとに生成され、すべて通れば納品できる
 import { inCidr, ipStr, parseCidr, parseIp } from './ip';
 import { Svc, SVC, World } from './model';
-import { Net, WAN_IP, browse, build, connect, ipOf, reach, resolve, usableProxy, PUBLIC_DNS, EXTERNAL } from './sim';
+import { Net, WAN_IP, browse, build, connect, ipOf, lbAlive, mailIn, mailOut, reach, resolve, usableProxy, webServers, PUBLIC_DNS, EXTERNAL } from './sim';
 
 export type Target =
   | { dev: string }                      // 机の上の機器
@@ -12,7 +12,10 @@ export type Target =
 export type Check =
   | { t: 'addr'; devs: string[]; cidr: string }
   | { t: 'dhcp'; devs: string[] }
-  | { t: 'flow'; from: string[]; to: Target; svc: Svc; expect: 'ok' | 'ng'; via?: 'proxy' }
+  | { t: 'flow'; from: string[]; to: Target; svc: Svc; expect: 'ok' | 'ng'; via?: 'proxy'; https?: boolean }
+  | { t: 'mailIn'; domain: string }      // 社外から自社ドメイン宛のメールが届くこと
+  | { t: 'mailOut' }                     // 社外へ送ったメールがSPFの検査を通ること
+  | { t: 'lb'; min: number }             // 負荷分散装置が min 台以上のWebサーバーに振り分けていること
   | { t: 'directWeb'; from: string[] }   // プロキシを通さず直接Webに出られないこと
   | { t: 'noProxy'; from: string[] }     // 社内のプロキシを使えないこと
   | { t: 'wifi'; devs: string[] }        // 無線でつながっていること
@@ -39,7 +42,15 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
     return ok;
   }
   const dev = (id: string) => net.byId.get(id);
-  const ids = q.t === 'addr' || q.t === 'dhcp' || q.t === 'wifi' ? q.devs : q.from;
+  if (q.t === 'mailIn' || q.t === 'mailOut') { const r = q.t === 'mailIn' ? mailIn(net) : mailOut(net); return r.ok ? ok : ng(r.reason); }
+  if (q.t === 'lb') {
+    const lb = net.devices.find(d => d.kind === 'lb');
+    if (!lb) return ng('負荷分散装置がまだ机に置かれていません');
+    const a = lbAlive(net, lb);
+    if (a.all < q.min) return ng(`${lb.name} の振り分け先が ${a.all}台しか登録されていません`);
+    return a.alive.length >= q.min ? ok : ng(`${lb.name} の振り分け先のうち、応答できるWebサーバーが ${a.alive.length}台しかありません`);
+  }
+  const ids = 'devs' in q ? q.devs : q.from;
   const tgt = q.t === 'flow' && 'dev' in q.to && q.to.dev ? [q.to.dev] : [];
   const missing = [...ids, ...tgt].find(id => !dev(id));
   if (missing) return ng(`${nameOf(missing)} がまだ机に置かれていません`);
@@ -88,6 +99,11 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
       });
     case 'flow': {
       const to = q.to;
+      const cert = (end: NonNullable<ReturnType<typeof dev>>): CheckResult => {
+        if (!q.https || !('name' in to)) return ok;
+        const bad = webServers(net, end).find(s => String(s.cfg.cert ?? '').trim().toLowerCase() !== to.name.toLowerCase());
+        return bad ? ng(`${bad.name} の証明書の名前(${bad.cfg.cert || '未設定'})が、アクセス先の ${to.name} と合っていません`) : ok;
+      };
       const toDev = 'dev' in to && to.dev ? dev(to.dev)! : null;
       if (toDev) { const miss = needIp(toDev); if (miss) return ng(miss); }
       return each(q.from, s => {
@@ -107,12 +123,12 @@ function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResul
             const r = browse(net, s, typeof host === 'number' ? ipStr(host) : host);
             if (!r.ok) return ng(r.reason);
             if (q.via === 'proxy' && r.via !== 'proxy') return ng(`${s.name} にプロキシが設定されていません`);
-            return ok;
+            return cert(r.end);
           }
           const r = connect(net, s, host, q.svc);
           if (!r.ok) return ng(r.reason);
           if (toDev && r.end !== toDev) return ng(`別の機器(${r.end.name})が応答しました`);
-          return ok;
+          return cert(r.end);
         };
         const r = attempt();
         if (q.expect === 'ok') return r.ok ? ok : ng(by(s.name, r.reason!));
@@ -143,6 +159,9 @@ export function describe(q: Check, nameOf: NameOf, group?: string): string {
     case 'dhcp': return `${who(q.devs)} がDHCPでIPアドレスを自動取得している`;
     case 'wifi': return `${who(q.devs)} が無線LANでつながっている`;
     case 'redundant': return 'スイッチ同士をつなぐケーブルが1本切れても、社内の通信が続く';
+    case 'mailIn': return `社外から ${q.domain} 宛に送られたメールが届く`;
+    case 'mailOut': return '社外へ送ったメールが、なりすましと判定されずに届く';
+    case 'lb': return `負荷分散装置が ${q.min}台のWebサーバーに振り分けている`;
     case 'directWeb': return `${who(q.from)} から直接Webには出られない`;
     case 'noProxy': return `${who(q.from)} から社内のプロキシを使えない`;
     case 'flow': {
@@ -151,7 +170,7 @@ export function describe(q: Check, nameOf: NameOf, group?: string): string {
       const named = 'name' in q.to && q.to.dev ? `(${nameOf(q.to.dev)})` : '';
       switch (q.svc) {
         case 'ping': return `${w} から ${t} に通信できる`;
-        case 'web': return q.via === 'proxy' ? `${w} がプロキシ経由で ${t} を開ける` : 'pub' in q.to ? `${w} が公開Webサイトを開ける` : `${w} で ${t} を開ける`;
+        case 'web': return q.https ? `${w} が https://${t} を証明書の警告なしで開ける` : q.via === 'proxy' ? `${w} がプロキシ経由で ${t} を開ける` : 'pub' in q.to ? `${w} が公開Webサイトを開ける` : `${w} で ${t} を開ける`;
         case 'print': return `${w} から ${t}${named} で印刷できる`;
         case 'file': return `${w} から ${t}${named} の共有フォルダを使える`;
         case 'mail': return `${w} から ${t}${named} でメールを送れる`;

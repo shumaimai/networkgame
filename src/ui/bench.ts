@@ -13,7 +13,7 @@ import { openDict } from './dict';
 import { $, esc, img, nl2br, onAct, stars, yen } from './dom';
 import { ROW_TEMPLATE, VALID, cablePanel, devicePanel, setPath } from './panel';
 
-const PORTRAIT: Record<string, string> = { 事務所: 'p_office', 設計事務所: 'p_design', 店舗: 'p_shop', クリニック: 'p_clinic', 学習塾: 'p_school', 宿泊施設: 'p_hotel', 飲食店: 'p_cafe', 工場: 'p_factory' };
+const PORTRAIT: Record<string, string> = { 会計事務所: 'p_office', 不動産店: 'p_shop', 保育園: 'p_school', 図書館: 'p_design', 事務所: 'p_office', 設計事務所: 'p_design', 店舗: 'p_shop', クリニック: 'p_clinic', 学習塾: 'p_school', 宿泊施設: 'p_hotel', 飲食店: 'p_cafe', 工場: 'p_factory' };
 export const portrait = (industry: string): string => img(PORTRAIT[industry] ?? 'p_office');
 const THANKS: Record<number, string> = { 3: '「完璧です!またお願いします。」', 2: '「助かりました。ありがとう。」', 1: '「動いてはいますが、少し高くつきましたね。」' };
 const HELP_INFO: Record<keyof HelpUse, [string, string]> = {
@@ -178,7 +178,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   function renderMoney(): void {
     const cost = worldCost(world), reward = game.rewardOf(job), pen = Math.round(reward * game.helpPenalty);
     $('#b-money', root).innerHTML = `資金 <b>${yen(game.s.money)}</b>`;
-    const [l3] = Game.starLimits(job);
+    const [l3] = game.starLimits(job);
     $('#b-cost', root).innerHTML = `
       <div><span>契約金</span><b>${yen(reward)}</b></div>
       ${pen ? `<div class="neg"><span>ヘルプの利用</span><b>${yen(-pen)}</b></div>` : ''}

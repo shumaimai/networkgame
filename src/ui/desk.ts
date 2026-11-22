@@ -153,6 +153,7 @@ export class Desk {
     if (host) {
       let y = 50;
       h += `<text class="dname" y="${y}">${esc(d.name)}</text>`;
+      if (d.kind === 'lb') { y += 15; const n = String(d.cfg.backends ?? '').split(/[\s,、]+/).filter(Boolean).length; h += `<text class="drole${n ? '' : ' none'}" y="${y}">${n ? `振り分け先 ${n}台` : '振り分け先なし'}</text>`; }
       if (d.kind === 'server' || d.kind === 'nas') {
         const c = d.cfg, s = [c.dnsOn && 'DNS', c.dhcpOn && 'DHCP', c.proxyOn && 'プロキシ', c.webOn && 'Web', c.fileOn && '共有', c.mailOn && 'メール'].filter(Boolean).join('・');
         y += 15;
@@ -165,6 +166,7 @@ export class Desk {
       else h += d.cfg.ip ? `<text class="dip" y="${y}">${esc(d.cfg.ip)}${pf(d.cfg.prefix)}</text>` : `<text class="dip warn" y="${y}">IP未設定</text>`;
     } else if (d.kind === 'internet') {
       h += `<text class="dname" y="-58">インターネット</text>`;
+      if (d.cfg.domain) h += `<text class="dip side" x="72" y="4">${esc(d.cfg.domain)}</text>`;
     } else {
       const x = 46;
       h += `<text class="dname side" x="${x}" y="-26">${esc(d.name)}</text>`;

@@ -7,7 +7,7 @@ describe('依頼の自動生成', () => {
     it(`${kind}: どのレベルでも生成でき、正解は全テストを通り、初期状態は通らない`, () => {
       const tags: Record<string, number> = {}, stars: Record<number, number> = {};
       let n = 0;
-      for (let level = kind === 'build' ? 1 : 2; level <= 14; level++) {
+      for (let level = kind === 'build' ? 1 : 2; level <= 16; level++) {
         for (let seed = 1; seed <= 120; seed++) {
           // 半分は、そのレベルでいちばん難しい内容(ease=1)にする
           const job = generate(seed * 7 + level * 1000, level, { kind, ease: seed % 2 ? 1 : undefined });
@@ -15,6 +15,8 @@ describe('依頼の自動生成', () => {
           expect(evaluate(job.solution, checks).every(r => r.ok), `${job.id} L${level} 正解`).toBe(true);
           expect(evaluate(job.initial, checks).some(r => !r.ok), `${job.id} L${level} 初期状態`).toBe(true);
           expect(job.checks.length).toBeGreaterThan(1);
+          // サーバーを2台買わせるのは、DMZに公開サーバーを置く依頼(Lv.10〜)だけ
+          if (level < 10) expect(job.solution.devices.filter(d => d.kind === 'server').length, `${job.id} L${level} サーバーの台数`).toBeLessThanOrEqual(1);
           if (kind === 'trouble') expect(job.faults.length).toBeGreaterThan(0);
           else expect(job.par).toBeGreaterThan(0);
           expect(job.reward).toBeGreaterThan(job.par);

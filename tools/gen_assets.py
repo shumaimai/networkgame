@@ -33,6 +33,7 @@ ASSETS = {
     'router': (ICON + 'a small home-office router box with two short antennas and a row of tiny indicator lights, no cables.', '1:1', True),
     'fw': (ICON + 'a network firewall appliance box with a small shield emblem made of bricks on its front, orange accent, no cables.', '1:1', True),
     'ap': (ICON + 'a round ceiling wireless access point disc with a small light ring and three curved signal waves above it.', '1:1', True),
+    'lb': (ICON + 'a network load balancer appliance box with a simple emblem on its front: one arrow splitting into three arrows, orange accent, no cables.', '1:1', True),
     'home': (ICON + 'an open laptop computer with a small simple house symbol shown on its screen.', '1:1', True),
     'internet': (ICON + 'a fluffy white-blue cloud with a small globe grid pattern inside, representing the internet.', '1:1', True),
     # 依頼主
