@@ -15,11 +15,12 @@
 - リポジトリは公開する。秘密の値(APIキーなど)、個人のパス、セーブデータをコミットしない。`.github/workflows/ci.yml` が、push のたびに型の検査・単体テスト・ビルドを回す
 - 画面の通しテストは、環境変数 `GAME_URL` で別のURLに向けられる。公開用のビルドを確かめるときは、`npm run build` のあと `npx vite preview --port 4173 --strictPort --host 127.0.0.1` を立てて `GAME_URL=http://127.0.0.1:4173/ node e2e/run.mjs` のように回す
 - `npm run trial` Webで公開するお試し版(Lv.5 まで)を `trial/index.html` に作る(作ったファイルはコミットしない)。画像・フォント・プログラムを全部埋め込んだ、1つのHTMLファイルになる。作ったあとは `node e2e/trial.mjs` で確かめる(ファイルを直接開く場合と、Webサーバーに置く場合の両方)
+- `node e2e/intro.mjs` 研修のあとの「進め方の説明」と、仕入れに並ぶ「これから解放される機材」
 - `node e2e/perf.mjs` 読み込みの量(画面ごとに取ってくるファイルの数と大きさ)と、描画の速さを測る
 - `node e2e/mode.mjs` プレイグラウンドと、ハードモードの連続成功
 - `node e2e/view.mjs` 机の拡大・縮小と移動(ボタン、何もない場所のドラッグ、ホイール、拡大したままの操作)
 - `node e2e/play.mjs` AIに遊ばせて見つかった点(研修の案内の位置、習う前の設定欄、ポートの重なり、設定パネルの状態表示、納品結果の収まり)
-- 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs・play.mjs・view.mjs・mode.mjs)を通す
+- 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs・play.mjs・view.mjs・mode.mjs・intro.mjs)を通す
 - `node tools/maxsave.mjs [app]` 最高レベルのセーブを `saves/max-level.json` に作る(app を付けるとデスクトップアプリにも入れる)。設定の「セーブデータを読み込む」で読める。`node e2e/app.mjs` は一時フォルダのセーブで起動するので、遊んでいるセーブ(%APPDATA%/NetworkShop)には触らない
 
 ## 構成
@@ -55,6 +56,8 @@
 - 研修の案内(`#coach`)は机の下に置く。机の上に重ねない
 - 製品版とお試し版の違いは `src/game/edition.ts` にまとめる(レベルの上限 `LEVEL_CAP`、セーブの置き場所、お試し版だけの文)。お試し版かどうかは `TRIAL` で見分ける。レベルの上限より先の機材・ガイド・依頼は、`MAX_LEVEL` を通して自然に出なくなるようにし、画面ごとに `TRIAL` で分岐するのは表示の文だけにする
 - 画像は `img()`(ui/dom.ts)を通して使う。お試し版では、ページに埋め込んだ画像に切り替わる。画像は WebP で置く(`public/img/名前.webp`)。CSSの背景は `/img/名前.webp` の形で書く(build_trial.py が埋め込む)
+- 進め方の説明(hub.ts の `INTRO`): 研修を終えた直後か、スキップした直後に、受注の画面で1回だけ出す。画面の部品を1つずつ囲んで説明し、途中で終えられる。設定からもう一度見られる。受注の画面のボタンや見出しを変えたら、`INTRO` の `target` と文も合わせる。ほかの画面の通しテストでは `window.__noIntro` で出さないようにしている
+- 仕入れの画面には、まだ買えない機材を全部、解放されるレベルと一緒に灰色で出す(`Game.upcoming()`)
 - プレイグラウンド(画面 `play`): 設定からいつでも開ける、お金も依頼もない机。`mountBench(app, root, true)` で開き、机の上は `Save.play` に残る。開いている間は `Game.sandbox` が true で、機器とケーブルは無料、設定欄は全部出る。進行中の依頼(`Save.active`)、資金、経験値には触らない
 - ハードモード(受注のときの納期つき。コードでは `challenge`): 納期に間に合うたびに連続の回数(`Save.streak`)が増え、経験値に `STREAK_XP` の倍率が掛かる。遅れる、取り下げる、ヘルプの「答え」を使うと0に戻る。時間制限なしの依頼は、連続を変えない。納期の時計は、作業画面を離れている間も進める(受注の画面やプレイグラウンドで時間を止められないようにする)
 - 机(desk.ts)は拡大・縮小と移動ができる。動かせる範囲は、最初に見えている範囲(1400×800)より上下左右に広い(`PAD_X`・`PAD_Y`)。生成する配置は、最初に見えている範囲に収める。操作のボタン(`#viewctl`)は机のすぐ下の帯に置き、机の上には重ねない。キーボードでは動かさない

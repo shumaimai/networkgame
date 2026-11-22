@@ -3,6 +3,7 @@ import { chromium } from 'playwright-core';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
 const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, permissions: ['clipboard-read', 'clipboard-write'] });
 const page = await ctx.newPage();
+await page.addInitScript(() => { window.__noIntro = true; });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 let failed = 0, count = 0;
@@ -103,7 +104,7 @@ try {
 
   // ---- 仕入れ: まだ買えない機材、在庫の値段 ----
   await page.click('[data-act="go-shop"]');
-  ok(await page.locator('.shop-row.locked').count() === 1 && /Lv\.4 で買えるようになります/.test(await txt('.shop-row.locked')), '仕入れに、次のレベルで買えるようになる機材だけが出る');
+  ok(await page.locator('.shop-row.locked').count() >= 8 && /Lv\.4 で解放/.test(await txt('.shop-row.locked')) && /Lv\.1\d で解放/.test(await page.locator('.shop-row.locked').last().innerText()), 'これから買えるようになる機材が全部、解放されるレベルと一緒に出る');
   await page.waitForTimeout(500);
   await shot('shop');
   await page.evaluate(() => { const g = window.app.game; g.s.money = 3000000; g.s.xp = 30000; g.s.market['router'] = 0.6; g.setPlan('m'); g.buyStock('router', 2); g.s.market['router'] = 1.1; g.refreshBoard(); });

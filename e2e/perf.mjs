@@ -6,6 +6,7 @@ import { gzipSync } from 'node:zlib';
 const URL0 = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+await page.addInitScript(() => { window.__noIntro = true; });
 // 種類ごとに、取ってきた数と大きさ(そのまま / gzip で縮めたとき)を数える
 const got = [];
 page.on('response', async r => {

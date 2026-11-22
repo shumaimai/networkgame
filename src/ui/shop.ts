@@ -24,11 +24,11 @@ export function mountShop(app: App, root: HTMLElement): () => void {
         <button class="btn primary" data-act="buy" data-m="${m}"${q.total > game.s.money || !fits ? ' disabled' : ''}>${fits ? '仕入れる' : 'スロット不足'}</button>
       </div>`;
     }).join('');
-    // 次に買えるようになる機材(まだ買えない)
+    // これから買えるようになる機材を全部、灰色で出す(どこまで進めると何が増えるかが分かる)
     const soon = game.upcoming().map(m => {
       const M = MODEL[m];
       return `<div class="shop-row locked"><img src="${img(M.kind)}" alt=""><div class="s-name"><b>${esc(M.label)}</b><small>${esc(M.desc)}</small></div>
-        <div class="s-price"><b>定価 ${yen(M.price)}</b></div><div class="s-size">${M.size}スロット</div><div class="s-lock">Lv.${M.level} で買えるようになります</div></div>`;
+        <div class="s-price"><b>定価 ${yen(M.price)}</b></div><div class="s-size">${M.size}スロット</div><div class="s-lock">Lv.${M.level} で解放</div></div>`;
     }).join('');
     root.innerHTML = `<div class="hub">${statusBar(game, 'shop')}
       <div class="page">

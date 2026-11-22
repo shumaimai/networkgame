@@ -130,6 +130,8 @@ export interface Save {
   bestStreak?: number;
   /** プレイグラウンドの机の上 */
   play?: Active;
+  /** 研修のあとの「進め方の説明」を見終えた(途中で終えた場合も含む) */
+  introSeen?: boolean;
   settings: { sfx: number; bgm: number };
 }
 
@@ -229,10 +231,9 @@ export class Game {
   stockDiff(w: World): number {
     return w.devices.reduce((t, d) => t + (d.own === 'stock' ? this.price(d.model) - d.cost : 0), 0);
   }
-  /** 次に機材が増えるレベルで、買えるようになるもの */
+  /** まだ買えない機材を、買えるようになるレベルの順に全部返す(この版の上限のレベルまで) */
   upcoming(): string[] {
-    const next = MODELS.filter(m => m.price > 0 && m.level > this.level && m.level <= MAX_LEVEL).map(m => m.level).sort((a, b) => a - b)[0];
-    return next == null ? [] : MODELS.filter(m => m.price > 0 && m.level === next).map(m => m.id);
+    return MODELS.filter(m => m.price > 0 && m.level > this.level && m.level <= MAX_LEVEL).sort((a, b) => a.level - b.level).map(m => m.id);
   }
   get stockUsed(): number { return Object.entries(this.s.stock).reduce((t, [m, i]) => t + MODEL[m].size * i.qty, 0); }
   stockQty(model: string): number { return this.s.stock[model]?.qty ?? 0; }

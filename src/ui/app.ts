@@ -33,6 +33,8 @@ export class App {
     this.show('title');
   }
 
+  /** 設定から「進め方の説明をもう一度見る」を選んだあと、受注の画面で説明を始める */
+  introPending = false;
   /** プレイグラウンドから戻る先(開く前にいた画面) */
   playBack: ScreenId = 'hub';
   /** プレイグラウンドを開く。どの画面からでも開ける */

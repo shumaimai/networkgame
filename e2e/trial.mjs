@@ -21,6 +21,7 @@ try {
   ok(size < 5 * 1024 * 1024, `ファイルは 5MB より小さい (${(size / 1024 / 1024).toFixed(2)} MB)`);
   for (const [label, url] of [['ファイルを直接開く', pathToFileURL(FILE).href], ['Webサーバーに置く', `http://127.0.0.1:${port}/`]]) {
     const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+    await page.addInitScript(() => { window.__noIntro = true; });
     const errors = [], reqs = [];
     page.on('pageerror', e => errors.push(String(e)));
     page.on('request', r => { if (!r.url().startsWith('data:') && r.url() !== url) reqs.push(r.url()); });

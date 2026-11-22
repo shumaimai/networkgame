@@ -4,7 +4,7 @@ import { browse, build, reach } from '../src/core/sim';
 import { parseIp } from '../src/core/ip';
 import { generate } from '../src/core/gen';
 import { Builder, worldCost } from '../src/core/job';
-import { clone } from '../src/core/model';
+import { MODEL, MODELS, clone } from '../src/core/model';
 import { Game, MAX_LEVEL, newSave, xpFor } from '../src/game/state';
 import { regularJob } from '../src/game/regular';
 import { findBy, review } from '../src/game/review';
@@ -220,10 +220,12 @@ describe('常連の依頼', () => {
     expect(g.stockDiff(g.s.active!.world)).toBe(3500 - 3500);
     g.s.active!.world.devices[g.s.active!.world.devices.length - 1].cost = 9000;
     expect(g.stockDiff(g.s.active!.world)).toBe(3500 - 9000);
-    // 予告に出すのは、次に機材が増えるレベルの分だけ
-    expect(g.upcoming()).toEqual(['server']);
+    // まだ買えない機材が、買えるようになるレベルの順に全部出る
+    expect(g.upcoming().slice(0, 2)).toEqual(['server', 'nas']);
+    expect(g.upcoming().length + g.catalog.length).toBe(MODELS.filter(m => m.price > 0).length);
+    expect(g.upcoming().map(m => MODEL[m].level)).toEqual(g.upcoming().map(m => MODEL[m].level).sort((a, b) => a - b));
     g.s.xp = xpFor(4);
-    expect(g.upcoming()).toEqual(['nas']);
+    expect(g.upcoming()[0]).toBe('nas');
     g.s.xp = xpFor(24);
     expect(g.upcoming()).toEqual([]);
   });

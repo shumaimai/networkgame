@@ -83,6 +83,53 @@ function weekBanner(app: App, root: HTMLElement): void {
   setTimeout(() => el.remove(), 4600);
 }
 
+// 研修を終えた(またはスキップした)あとに出す、進め方の説明。画面の部品を1つずつ囲んで説明する
+const INTRO: { target: string; head: string; text: string }[] = [
+  { target: '.cards', head: '依頼を選ぶ', text: '今週の依頼が5件並んでいます。カードをクリックすると、仕様書と検収テストを読めます。内容を確かめてから「受注する」を押すと、作業画面に移ります。★の数が難易度です。最初は★の少ない依頼から受けます。' },
+  { target: '.cards .card', head: 'カードの見方', text: '左上の印が依頼の種類です。「構築」は空の机からネットワークを組み、「トラブル対応」は動かなくなったネットワークを直します。下に、契約金と機材費の目安が出ています。' },
+  { target: '[data-act="week"]', head: '次の週へ進む', text: '受けたい依頼がないときは、ここをクリックして次の週へ進みます。依頼と機材の値段が入れ替わります。依頼を1件納品したときも、次の週になります。' },
+  { target: '[data-act="go-shop"]', head: '仕入れ', text: 'ここをクリックすると、機材を買って倉庫に置けます。機材の値段は週ごとに変わるので、安い週に買っておくと機材費を抑えられます。機材は作業画面でも買えるので、仕入れをしなくても依頼は進められます。まだ買えない機材も、解放されるレベルと一緒に並んでいます。' },
+  { target: '[data-act="go-ware"]', head: '倉庫', text: '仕入れた機材の置き場所です。置ける量はスロットの数で決まります。最初は無料の棚(6スロット)で、足りなくなったらここで倉庫を借ります。' },
+  { target: '.lv', head: 'レベル', text: '依頼を納品すると経験値が入ります。レベルが上がると、買える機材、ガイドの項目、依頼の内容が増えます。受注するときにハードモード(納期つき)を選び、続けて間に合わせると、経験値の倍率が上がります。時間の制限なしでも、同じ依頼でレベルを上げられます。' },
+  { target: '[data-act="guide"]', head: 'ガイド', text: '機器やしくみの説明を、いつでも無料で読めます。作業中に分からない言葉が出てきたら、ここをクリックします。作業画面では、設定欄の「?」からも開けます。' },
+  { target: '[data-act="settings"]', head: '設定', text: '音の大きさを変えられます。お金も依頼もない机で自由に試せる「プレイグラウンド」も、ここから開きます。この説明も、設定からもう一度見られます。' },
+];
+/** 進め方の説明を始める。done: 最後まで見たか、途中で終えたときに呼ぶ */
+function startIntro(app: App, root: HTMLElement, done: () => void): void {
+  const steps = INTRO.filter(x => root.querySelector(x.target));
+  const hub = root.querySelector('.hub');
+  if (!steps.length || !hub) { done(); return; }
+  // 説明の間は、下の画面をクリックできないようにする
+  const el = document.createElement('div');
+  el.className = 'intro';
+  el.innerHTML = '<div class="intro-hole"></div><div class="intro-box"></div>';
+  hub.appendChild(el);
+  const hole = el.querySelector<HTMLElement>('.intro-hole')!, box = el.querySelector<HTMLElement>('.intro-box')!;
+  let i = 0;
+  const end = () => { el.remove(); done(); };
+  const show = () => {
+    const st = steps[i], r = root.querySelector(st.target)!.getBoundingClientRect(), s = app.stageRect(), k = app.scale, pad = 8;
+    const t = { x: (r.left - s.left) / k, y: (r.top - s.top) / k, w: r.width / k, h: r.height / k };
+    Object.assign(hole.style, { left: `${t.x - pad}px`, top: `${t.y - pad}px`, width: `${t.w + pad * 2}px`, height: `${t.h + pad * 2}px` });
+    box.innerHTML = `<small>進め方の説明 ${i + 1} / ${steps.length}</small><h3>${esc(st.head)}</h3><p>${esc(st.text)}</p>
+      <div class="intro-btns"><button class="btn ghost" data-act="intro-end">説明を終える</button><span class="spacer"></span>
+        ${i ? '<button class="btn" data-act="intro-back">戻る</button>' : ''}<button class="btn primary" data-act="intro-next">${i < steps.length - 1 ? '次へ' : '依頼を受けはじめる'}</button></div>`;
+    // 説明は、囲んだ部品の下に置く。入らなければ上、右、左の順に試し、どこにも入らなければ(部品が大きいとき)画面の下に置く
+    const w = box.offsetWidth, h = box.offsetHeight, H = 1080, W = 1920, gap = 22, m = 16;
+    const cx = Math.max(m, Math.min(W - w - m, t.x + t.w / 2 - w / 2)), cy = Math.max(m, Math.min(H - h - m, t.y + 40));
+    const spots: [number, number][] = [[cx, t.y + t.h + pad + gap], [cx, t.y - pad - gap - h], [t.x + t.w + pad + gap, cy], [t.x - pad - gap - w, cy]];
+    const [left, top] = spots.find(([x, y]) => x >= m && y >= m && x + w <= W - m && y + h <= H - m) ?? [cx, H - h - 30];
+    Object.assign(box.style, { left: `${left}px`, top: `${top}px` });
+  };
+  onAct(el, act => {
+    sfx('click');
+    if (act === 'intro-end') end();
+    if (act === 'intro-back' && i > 0) { i--; show(); }
+    if (act === 'intro-next') { if (i < steps.length - 1) { i++; show(); } else end(); }
+  });
+  show();
+}
+
 export function mountHub(app: App, root: HTMLElement): () => void {
   const game = app.game;
   if (game.tutorialFinished && !game.s.board.length) { game.refreshBoard(); game.save(); }
@@ -125,6 +172,13 @@ export function mountHub(app: App, root: HTMLElement): () => void {
         }).join('')}</div>`;
     }
     root.innerHTML = `<div class="hub">${statusBar(game, 'hub')}<div class="hub-main">${main}</div></div>`;
+    // 研修を終えた直後(またはスキップした直後)は、先に進め方の説明を出す。すでに進めているセーブには出さない
+    const fresh = game.s.week === 1 && game.totals.n <= game.s.tutorialDone.length && !game.s.active;
+    if (game.tutorialFinished && ((!game.s.introSeen && fresh) || app.introPending) && !(window as any).__noIntro) {
+      app.introPending = false;
+      startIntro(app, root, () => { game.s.introSeen = true; game.save(); render(); });
+      return;
+    }
     weekBanner(app, root);
   }
 
@@ -208,6 +262,7 @@ export function openSettings(app: App): void {
     <label class="f range"><span>効果音の大きさ</span><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.sfx}"></label>
     <label class="f range"><span>BGMの大きさ</span><input type="range" id="bgm" min="0" max="1" step="0.05" value="${s.bgm}"></label>
     <label class="f"><span>画面</span><button class="btn" data-act="fullscreen">全画面にする / 戻す</button></label>
+    ${app.game.tutorialFinished ? '<h3>進め方の説明</h3><button class="btn" data-act="intro-again">進め方の説明をもう一度見る</button>' : ''}
     <h3>プレイグラウンド</h3>
     <p class="set-note">お金も依頼もない机です。作中に出てくる機器をどれでも、何台でも置いて、自由に組んで試せます。進行中の依頼、資金、レベルには影響しません。</p>
     <button class="btn primary" data-act="play"${app.current === 'play' ? ' disabled' : ''}>${app.current === 'play' ? 'プレイグラウンドを開いています' : 'プレイグラウンドを開く'}</button>
@@ -236,6 +291,7 @@ export function openSettings(app: App): void {
     if (act === 'fullscreen') { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => {}); }
     if (act === 'title') { app.closeModal(); app.show('title'); }
     if (act === 'play') { app.closeModal(); app.openPlay(); }
+    if (act === 'intro-again') { app.introPending = true; app.closeModal(); app.show('hub'); }
     if (act === 'save-out') {
       const url = URL.createObjectURL(new Blob([JSON.stringify(app.game.s)], { type: 'application/json' })), link = document.createElement('a');
       link.href = url; link.download = `networkshop-save-lv${app.game.level}.json`;
