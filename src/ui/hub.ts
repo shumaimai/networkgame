@@ -181,13 +181,22 @@ export function mountHub(app: App, root: HTMLElement): () => void {
 export function openHistory(app: App): void {
   const g = app.game, h = g.s.history;
   const total = h.reduce((t, x) => t + x.profit, 0), next = LEVELS[g.level];
-  app.modal(`<h2>実績</h2>
+  const m = app.modal(`<h2>実績</h2>
     <div class="stats"><div><small>納品した依頼</small><b>${h.length}件</b></div><div><small>利益の合計</small><b>${yen(total)}</b></div><div><small>★3の納品</small><b>${h.filter(x => x.stars === 3).length}件</b></div><div><small>レベル</small><b>${g.level}</b></div></div>
     ${next ? `<h3>次のレベル(Lv.${next.level})で増えるもの</h3><div class="unlocks"><div>${next.unlocks.map(esc).join(' / ')}</div></div>` : ''}
     <h3>これまでに増えたもの</h3><div class="unlocks">${LEVELS.filter(l => l.level <= g.level).map(l => `<div><b>Lv.${l.level}</b>${l.unlocks.map(esc).join(' / ')}</div>`).join('')}</div>
     <h3>最近の納品</h3>
     ${h.length ? `<table class="hist">${h.slice(0, 12).map(x => `<tr><td>${x.week}週目</td><td>${esc(x.client)}</td><td>${esc(x.title)}</td><td class="st">${stars(x.stars)}</td><td class="${x.profit < 0 ? 'neg' : ''}">${yen(x.profit)}</td></tr>`).join('')}</table>` : '<p class="mute">納品した依頼はまだありません。</p>'}
-    <div class="modal-btns"><button class="btn primary" data-act="close">閉じる</button></div>`, { wide: true });
+    <div class="modal-btns"><button class="btn" data-act="export-log"${g.s.log?.length ? '' : ' disabled'} title="依頼ごとの時間、使ったヘルプ、取り下げた依頼などを、表計算ソフトで開ける形で保存します">プレイの記録を書き出す(${g.s.log?.length ?? 0}件)</button><button class="btn primary" data-act="close">閉じる</button></div>`, { wide: true });
+  onAct(m, act => {
+    if (act !== 'export-log') return;
+    // 先頭の印(BOM)は、表計算ソフトで文字化けしないようにするため
+    const url = URL.createObjectURL(new Blob(['\ufeff' + g.logCsv()], { type: 'text/csv' })), link = document.createElement('a');
+    link.href = url; link.download = `networkshop-log-week${g.s.week}.csv`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    app.toast('プレイの記録を書き出しました。');
+  });
 }
 
 export function openSettings(app: App): void {

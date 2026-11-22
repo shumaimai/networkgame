@@ -1,7 +1,7 @@
 // 機器の設定パネル(右下)。HTMLを組み立てるだけで、入力の反映は bench.ts が行う
 import { ipStr, maskOf, parseCidr, parseCidrList, parseIp } from '../core/ip';
 import { CABLE_PRICE, Cable, Device, GwCfg, L3Cfg, MODEL, ServerCfg, SVC, Svc, SwitchCfg, deniesByDefault, dkimKey, isEndpoint, isGateway, isHost } from '../core/model';
-import { CLOUD_IP, EXTERNAL, Net, PUBLIC_DNS, lineIp, reach, tunnelState } from '../core/sim';
+import { CLOUD_IP, EXTERNAL, Net, PUBLIC_DNS, l2Peers, lineIp, reach, tunnelState } from '../core/sim';
 import { ENTRY } from '../game/guide';
 import { esc, yen } from './dom';
 
@@ -39,13 +39,10 @@ const OWN: Record<string, string> = { fixed: '据え付けの設備', supplied: 
 /** level: いまのレベル。まだ習っていない内容の設定欄は出さない */
 export interface PanelCtx { net: Net; diagTarget: string; cables: Cable[]; devices: Device[]; level: number; /** 入力を助けるボタンを出す(研修では出さない) */ assist?: boolean }
 
-/** 同じスイッチにつながっている、設定済みの端末(設定を写す元にする) */
-export function copySource(d: Device, ctx: Pick<PanelCtx, 'cables' | 'devices'>): Device | null {
-  const other = (c: Cable, id: string) => (c.a.dev === id ? c.b.dev : c.b.dev === id ? c.a.dev : null);
-  const hubs = ctx.cables.map(c => other(c, d.id)).filter((x): x is string => !!x);
-  const near = ctx.devices.filter(x => x !== d && isEndpoint(x.kind) && x.cfg.mode !== 'dhcp' && x.cfg.ip && ctx.cables.some(c => hubs.includes(other(c, x.id) ?? '')));
-  // 写す元は1台に決める(同じ種類の端末を優先し、机に置いた順でいちばん早いもの)。写したあとは、ボタンが出なくなる
-  return near.find(x => x.kind === d.kind) ?? near[0] ?? null;
+/** 設定を写す元にする端末。同じL2の範囲(同じVLAN)にある、同じ種類の、手動で設定済みの端末だけを選ぶ */
+export function copySource(d: Device, ctx: Pick<PanelCtx, 'devices' | 'net'>): Device | null {
+  const peers = l2Peers(ctx.net, d);
+  return ctx.devices.find(x => x !== d && x.kind === d.kind && x.cfg.mode !== 'dhcp' && x.cfg.ip && peers.has(x.id)) ?? null;
 }
 export const COPY_LABEL: Record<string, string> = { prefix: 'マスク', gw: 'ゲートウェイ', dns: 'DNS', proxy: 'プロキシ', noProxy: 'プロキシを使わない宛先' };
 /** 写す項目。IPアドレスは機器ごとに違うので入れない。changed を指定すると、値が変わる項目だけを返す */

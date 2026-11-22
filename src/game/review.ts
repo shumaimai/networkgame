@@ -35,8 +35,13 @@ function diagLine(diag: Record<string, number>): string {
 
 export interface ReviewItem { head: string; body: string }
 /** world: 納品したときの机の上。par: 模範解答の機材費(受注した週の値段)。diag: 診断ツールを使った回数 */
-export function review(job: Job, world: World, par: number, diag: Record<string, number> = {}): ReviewItem[] {
-  const out: ReviewItem[] = [];
+export function review(job: Job, world: World, par: number, diag: Record<string, number> = {}, o: { stars?: number; limit3?: number; answerUsed?: boolean } = {}): ReviewItem[] {
+  const out: ReviewItem[] = [], money = (n: number) => '¥' + Math.round(n).toLocaleString('ja-JP');
+  // ★が3つに届かなかった理由
+  if (o.stars != null && o.stars < 3) {
+    const why = [o.limit3 != null && worldCost(world) > o.limit3 ? `機材費が ${money(worldCost(world))} で、★3になる上限(${money(o.limit3)})を超えました。` : '', o.answerUsed ? 'ヘルプの「答えを見る」を使ったので、★が1つ減りました。' : ''].filter(Boolean);
+    if (why.length) out.push({ head: '評価', body: why.join('') });
+  }
   if (job.kind === 'trouble') {
     for (const f of job.faults.slice(0, 4)) out.push({ head: '原因', body: `${f}。見つけ方: ${findBy(f)}` });
     out.push({ head: '診断', body: diagLine(diag) });

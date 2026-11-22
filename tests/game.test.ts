@@ -251,3 +251,40 @@ describe('納品後の振り返り', () => {
     expect(r[1].body).toBe('診断ツールは使いませんでした。');
   });
 });
+
+describe('プレイの記録', () => {
+  it('納品と取り下げが、時間・ヘルプ・不合格の項目と一緒に残り、CSVにできる。常連の依頼はレベルが上がると出なくなる', () => {
+    const g = new Game(newSave(21));
+    g.skipTutorial();
+    g.accept(g.s.board[2], true);
+    g.s.active!.elapsed = 95000; g.s.active!.diag = { ping: 3 };
+    g.useHelp('plan');
+    g.abandon(['全PCで www.example.com を開ける']);
+    g.accept(g.s.board[0], false);
+    const a = g.s.active!, job = g.activeJob!;
+    a.world = clone(job.solution);
+    if (job.kind === 'trouble') for (const c of a.world.cables) c.free = true;
+    g.deliver(evaluate(a.world, job.checks.map(c => c.check)));
+    const log = g.s.log!;
+    expect(log.map(x => x.result)).toEqual(['abandoned', 'delivered']);
+    expect(log[0]).toMatchObject({ seconds: 95, challenge: true, help: ['plan'], diag: { ping: 3 }, failed: ['全PCで www.example.com を開ける'], stars: 0 });
+    expect(log[1].stars).toBeGreaterThan(0);
+    const csv = g.logCsv().split('\r\n');
+    expect(csv.length).toBe(3);
+    expect(csv[1]).toContain('"取り下げ"');
+    expect(csv[1]).toContain('"方針"');
+    // 常連の依頼
+    g.nextWeek(); g.nextWeek();
+    expect(g.s.board.some(o => o.special)).toBe(true);
+    g.s.xp = xpFor(7);
+    g.nextWeek();
+    expect(g.s.board.some(o => o.special)).toBe(false);
+  });
+  it('★が減った理由が振り返りに出る', () => {
+    const j = generate(4242, 6, { kind: 'build' });
+    const r = review(j, j.solution, j.par, {}, { stars: 1, limit3: j.par - 1000, answerUsed: true });
+    expect(r[0].head).toBe('評価');
+    expect(r[0].body).toMatch(/上限.*を超えました。ヘルプの「答えを見る」を使ったので/);
+    expect(review(j, j.solution, j.par, {}, { stars: 3, limit3: j.par + 1000 })[0].head).toBe('機材費');
+  });
+});

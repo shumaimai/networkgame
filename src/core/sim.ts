@@ -760,6 +760,13 @@ export function usableProxy(net: Net, src: Device): Device | null {
   return null;
 }
 
+/** dev と同じL2の範囲(同じスイッチの同じVLANなど、ルーターを通らずに届く範囲)にある機器のID。IPアドレスが未設定でも調べられる */
+export function l2Peers(net: Net, dev: Device): Set<string> {
+  const seen = new Set([`w:${dev.id}:0:u`, `wl:${dev.id}`]), queue = [...seen];
+  for (let i = 0; i < queue.length; i++) for (const e of net.adj.get(queue[i]) ?? []) if (!seen.has(e.to)) { seen.add(e.to); queue.push(e.to); }
+  return new Set(net.devices.filter(d => d !== dev && (seen.has(`w:${d.id}:0:u`) || seen.has(`wl:${d.id}`))).map(d => d.id));
+}
+
 export interface ArpEntry { ip: string; mac: string; dup: boolean }
 /** 同じネットワーク上で見えている機器のIPとMACの対応(ARP表) */
 export function arpTable(net: Net, dev: Device): ArpEntry[] {

@@ -73,6 +73,8 @@ try {
   await shot('regular');
   await page.click('[data-act="deliver"]');
   ok(/納品完了/.test(await txt('.modal')), '常連の依頼を納品できる');
+  await page.click('.r-answer summary');
+  ok(/模範解答の機器と設定/.test(await txt('.r-answer')) && /SW-増設/.test(await txt('.r-answer')), '納品後に、模範解答を無料で見られる');
   ok(/機材費/.test(await txt('.r-review')) && /多くかかっています/.test(await txt('.r-review')) && /L2スイッチ 8ポート 1台/.test(await txt('.r-review')), '構築の振り返りに、模範解答との機材費の差が出る: ' + await txt('.r-review'));
   await page.click('[data-act="hub"]');
   ok(await page.locator('.chip.regular').count() === 0, '納品したあとは出ない');
@@ -122,6 +124,7 @@ try {
   const after = await hop();
   ok(/ルーター-2/.test(after) && !/ルーター-1/.test(after) && /到達しました/.test(after), 'ルーター-1を止めると、ルーター-2を通って届く');
   ok(await page.locator('[data-act="deliver"]').isDisabled(), '止めたままでは納品できない');
+  ok(await page.locator('#checks li.hold').count() === 1 && await page.locator('#checks li.ng').count() === 0 && /保留/.test(await txt('#checks li.hold')), '止めている間、冗長化の項目は「保留」になり、不合格は出ない');
   await page.waitForTimeout(600);
   await shot('offtest');
   await page.click('[data-act="all-on"]');
@@ -159,6 +162,13 @@ try {
   ok(await page.evaluate(() => window.__bench.world.devices.find(d => d.id === 'inet').cfg.zone[0].value) === rec, 'コピーした値を入力欄に貼り付けられる');
   await shot('copy');
   await leave();
+
+  // ---- プレイの記録を書き出す ----
+  await page.click('[data-act="history"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="export-log"]')]);
+  const csv = (await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8')).split('\r\n');
+  ok(/かかった時間/.test(csv[0]) && csv.length >= 5 && csv.some(x => /"取り下げ"/.test(x)) && csv.some(x => /"納品"/.test(x)), `プレイの記録をCSVで書き出せる (${csv.length - 1}件)`);
+  await page.keyboard.press('Escape');
 
   // ---- 設定: BGM ----
   await page.click('[data-act="settings"]');

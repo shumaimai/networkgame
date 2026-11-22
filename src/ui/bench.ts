@@ -39,6 +39,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   let results: CheckResult[] = [];
   let diagTarget = '', stepIdx = 0, hintStep = -1, hintLevel = 0, pal: { key: string; label: string; kind: string; x0: number; y0: number; moved: boolean } | null = null;
   const diagDone = new Set<string>();
+  let firstNg = -2;
   const nameOf = (id: string) => world.devices.find(d => d.id === id)?.name ?? job.supplied.find(s => s.id === id)?.name ?? job.solution.devices.find(d => d.id === id)?.name ?? id;
 
   root.innerHTML = `
@@ -181,12 +182,14 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   }
   function renderChecks(): void {
     const showWhy = a.help.reasons || !!tut;
-    // 不合格の項目を上に集める(項目が多い依頼で、下に隠れないようにする)
-    const order = job.checks.map((_, i) => i).sort((a, b) => Number(results[a].ok) - Number(results[b].ok) || a - b);
-    $('#checks', root).innerHTML = order.map(i => {
-      const c = job.checks[i], r = results[i];
-      return `<li class="${r.ok ? 'ok' : 'ng'}"><span class="badge">${r.ok ? '合格' : '不合格'}</span><div>${esc(c.label)}${!r.ok && showWhy ? `<small>${esc(r.reason)}</small>` : ''}</div></li>`;
+    const list = $('#checks', root);
+    list.innerHTML = job.checks.map((c, i) => {
+      const r = results[i];
+      return `<li class="${r.ok ? 'ok' : r.hold ? 'hold' : 'ng'}"><span class="badge">${r.ok ? '合格' : r.hold ? '保留' : '不合格'}</span><div>${esc(c.label)}${!r.ok && (showWhy || r.hold) ? `<small>${esc(r.reason)}</small>` : ''}</div></li>`;
     }).join('');
+    // 並び順は変えない。最初の不合格の項目が入れ替わったときだけ、その項目が見える位置まで送る
+    const first = results.findIndex(r => !r.ok && !r.hold);
+    if (first !== firstNg) { firstNg = first; (list.children[first] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' }); }
     const n = results.filter(r => r.ok).length, all = n === results.length;
     const stopped = world.devices.filter(d => d.off);
     $('#pass', root).textContent = `${n} / ${results.length}`;
@@ -250,7 +253,8 @@ export function mountBench(app: App, root: HTMLElement): () => void {
     const d = dev(s.id);
     if (!d) { panel.innerHTML = ''; return; }
     const top = panel.scrollTop;
-    panel.innerHTML = devicePanel(d, { net, diagTarget, cables: world.cables, devices: world.devices, level: game.level, assist: !tut });
+    // 「設定を写す」は、DHCPを習う Lv.3 から出す。それまでは、1台ずつ手で入れることが学ぶ内容になっている
+    panel.innerHTML = devicePanel(d, { net, diagTarget, cables: world.cables, devices: world.devices, level: game.level, assist: !tut && game.level >= 3 });
     panel.querySelectorAll<HTMLInputElement>('[data-v]').forEach(validate);
     panel.scrollTop = top;
   }
@@ -411,12 +415,14 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   function deliver(): void {
     if (world.devices.some(d => d.off)) { log('故障テストで止めている機器があります。動かしてから納品します。', 'ng'); sfx('ng'); return; }
     results = evaluate(world, job.checks.map(c => c.check), nameOf);
-    const notes = review(job, world, a.par ?? job.par, a.diag);
+    const [limit3] = game.starLimits(job), par0 = a.par ?? job.par;
     const out = game.deliver(results);
     if (!out) { log('まだ合格していない検収テストがあります。', 'ng'); sfx('ng'); return; }
     clearInterval(timer);
     desk.stopAnim();
-    showResult(app, job, out, notes);
+    const notes = review(job, world, par0, a.diag, { stars: out.stars, limit3, answerUsed: a.help.answer });
+    // 納品したあとは、模範解答を無料で見られる
+    showResult(app, job, out, notes, tut || job.kind === 'trouble' ? '' : answerHtml());
   }
 
   // ---------- 入力 ----------
@@ -435,7 +441,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
           <div class="modal-btns"><button class="btn primary" data-act="close">閉じる</button></div>`);
         onAct(m, x => {
           if (x === 'restart') { game.restart(); app.closeModal(); app.show('bench'); }
-          if (x === 'abandon') { game.abandon(); app.closeModal(); app.show('hub'); }
+          if (x === 'abandon') { game.abandon(job.checks.filter((_, i) => results[i] && !results[i].ok).map(c => c.label)); app.closeModal(); app.show('hub'); }
           if (x === 'skip') { game.abandon(); game.skipTutorial(); app.closeModal(); app.show('hub'); }
         });
         break;
@@ -451,7 +457,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
       }
       case 'all-on': for (const d of world.devices) delete d.off; log('止めていた機器をすべて動かしました。'); sfx('plug'); changed(); renderPanel(); break;
       case 'copy-cfg': {
-        const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null, from = d ? copySource(d, { cables: world.cables, devices: world.devices }) : null;
+        const d = desk.sel?.kind === 'dev' ? dev(desk.sel.id) : null, from = d ? copySource(d, { devices: world.devices, net }) : null;
         if (!d || !from) break;
         // IPアドレスは機器ごとに違う番号が要るので写さない(同じ番号の機器を増やさないため)
         for (const k of copyKeys(d, from)) d.cfg[k] = from.cfg[k];
@@ -564,7 +570,7 @@ export function mountBench(app: App, root: HTMLElement): () => void {
   };
 }
 
-function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[]): void {
+function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[], answer: string): void {
   const game = app.game, up = out.levelAfter > out.levelBefore;
   const m = app.modal(`
     <div class="result">
@@ -583,7 +589,7 @@ function showResult(app: App, job: Job, out: Outcome, notes: ReviewItem[]): void
         ${out.onTime === true ? '<span class="good">納期内に納品</span>' : out.onTime === false ? '<span class="neg">納期に間に合わず</span>' : ''}
         <span>資金 <b>${yen(out.final)}</b></span>
       </div>
-      ${notes.length ? `<div class="r-review"><h3>振り返り</h3>${notes.map(n => `<div><b>${esc(n.head)}</b><span>${esc(n.body)}</span></div>`).join('')}</div>` : ''}
+      ${notes.length ? `<div class="r-review"><h3>振り返り</h3>${notes.map(n => `<div><b>${esc(n.head)}</b><span>${esc(n.body)}</span></div>`).join('')}${answer ? `<details class="r-answer"><summary>模範解答の機器と設定を見る</summary><section>${answer}</section></details>` : ''}</div>` : ''}
       <div class="xpbar"><i style="width:${Math.round(game.xpProgress * 100)}%"></i><span>Lv.${game.level} ${esc(game.levelInfo.title)}</span></div>
       ${up ? `<div class="levelup"><b>レベルアップ! Lv.${out.levelAfter}</b><ul>${out.unlocks.map(u => `<li>${esc(u)}</li>`).join('')}</ul><small>機材とガイドのページが増えました。</small></div>` : ''}
       <div class="modal-btns"><button class="btn primary big" data-act="hub">受注へ戻る</button></div>

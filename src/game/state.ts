@@ -42,6 +42,8 @@ export const LEVELS: LevelInfo[] = [
 export interface Offer { id: string; seed: number; level: number; kind: 'build' | 'trouble'; ease: number; /** 常連のお客様からの依頼 */ special?: 'tanaka' }
 /** 常連の依頼が出はじめる週 */
 export const REGULAR_WEEK = 3;
+/** 常連の依頼が出るのは、このレベルまで */
+export const REGULAR_MAX_LEVEL = 6;
 export interface HelpUse { plan: boolean; reasons: boolean; answer: boolean }
 export interface Active {
   offer: Offer | null;
@@ -74,6 +76,14 @@ export const PLANS: Record<Exclude<PlanId, 'custom'>, { label: string; fee: numb
 /** 金額指定の倉庫: 定額より割高だが、いくらでも広くできる */
 export const CUSTOM_RATE = 90;
 
+/** 依頼1件ごとの記録(どこで止まりやすいかを調べるために残す) */
+export interface PlayLog {
+  week: number; level: number; client: string; title: string; kind: string; tags: string[]; score: number;
+  result: 'delivered' | 'abandoned'; stars: number; seconds: number; challenge: boolean;
+  help: string[]; diag: Record<string, number>;
+  /** 取り下げたときに、不合格のまま残っていた検収テスト */
+  failed: string[];
+}
 export interface HistoryItem { client: string; title: string; kind: string; stars: number; profit: number; week: number }
 export interface Save {
   v: 2;
@@ -98,6 +108,7 @@ export interface Save {
   keep?: Record<string, World>;
   /** 納品し終えた常連の依頼 */
   regularDone?: string[];
+  log?: PlayLog[];
   settings: { sfx: number; bgm: number };
 }
 
@@ -247,7 +258,8 @@ export class Game {
       id: `w${this.s.week}-${i}`, seed: Math.floor(r() * 2 ** 31), level, kind: troubles.has(i) ? 'trouble' as const : 'build' as const, ease,
     }));
     // 常連のお客様: 納品するまで、いちばん易しい枠に出し続ける
-    if (this.tutorialFinished && this.s.week >= REGULAR_WEEK && !this.s.regularDone?.includes('tanaka')) {
+    // レベルが上がったあとは出さない(依頼の中身が、そのころ習う内容と合わなくなるため)
+    if (this.tutorialFinished && this.s.week >= REGULAR_WEEK && level <= REGULAR_MAX_LEVEL && !this.s.regularDone?.includes('tanaka')) {
       this.s.board[0] = { id: `w${this.s.week}-r`, seed: 0, level: 1, kind: 'build', ease: 0, special: 'tanaka' };
     }
   }
@@ -315,9 +327,28 @@ export class Game {
     Object.assign(a, { world: clone(job.initial), shelf: {}, spare: 0, seq: 1 });
     this.save();
   }
-  abandon(): void {
+  private record(job: Job, a: Active, result: PlayLog['result'], stars: number, failed: string[]): void {
+    const help = (Object.keys(a.help) as (keyof HelpUse)[]).filter(k => a.help[k]);
+    (this.s.log ??= []).push({
+      week: this.s.week, level: this.level, client: job.client, title: job.tutorial ? `研修: ${job.title}` : job.title, kind: job.kind, tags: job.tags, score: job.difficulty.score,
+      result, stars, seconds: Math.round(a.elapsed / 1000), challenge: a.challenge, help, diag: { ...a.diag }, failed,
+    });
+    if (this.s.log.length > 400) this.s.log.splice(0, this.s.log.length - 400);
+  }
+  /** プレイの記録をCSVにする(表計算ソフトで開ける) */
+  logCsv(): string {
+    const q = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = (this.s.log ?? []).map(x => [x.week, x.level, x.client, x.title, x.kind === 'build' ? '構築' : x.kind === 'trouble' ? 'トラブル対応' : '構成変更', x.tags.join(' '), x.score,
+      x.result === 'delivered' ? '納品' : '取り下げ', x.stars, x.seconds, x.challenge ? 'あり' : '', x.help.map(k => ({ plan: '方針', reasons: '原因', answer: '答え' }[k] ?? k)).join(' '),
+      Object.entries(x.diag).map(([k, n]) => `${k}:${n}`).join(' '), x.failed.join(' / ')].map(q).join(','));
+    return ['週,レベル,依頼主,依頼,種類,タグ,難易度の点数,結果,★,かかった時間(秒),チャレンジ,使ったヘルプ,診断ツールの回数,不合格のまま残った検収テスト', ...rows].join('\r\n');
+  }
+  /** failed: 取り下げた時点で不合格だった検収テスト(記録に残す) */
+  abandon(failed: string[] = []): void {
     const a = this.s.active;
     if (!a) return;
+    const job = this.activeJob;
+    if (job) this.record(job, a, 'abandoned', 0, failed);
     this.clearDesk();
     this.s.money -= a.advance;
     if (!a.tutorial) { this.s.rep = Math.max(0, this.s.rep - 5); this.s.board = this.s.board.filter(o => o.id !== a.offer!.id); }
@@ -390,6 +421,7 @@ export class Game {
     this.s.history.unshift({ client: job.client, title: job.title, kind: job.kind, stars, profit: reward - cost, week: this.s.week });
     this.s.history.length = Math.min(this.s.history.length, 50);
     if (a.tutorial) { if (!this.s.tutorialDone.includes(a.tutorial)) this.s.tutorialDone.push(a.tutorial); }
+    this.record(job, a, 'delivered', stars, []);
     if (a.tutorial === 't1') this.s.keep = { ...this.s.keep, t1: clone(a.world) };
     if (a.offer?.special) this.s.regularDone = [...(this.s.regularDone ?? []), a.offer.special];
     this.s.active = null;

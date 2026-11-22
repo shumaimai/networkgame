@@ -29,7 +29,7 @@ export type Check =
   | { t: 'wifi'; devs: string[] }        // 無線でつながっていること
   | { t: 'redundant'; checks: Check[] }; // スイッチ間のケーブルが1本切れても通信が続くこと
 
-export interface CheckResult { ok: boolean; reason?: string }
+export interface CheckResult { ok: boolean; reason?: string; /** 故障テスト中のため、判定を保留している */ hold?: boolean }
 const ok: CheckResult = { ok: true };
 const ng = (reason: string): CheckResult => ({ ok: false, reason });
 const WEB_PROBE = parseIp(EXTERNAL['www.example.com'])!;
@@ -37,6 +37,9 @@ const WEB_PROBE = parseIp(EXTERNAL['www.example.com'])!;
 export type NameOf = (id: string) => string;
 
 function checkOne(net: Net, q: Check, nameOf: NameOf, world?: World): CheckResult {
+  if ((q.t === 'failover' || q.t === 'redundant') && world?.devices.some(d => d.off)) {
+    return { ok: false, hold: true, reason: '故障テストで機器を止めている間は判定しません。止めた機器を動かすと判定します。' };
+  }
   if (q.t === 'redundant') {
     const kind = (id: string) => net.byId.get(id)?.kind ?? '';
     const sw = (id: string) => ['l2', 'l2m', 'l3'].includes(kind(id));

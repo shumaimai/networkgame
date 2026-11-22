@@ -360,7 +360,10 @@ describe('故障テスト', () => {
     const n = build(b.devices, b.cables), r = reach(n, pc, ip('8.8.8.8'));
     expect(r.ok && r.hops.includes('RT-2') && !r.hops.includes('RT-1')).toBe(true);
     expect(n.vrrp[0].master).toBe('r2');
-    expect(evaluate(b.world(), checks).map(x => x.ok)).toEqual([true, false]);
+    // 止めている間、冗長化の項目は不合格ではなく保留になる
+    const held = evaluate(b.world(), checks);
+    expect(held.map(x => x.ok)).toEqual([true, false]);
+    expect(held[1].hold).toBe(true);
     sw.off = true;
     expect(reach(build(b.devices, b.cables), pc, ip('8.8.8.8')).ok).toBe(false);
   });

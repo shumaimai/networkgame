@@ -598,3 +598,13 @@ h3 .q:hover { border-color: var(--teal); color: var(--teal); }
 .r-review b { color: var(--teal); }
 .r-review span { color: #c9d4ee; }
 .r-review + .xpbar { margin-top: 12px; }
+
+/* 故障テスト中の保留、納品後に見る模範解答 */
+.checks li.hold { background: #1a2136; color: var(--mute); }
+.checks li.hold .badge { background: #3b4666; color: #c5d0ea; }
+.checks li.hold small { color: var(--mute); }
+.r-answer { margin-top: 8px; font-size: 14px; }
+.r-answer summary { cursor: pointer; color: var(--teal); font-weight: 700; padding: 4px 0; }
+.r-answer section { max-height: 250px; overflow: auto; }
+.r-review .r-answer h3 { font-size: 13px; }
+.r-review .r-answer .answer div { display: block; }
