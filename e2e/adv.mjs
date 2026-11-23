@@ -4,7 +4,7 @@
 // IDに頼った判定(DKIMの公開鍵、冗長化、応答するサーバーの確認など)が実際の手順でも通るかを見る
 import { chromium } from 'playwright-core';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1920, height: 1080 } });
 await page.addInitScript(() => { window.__noIntro = true; });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));

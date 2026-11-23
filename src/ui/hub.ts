@@ -1,4 +1,5 @@
 // 受注: 研修と、今週の依頼の一覧
+import { LANGS, Lang, lang, setLang } from '../i18n/runtime';
 import { Job, KIND_LABEL } from '../core/job';
 import { MODEL } from '../core/model';
 import { TRIAL } from '../game/edition';
@@ -266,6 +267,7 @@ export function openSettings(app: App): void {
     <h3>プレイグラウンド</h3>
     <p class="set-note">お金も依頼もない机です。作中に出てくる機器をどれでも、何台でも置いて、自由に組んで試せます。進行中の依頼、資金、レベルには影響しません。</p>
     <button class="btn primary" data-act="play"${app.current === 'play' ? ' disabled' : ''}>${app.current === 'play' ? 'プレイグラウンドを開いています' : 'プレイグラウンドを開く'}</button>
+    <label class="f"><span>Language / 言語 / 언어</span><span class="langs in">${LANGS.map(([l, name]) => `<button class="${l === lang() ? 'on' : ''}" data-act="lang" data-l="${l}">${name}</button>`).join('')}</span></label>
     <h3>セーブデータ</h3>
     <div class="save-btns"><button class="btn" data-act="save-out">セーブデータを書き出す</button><button class="btn" data-act="save-in">セーブデータを読み込む</button><input type="file" id="save-file" accept=".json,application/json" hidden></div>
     <button class="btn danger" data-act="wipe">セーブデータを消して最初から始める</button>
@@ -291,6 +293,7 @@ export function openSettings(app: App): void {
     if (act === 'fullscreen') { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen().catch(() => {}); }
     if (act === 'title') { app.closeModal(); app.show('title'); }
     if (act === 'play') { app.closeModal(); app.openPlay(); }
+    if (act === 'lang') { app.game.save(); setLang(el.dataset.l as Lang); }
     if (act === 'intro-again') { app.introPending = true; app.closeModal(); app.show('hub'); }
     if (act === 'save-out') {
       const url = URL.createObjectURL(new Blob([JSON.stringify(app.game.s)], { type: 'application/json' })), link = document.createElement('a');

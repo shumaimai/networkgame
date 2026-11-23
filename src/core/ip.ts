@@ -18,7 +18,7 @@ export const inCidr = (ip: number, c: Cidr): boolean => inNet(ip, c.ip, c.prefix
 export function parseCidr(s: unknown): Cidr | null {
   if (typeof s !== 'string') return null;
   const t = s.trim();
-  if (/^(any|すべて|\*)$/i.test(t)) return { ip: 0, prefix: 0 };
+  if (/^(any|all|すべて|모두|\*)$/i.test(t)) return { ip: 0, prefix: 0 };
   const m = t.match(/^([\d.]+)(?:\/(\d{1,2}))?$/);
   if (!m) return null;
   const ip = parseIp(m[1]);

@@ -3,7 +3,7 @@
   --text: #e9eefb; --mute: #91a1c6; --dim: #62739b;
   --teal: #4fd1c5; --teal2: #2fa89d; --orange: #f6a04d; --red: #f47c7c; --green: #5fd99f; --yellow: #ffd166; --violet: #b794f4;
   --mono: "JetBrains Mono", Consolas, "MS Gothic", monospace;
-  --sans: "Zen Maru Gothic", "Yu Gothic UI", "Meiryo", sans-serif;
+  --sans: "Zen Maru Gothic", "Yu Gothic UI", "Meiryo", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; background: #05080f; }
@@ -731,3 +731,15 @@ p, li, td, dd, .brief, .info, .sl, .card h3, .coach p { word-break: auto-phrase;
 .intro-box p { font-size: 16px; line-height: 1.8; color: #dfe8ff; }
 .intro-btns { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
 .shop-row .s-lock { color: var(--yellow); }
+
+/* 言語の切り替え */
+.langs { position: absolute; left: 30px; bottom: 18px; display: flex; gap: 8px; }
+.langs.in { position: static; }
+.langs button { font: inherit; font-size: 15px; color: #c5d0ea; background: rgba(13, 20, 38, .85); border: 1px solid var(--line2); border-radius: 99px; padding: 5px 18px; cursor: pointer; }
+.langs button.on { border-color: var(--teal); color: #fff; background: #17403f; }
+.langs button:hover { border-color: var(--teal); }
+/* 英語と韓国語: 単語の途中で折り返さない */
+html:not([lang="ja"]) p, html:not([lang="ja"]) li, html:not([lang="ja"]) td, html:not([lang="ja"]) dd, html:not([lang="ja"]) .brief, html:not([lang="ja"]) .info, html:not([lang="ja"]) .sl { word-break: normal; overflow-wrap: break-word; }
+html[lang="ko"] p, html[lang="ko"] li, html[lang="ko"] .brief, html[lang="ko"] .info, html[lang="ko"] .sl { word-break: keep-all; }
+html:not([lang="ja"]) .sign h1 { font-size: 96px; letter-spacing: .02em; }
+html:not([lang="ja"]) .tile b, html:not([lang="ja"]) .tab { letter-spacing: 0; }

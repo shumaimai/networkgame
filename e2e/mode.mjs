@@ -1,7 +1,7 @@
 // プレイグラウンドと、ハードモードの連続成功の確認: node e2e/mode.mjs (dev サーバー起動中)
 import { chromium } from 'playwright-core';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1920, height: 1080 } });
 await page.addInitScript(() => { window.__noIntro = true; });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));

@@ -1,7 +1,7 @@
 // ガイドへの近道、故障テスト、入力の補助、常連の依頼、仕入れの画面の確認: node e2e/extra.mjs (dev サーバー起動中)
 import { chromium } from 'playwright-core';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
-const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, permissions: ['clipboard-read', 'clipboard-write'] });
+const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1920, height: 1080 }, permissions: ['clipboard-read', 'clipboard-write'] });
 const page = await ctx.newPage();
 await page.addInitScript(() => { window.__noIntro = true; });
 const errors = [];

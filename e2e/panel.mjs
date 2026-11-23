@@ -1,7 +1,7 @@
 // 設定パネルの入力が機器の設定に反映されるかの確認: node e2e/panel.mjs (dev サーバー起動中)
 import { chromium } from 'playwright-core';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
-const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1600, height: 900 } });
 await page.addInitScript(() => { window.__noIntro = true; });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));

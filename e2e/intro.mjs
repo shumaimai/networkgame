@@ -2,7 +2,7 @@
 import { chromium } from 'playwright-core';
 const URL0 = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1920, height: 1080 } });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 let failed = 0, count = 0;

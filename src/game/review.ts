@@ -1,4 +1,5 @@
 // 納品後の振り返り: 何が原因だったか、どの診断で見つけられるか、機材費が模範解答とどう違ったか
+import { ja } from '../i18n/runtime';
 import { Job, worldCost } from '../core/job';
 import { CABLE_PRICE, MODEL, World } from '../core/model';
 
@@ -24,7 +25,7 @@ const FIND: [RegExp, string][] = [
   [/ポート転送|証明書|振り分け先|リバースプロキシ|Webサービス/, '外から届く順(公開DNS、ポート転送、サーバーの設定)に、設定を1つずつ確かめる'],
   [/利用を許可|ファイル共有|メールサービス/, 'サーバーを選び、サービスのオンと「利用を許可」を確かめる'],
 ];
-export const findBy = (fault: string): string => FIND.find(([re]) => re.test(fault))?.[1] ?? '失敗する通信の途中にある機器を、手前から順に ping で確かめる';
+export const findBy = (fault: string): string => FIND.find(([re]) => re.test(ja(fault)))?.[1] ?? '失敗する通信の途中にある機器を、手前から順に ping で確かめる';
 
 const DIAG_ORDER = ['ping', 'tracert', 'nslookup', 'web', 'ipconfig', 'arp'];
 const DIAG_LABEL: Record<string, string> = { web: 'Web閲覧' };
@@ -45,7 +46,7 @@ export function review(job: Job, world: World, par: number, diag: Record<string,
   if (job.kind === 'trouble') {
     for (const f of job.faults.slice(0, 4)) out.push({ head: '原因', body: `${f}。見つけ方: ${findBy(f)}` });
     // 診断ツールを使わずに直したとき(配線を見れば分かる不具合だけの依頼は除く)
-    const used = Object.values(diag).some(n => n > 0), visible = job.faults.every(f => /ケーブルが抜けて|ポートに挿さって/.test(f));
+    const used = Object.values(diag).some(n => n > 0), visible = job.faults.every(f => /ケーブルが抜けて|ポートに挿さって/.test(ja(f)));
     out.push({ head: '診断', body: diagLine(diag) + (!used && !visible ? '設定画面を1台ずつ開いて見つける方法でも直せますが、機器が増えると時間がかかります。先に tracert や ipconfig を使うと、開く設定画面を絞れます。' : '') });
     return out;
   }

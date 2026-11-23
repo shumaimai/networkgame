@@ -1,4 +1,5 @@
 // タイトル画面
+import { LANGS, Lang, lang, setLang } from '../i18n/runtime';
 import { TRIAL } from '../game/edition';
 import type { App } from './app';
 import { sfx } from './audio';
@@ -30,11 +31,13 @@ export function mountTitle(app: App, root: HTMLElement): () => void {
         ${item('new', 'はじめから', has ? 'いまのセーブデータは消えます' : '研修から始めます')}
         ${item('settings', '設定')}
       </nav>
+      <div class="langs">${LANGS.map(([l, name]) => `<button class="${l === lang() ? 'on' : ''}" data-act="lang" data-l="${l}">${name}</button>`).join('')}</div>
       <div class="title-foot">${TRIAL ? 'お試し版 ・ ' : ''}${WEB ? 'PCのブラウザ(マウスとキーボード)向けです ・ ' : ''}ver 0.2</div>
     </div>`;
   root.addEventListener('pointerover', e => { if ((e.target as HTMLElement).closest('.menu-item')) sfx('tick'); });
-  onAct(root, act => {
+  onAct(root, (act, el) => {
     sfx('click');
+    if (act === 'lang') setLang(el.dataset.l as Lang);
     if (act === 'continue') app.show(s.active ? 'bench' : 'hub');
     if (act === 'settings') openSettings(app);
     if (act === 'new') {

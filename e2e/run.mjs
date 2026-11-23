@@ -1,7 +1,7 @@
 // 画面の通しテスト。先に `npm run dev` を起動しておく: node e2e/run.mjs
 import { chromium } from 'playwright-core';
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
-const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+const page = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1600, height: 900 } });
 await page.addInitScript(() => { window.__noIntro = true; });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));

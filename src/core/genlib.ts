@@ -1,4 +1,5 @@
 // 依頼の生成で共通に使う部品: 業種と名前の表、難易度と報酬の計算、トラブル対応への作り替え
+import { ja } from '../i18n/runtime';
 import { evaluate } from './checks';
 import { faultCatalog, faultCatalog2 } from './faults';
 import { Difficulty, Factor, Job, Rng, mulberry, pick, shuffle } from './job';
@@ -89,9 +90,11 @@ export function makeTrouble(base: Base, factors: Factor[], seed: number, cap: nu
 }
 
 // 拠点が2つ以上ある依頼では、どの拠点で困っているかを題名にする
-function siteTitle(title: string, symptom: string[], base: Base): string {
-  const sites = (base.zones ?? []).filter(z => z.tone !== 'cloud').map(z => z.label);
-  if (sites.length < 2 || !/Web|インターネット|調子|急に/.test(title)) return title;
+function siteTitle(title: string, symptom0: string[], base: Base): string {
+  // 判定は日本語の文章で行う(翻訳した文章では、語順が変わる)
+  const symptom = symptom0.map(ja);
+  const sites = (base.zones ?? []).filter(z => z.tone !== 'cloud').map(z => ja(z.label));
+  if (sites.length < 2 || !/Web|インターネット|調子|急に/.test(ja(title))) return title;
   // 拠点をまたぐ ping の項目は、どちらの拠点が原因でも落ちるので、拠点の判定には使わない
   const cross = (x: string) => /に通信できる$/.test(x);
   const hit = sites.filter(l => symptom.some(x => !cross(x) && x.startsWith(l)));
@@ -101,7 +104,8 @@ function siteTitle(title: string, symptom: string[], base: Base): string {
   return [title, 'どの拠点でも通信できない', '複数の拠点で不具合が出ている'][symptom.length % 3];
 }
 
-function troubleTitle(symptom: string[], r: Rng): string {
+function troubleTitle(symptom0: string[], r: Rng): string {
+  const symptom = symptom0.map(ja);
   const s = symptom.join(' ');
   // 拠点・クラウド・冗長化など、あとから増えた内容の症状
   if (symptom.every(x => /止まっても|切れても/.test(x))) return '1台止まると全体が止まってしまう';
