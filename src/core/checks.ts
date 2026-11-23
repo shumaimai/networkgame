@@ -209,7 +209,7 @@ export function describe(q: Check, nameOf: NameOf, group?: string): string {
     case 'noProxy': return `${who(q.from)} から社内のプロキシを使えない`;
     case 'flow': {
       const t = targetLabel(q.to, nameOf), w = who(q.from);
-      if (q.expect === 'ng') return `${w} から ${t} に${q.svc === 'ping' ? '' : SVC[q.svc].label + 'で'}通信できない`;
+      if (q.expect === 'ng') return q.svc === 'ping' ? `${w} から ${t} に通信できない` : `${w} から ${t} に${SVC[q.svc].label}で通信できない`;
       const named = 'name' in q.to && q.to.dev ? `(${nameOf(q.to.dev)})` : '';
       switch (q.svc) {
         case 'ping': return `${w} から ${t} に通信できる`;

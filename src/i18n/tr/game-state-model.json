@@ -1,121 +1,478 @@
 {
-  "dfc17c64": ["Apprentice", "견습"],
-  "415a025b": ["Default gateway, NAT, public DNS", "기본 게이트웨이, NAT, 공개 DNS"],
-  "dba19772": ["Troubleshooting jobs", "장애 대응 의뢰"],
-  "78af148f": ["Rookie", "신입"],
-  "9659fd33": ["DHCP (built into the router)", "DHCP(라우터 내장)"],
-  "b0df3c84": ["ARP table, tracert", "ARP 표, tracert"],
-  "7f7136e4": ["DNS service (records, forwarder)", "DNS 서비스(레코드, 포워더)"],
-  "24036ab1": ["Junior", "주니어"],
-  "f7cc4a18": ["Subnetting (/25 to /28)", "서브넷 분할(/25〜/28)"],
-  "3c1f27ee": ["Joining two networks with a router", "두 네트워크를 라우터로 연결하기"],
-  "d9fb3418": ["Proxy service", "프록시 서비스"],
-  "7f758824": ["Packet filter (allow and deny rules)", "패킷 필터(허용·거부 규칙)"],
-  "4b3478f6": ["Journeyman", "어엿한 기술자"],
-  "d0549f25": ["NAS, file sharing", "NAS, 파일 공유"],
-  "d37692be": ["Separating a guest network", "게스트용 네트워크의 분리"],
-  "546548ae": ["L3 switch, VLAN switch", "L3 스위치, VLAN 지원 스위치"],
-  "ef52e97b": ["VLANs, inter-VLAN routing, static routes", "VLAN, VLAN 간 라우팅, 정적 경로"],
-  "cef7aa07": ["Senior", "중견"],
-  "8f0fb6c7": ["DHCP service (server)", "DHCP 서비스(서버)"],
-  "3b796980": ["DHCP relay", "DHCP 릴레이"],
-  "267fd638": ["DMZ, public servers, port forwarding", "DMZ, 공개 서버, 포트 포워딩"],
-  "017b9f3a": ["Veteran", "베테랑"],
-  "d1585202": ["Trunk ports (VLANs across floors)", "트렁크 포트(층을 넘는 VLAN)"],
-  "6d800050": ["Mail service", "메일 서비스"],
-  "2559b27f": ["Expert", "장인"],
-  "db284e18": ["Wireless access point, wireless LAN", "무선 액세스 포인트, 무선 LAN"],
-  "12848b98": ["VPN (remote work)", "VPN(재택근무)"],
-  "7af58b46": ["Master", "명인"],
-  "7ad73be8": ["Public DNS (A, MX and TXT records)", "공개 DNS(A·MX·TXT 레코드)"],
-  "e763ea0c": ["SPF (proving where mail comes from)", "SPF(메일 발신처의 증명)"],
-  "a9ad96fb": ["Virtuoso", "달인"],
-  "3b1c5f67": ["Wildcard certificates, TLS termination", "와일드카드 인증서, TLS 종단"],
-  "45c3c1a1": ["Sender domain authentication (DKIM, DMARC)", "발신 도메인 인증(DKIM·DMARC)"],
-  "c9c1e38f": ["Architect", "설계자"],
-  "9432715a": ["Wide-area Ethernet (head office and branches)", "광역 이더넷(본점과 지점)"],
-  "89323e09": ["Lead Architect", "주임 설계자"],
-  "feae27d9": ["Cloud, virtual servers", "클라우드, 가상 서버"],
-  "c2666f74": ["Security groups, moving to the cloud", "보안 그룹, 클라우드로의 이전"],
-  "8585b010": ["Director", "총괄"],
-  "6b848401": ["Monitoring service", "감시 서비스"],
-  "adc00212": ["Combined jobs across several sites and the cloud", "여러 거점과 클라우드에 걸친 종합 안건"],
-  "6e02dcd8": ["Build and try freely", "자유롭게 짜서 시험하기"],
-  "a7cf64b6": ["Shop shelf", "가게 선반"],
-  "843fa589": ["Small warehouse", "작은 창고"],
-  "f9f81c86": ["Medium warehouse", "중간 창고"],
-  "5a1ffbe9": ["Large warehouse", "큰 창고"],
-  "71fc7e5e": ["Only one {0} can be placed on the desk.", "{0}은(는) 책상 위에 1개만 놓을 수 있습니다."],
-  "e3638e9e": ["Not enough funds", "자금이 부족합니다"],
-  "b78f7a4b": ["Not enough warehouse slots", "창고의 슬롯이 부족합니다"],
-  "2cb49653": ["Your stock does not fit in the slots. Reduce your stock first", "재고가 슬롯에 들어가지 않습니다. 먼저 재고를 줄여 주세요"],
-  "d68b30a9": ["Training: {0}", "연수: {0}"],
-  "6a0eb15b": ["Delivered", "납품"],
-  "9274508c": ["Withdrawn", "취소"],
-  "8e69989d": ["Yes", "있음"],
-  "d2273ccb": ["Approach", "방침"],
-  "d591c351": ["Answer", "답"],
-  "cf79468d": ["Week,Level,Client,Job,Type,Tags,Difficulty score,Result,★,Time taken (s),Hard Mode,Help used,Diagnostic tool uses,Acceptance tests left failing", "주,레벨,의뢰주,의뢰,종류,태그,난이도 점수,결과,★,걸린 시간(초),하드 모드,사용한 도움말,진단 도구 횟수,불합격인 채 남은 검수 테스트"],
-  "d355a557": ["Not enough funds ({0})", "자금이 부족합니다({0})"],
-  "3a09d1fc": ["Out of stock", "재고가 없습니다"],
-  "14c1833b": ["Contract fee", "계약금"],
-  "fa162c24": ["Help used", "도움말 이용"],
-  "aca7528c": ["Deadline bonus", "납기 보너스"],
-  "136e3008": ["Print", "인쇄"],
-  "f71c9734": ["Call", "통화"],
-  "0b60f5d3": ["A client's PC. Set its IP address, gateway, DNS and proxy.", "고객의 PC. IP 주소, 게이트웨이, DNS, 프록시를 설정한다."],
-  "af417df0": ["A network printer. Accepts print jobs (port 9100).", "네트워크 프린터. 인쇄(9100번)를 받는다."],
-  "decf607c": ["IP phone", "IP 전화"],
-  "5b68cc09": ["A phone that makes calls over the LAN.", "LAN으로 통화하는 전화기."],
-  "e47e100d": ["A camera that saves video to a NAS or file server.", "영상을 NAS나 파일 서버에 저장하는 카메라."],
-  "41750725": ["POS register", "POS 계산대"],
-  "69447067": ["A register that sends sales data to a server.", "매출을 서버에 보내는 계산대 단말."],
-  "3f29c1d0": ["L2 switch, 5 ports", "L2 스위치 5포트"],
-  "0bccd59d": ["A small switching hub. Puts connected devices on the same network. No settings needed.", "소형 스위칭 허브. 연결한 기기를 같은 네트워크로 묶는다. 설정 불필요."],
-  "7d3b3291": ["L2 switch, 8 ports", "L2 스위치 8포트"],
-  "a08c1bef": ["A switching hub. Puts connected devices on the same network. No settings needed.", "스위칭 허브. 연결한 기기를 같은 네트워크로 묶는다. 설정 불필요."],
-  "26eac170": ["L2 switch, 16 ports", "L2 스위치 16포트"],
-  "e465f5a1": ["A switching hub for floors with many endpoints. No settings needed.", "단말이 많은 층을 위한 스위칭 허브. 설정 불필요."],
-  "028f87ad": ["Joins networks together. Has internet access (NAT), DHCP and a packet filter.", "네트워크끼리 연결한다. 인터넷 접속(NAT), DHCP, 패킷 필터를 갖춘다."],
-  "56ebe8d4": ["Business router, 4 LAN", "업무용 라우터 4LAN"],
-  "bed42f70": ["Router 4LAN", "라우터 4LAN"],
-  "a594793b": ["A router with four LAN ports. One unit can join the office network, a server network and site-to-site lines.", "LAN 쪽 포트가 4개인 라우터. 사내 네트워크, 서버용 네트워크, 거점 간 회선을 1대로 연결할 수 있다."],
-  "56abad04": ["Runs DNS, DHCP, proxy, web, file sharing and mail services.", "DNS, DHCP, 프록시, 웹, 파일 공유, 메일의 각 서비스를 돌릴 수 있다."],
-  "e2b12b85": ["A device only for file sharing. Cheaper than a server.", "파일 공유 전용 기기. 서버보다 싸다."],
-  "c12a7e4e": ["VLAN switch, 8 ports", "VLAN 지원 스위치 8포트"],
-  "e3ffdd8f": ["An L2 switch that can assign a VLAN to each port. A trunk port carries several VLANs over one cable.", "포트마다 VLAN을 할당할 수 있는 L2 스위치. 트렁크 포트로 여러 VLAN을 1개로 모아 나를 수 있다."],
-  "cbacf498": ["L3 switch, 8 ports", "L3 스위치 8포트"],
-  "22a6b40e": ["A switch that separates VLANs and can route between them.", "VLAN을 나누고 VLAN끼리 중계(라우팅)할 수 있는 스위치."],
-  "273c286d": ["Has three sides: outside, DMZ and inside. Passes only allowed traffic (everything else is blocked).", "외부·DMZ·내부의 3개 면을 가진다. 허용한 통신만 통과시킨다(그 밖에는 차단)."],
-  "7dff4b42": ["VLAN switch, 24 ports", "VLAN 지원 스위치 24포트"],
-  "bba52f3c": ["A VLAN switch with 24 ports.", "24포트 VLAN 지원 스위치."],
-  "50d848b4": ["L3 switch, 24 ports", "L3 스위치 24포트"],
-  "6b95300e": ["An L3 switch with 24 ports.", "24포트 L3 스위치."],
-  "5e2b6f73": ["Wireless access point", "무선 액세스 포인트"],
-  "af2daf8b": ["A wireless LAN base station. Connects endpoints with a matching SSID and encryption key to the wired LAN.", "무선 LAN의 기지국. SSID와 암호화 키가 맞는 단말을 유선 LAN에 연결한다."],
-  "391472d0": ["Spreads incoming web access across several web servers. If one stops, the rest keep responding.", "들어온 웹 접속을 여러 웹 서버에 분산한다. 1대가 멈춰도 나머지로 응답을 계속할 수 있다."],
-  "c6ac3b23": ["Virtual server", "가상 서버"],
-  "55164a6a": ["A server inside the cloud. Connects only to the cloud's vNICs. Runs the same services as an office server.", "클라우드 안에 있는 서버. 클라우드의 vNIC에만 연결할 수 있다. 돌릴 수 있는 서비스는 사내 서버와 같다."],
-  "66c9ee80": ["Cloud", "클라우드"],
-  "aed5a5df": ["A cloud that is already under contract. It joins the virtual network to the internet and is connected to the internet from the start.", "계약이 끝난 클라우드. 가상 네트워크와 인터넷을 연결하는 기기로, 인터넷에는 처음부터 연결되어 있다."],
-  "288937a0": ["Wide-area Ethernet", "광역 이더넷망"],
-  "66ede82e": ["WAN Ether", "광역 이더"],
-  "1dc6f7f9": ["Site 1", "거점1"],
-  "1ac6f340": ["Site 2", "거점2"],
-  "1bc6f4d3": ["Site 3", "거점3"],
-  "0eca1ed2": ["A carrier's site-to-site line. Connected sites communicate as if connected to one L2 switch.", "통신 회사의 거점 간 회선. 연결한 거점끼리 L2 스위치 1대에 연결했을 때처럼 통신할 수 있다."],
-  "0729dea6": ["A PC at an employee's home. Connects to the office by VPN from the other side of the internet.", "직원의 집에 있는 PC. 인터넷 건너편에서 VPN으로 사내에 연결한다."],
-  "6b5602cd": ["Internet line", "인터넷 회선"],
-  "1fe14141": ["Line", "회선"],
-  "bb078bd9": ["An internet line that is already under contract.", "계약이 끝난 인터넷 회선."],
-  "a77a8051": ["Internet lines (2 contracts)", "인터넷 회선(2계약)"],
-  "9f9a0350": ["Line 1", "회선1"],
-  "a29a0809": ["Line 2", "회선2"],
-  "583eaee4": ["Two internet lines that are already under contract.", "계약이 끝난 인터넷 회선이 2개 있다."],
-  "cbf130c8": ["Internet lines (3 contracts)", "인터넷 회선(3계약)"],
-  "a19a0676": ["Line 3", "회선3"],
-  "399e79cf": ["Three internet lines that are already under contract.", "계약이 끝난 인터넷 회선이 3개 있다."],
-  "90624848": ["The cloud is connected to the internet from the start. Its WAN needs no cable.", "클라우드는 처음부터 인터넷에 연결되어 있습니다. WAN에 케이블은 필요 없습니다."],
-  "7fddc7d1": ["Only virtual servers can be connected to the cloud's vNICs.", "클라우드의 vNIC에는 가상 서버만 연결할 수 있습니다."],
-  "dc5e8075": ["Virtual servers are inside the cloud. Connect them to the cloud's vNICs.", "가상 서버는 클라우드 안에 있습니다. 클라우드의 vNIC에 연결합니다."]
+  "dfc17c64": [
+    "Apprentice",
+    "견습"
+  ],
+  "415a025b": [
+    "Default gateway, NAT, public DNS",
+    "기본 게이트웨이, NAT, 공개 DNS"
+  ],
+  "dba19772": [
+    "Troubleshooting jobs",
+    "장애 대응 의뢰"
+  ],
+  "78af148f": [
+    "Rookie",
+    "신입"
+  ],
+  "9659fd33": [
+    "DHCP (built into the router)",
+    "DHCP(라우터 내장)"
+  ],
+  "b0df3c84": [
+    "ARP table, tracert",
+    "ARP 표, tracert"
+  ],
+  "7f7136e4": [
+    "DNS service (records, forwarder)",
+    "DNS 서비스(레코드, 포워더)"
+  ],
+  "24036ab1": [
+    "Junior",
+    "주니어"
+  ],
+  "f7cc4a18": [
+    "Subnetting (/25 to /28)",
+    "서브넷 분할(/25〜/28)"
+  ],
+  "3c1f27ee": [
+    "Joining two networks with a router",
+    "두 네트워크를 라우터로 연결하기"
+  ],
+  "d9fb3418": [
+    "Proxy service",
+    "프록시 서비스"
+  ],
+  "7f758824": [
+    "Packet filter (allow and deny rules)",
+    "패킷 필터(허용·거부 규칙)"
+  ],
+  "4b3478f6": [
+    "Journeyman",
+    "어엿한 기술자"
+  ],
+  "d0549f25": [
+    "NAS, file sharing",
+    "NAS, 파일 공유"
+  ],
+  "d37692be": [
+    "Separating a guest network",
+    "게스트용 네트워크의 분리"
+  ],
+  "546548ae": [
+    "L3 switch, VLAN switch",
+    "L3 스위치, VLAN 지원 스위치"
+  ],
+  "ef52e97b": [
+    "VLANs, inter-VLAN routing, static routes",
+    "VLAN, VLAN 간 라우팅, 정적 경로"
+  ],
+  "cef7aa07": [
+    "Senior",
+    "중견"
+  ],
+  "8f0fb6c7": [
+    "DHCP service (server)",
+    "DHCP 서비스(서버)"
+  ],
+  "3b796980": [
+    "DHCP relay",
+    "DHCP 릴레이"
+  ],
+  "267fd638": [
+    "DMZ, public servers, port forwarding",
+    "DMZ, 공개 서버, 포트 포워딩"
+  ],
+  "017b9f3a": [
+    "Veteran",
+    "베테랑"
+  ],
+  "d1585202": [
+    "Trunk ports (VLANs across floors)",
+    "트렁크 포트(층을 넘는 VLAN)"
+  ],
+  "6d800050": [
+    "Mail service",
+    "메일 서비스"
+  ],
+  "2559b27f": [
+    "Expert",
+    "장인"
+  ],
+  "db284e18": [
+    "Wireless access point, wireless LAN",
+    "무선 액세스 포인트, 무선 LAN"
+  ],
+  "12848b98": [
+    "VPN (remote work)",
+    "VPN(재택근무)"
+  ],
+  "7af58b46": [
+    "Master",
+    "명인"
+  ],
+  "7ad73be8": [
+    "Public DNS (A, MX and TXT records)",
+    "공개 DNS(A·MX·TXT 레코드)"
+  ],
+  "e763ea0c": [
+    "SPF (proving where mail comes from)",
+    "SPF(메일 발신처의 증명)"
+  ],
+  "a9ad96fb": [
+    "Virtuoso",
+    "달인"
+  ],
+  "3b1c5f67": [
+    "Wildcard certificates, TLS termination",
+    "와일드카드 인증서, TLS 종단"
+  ],
+  "45c3c1a1": [
+    "Sender domain authentication (DKIM, DMARC)",
+    "발신 도메인 인증(DKIM·DMARC)"
+  ],
+  "c9c1e38f": [
+    "Architect",
+    "설계자"
+  ],
+  "9432715a": [
+    "Wide-area Ethernet (head office and branches)",
+    "광역 이더넷(본점과 지점)"
+  ],
+  "89323e09": [
+    "Lead Architect",
+    "주임 설계자"
+  ],
+  "feae27d9": [
+    "Cloud, virtual servers",
+    "클라우드, 가상 서버"
+  ],
+  "c2666f74": [
+    "Security groups, moving to the cloud",
+    "보안 그룹, 클라우드로의 이전"
+  ],
+  "8585b010": [
+    "Director",
+    "총괄"
+  ],
+  "6b848401": [
+    "Monitoring service",
+    "감시 서비스"
+  ],
+  "adc00212": [
+    "Combined jobs across several sites and the cloud",
+    "여러 거점과 클라우드에 걸친 종합 안건"
+  ],
+  "6e02dcd8": [
+    "Build and try freely",
+    "자유롭게 짜서 시험하기"
+  ],
+  "a7cf64b6": [
+    "Shop shelf",
+    "가게 선반"
+  ],
+  "843fa589": [
+    "Small warehouse",
+    "작은 창고"
+  ],
+  "f9f81c86": [
+    "Medium warehouse",
+    "중간 창고"
+  ],
+  "5a1ffbe9": [
+    "Large warehouse",
+    "큰 창고"
+  ],
+  "71fc7e5e": [
+    "Only one {0} can be placed on the desk.",
+    "{0}은(는) 책상 위에 1개만 놓을 수 있습니다."
+  ],
+  "e3638e9e": [
+    "Not enough funds",
+    "자금이 부족합니다"
+  ],
+  "b78f7a4b": [
+    "Not enough warehouse slots",
+    "창고의 슬롯이 부족합니다"
+  ],
+  "2cb49653": [
+    "Your stock does not fit in the slots. Reduce your stock first",
+    "재고가 슬롯에 들어가지 않습니다. 먼저 재고를 줄여 주세요"
+  ],
+  "d68b30a9": [
+    "Training: {0}",
+    "연수: {0}"
+  ],
+  "6a0eb15b": [
+    "Delivered",
+    "납품"
+  ],
+  "9274508c": [
+    "Withdrawn",
+    "취소"
+  ],
+  "8e69989d": [
+    "Yes",
+    "있음"
+  ],
+  "d2273ccb": [
+    "Approach",
+    "방침"
+  ],
+  "d591c351": [
+    "Answer",
+    "답"
+  ],
+  "cf79468d": [
+    "Week,Level,Client,Job,Type,Tags,Difficulty score,Result,★,Time taken (s),Hard Mode,Help used,Diagnostic tool uses,Acceptance tests left failing",
+    "주,레벨,의뢰주,의뢰,종류,태그,난이도 점수,결과,★,걸린 시간(초),하드 모드,사용한 도움말,진단 도구 횟수,불합격인 채 남은 검수 테스트"
+  ],
+  "d355a557": [
+    "Not enough funds ({0})",
+    "자금이 부족합니다({0})"
+  ],
+  "3a09d1fc": [
+    "Out of stock",
+    "재고가 없습니다"
+  ],
+  "14c1833b": [
+    "Contract fee",
+    "계약금"
+  ],
+  "fa162c24": [
+    "Help used",
+    "도움말 이용"
+  ],
+  "aca7528c": [
+    "Deadline bonus",
+    "납기 보너스"
+  ],
+  "136e3008": [
+    "Printing",
+    "인쇄"
+  ],
+  "f71c9734": [
+    "Voice",
+    "통화"
+  ],
+  "0b60f5d3": [
+    "A client's PC. Set its IP address, gateway, DNS and proxy.",
+    "고객의 PC. IP 주소, 게이트웨이, DNS, 프록시를 설정한다."
+  ],
+  "af417df0": [
+    "A network printer. Accepts print jobs (port 9100).",
+    "네트워크 프린터. 인쇄(9100번)를 받는다."
+  ],
+  "decf607c": [
+    "IP phone",
+    "IP 전화"
+  ],
+  "5b68cc09": [
+    "A phone that makes calls over the LAN.",
+    "LAN으로 통화하는 전화기."
+  ],
+  "e47e100d": [
+    "A camera that saves video to a NAS or file server.",
+    "영상을 NAS나 파일 서버에 저장하는 카메라."
+  ],
+  "41750725": [
+    "POS register",
+    "POS 계산대"
+  ],
+  "69447067": [
+    "A register that sends sales data to a server.",
+    "매출을 서버에 보내는 계산대 단말."
+  ],
+  "3f29c1d0": [
+    "L2 switch, 5 ports",
+    "L2 스위치 5포트"
+  ],
+  "0bccd59d": [
+    "A small switching hub. Puts connected devices on the same network. No settings needed.",
+    "소형 스위칭 허브. 연결한 기기를 같은 네트워크로 묶는다. 설정 불필요."
+  ],
+  "7d3b3291": [
+    "L2 switch, 8 ports",
+    "L2 스위치 8포트"
+  ],
+  "a08c1bef": [
+    "A switching hub. Puts connected devices on the same network. No settings needed.",
+    "스위칭 허브. 연결한 기기를 같은 네트워크로 묶는다. 설정 불필요."
+  ],
+  "26eac170": [
+    "L2 switch, 16 ports",
+    "L2 스위치 16포트"
+  ],
+  "e465f5a1": [
+    "A switching hub for floors with many endpoints. No settings needed.",
+    "단말이 많은 층을 위한 스위칭 허브. 설정 불필요."
+  ],
+  "028f87ad": [
+    "Joins networks together. Has internet access (NAT), DHCP and a packet filter.",
+    "네트워크끼리 연결한다. 인터넷 접속(NAT), DHCP, 패킷 필터를 갖춘다."
+  ],
+  "56ebe8d4": [
+    "Business router, 4 LAN",
+    "업무용 라우터 4LAN"
+  ],
+  "bed42f70": [
+    "Router 4LAN",
+    "라우터 4LAN"
+  ],
+  "a594793b": [
+    "A router with four LAN ports. One unit can join the office network, a server network and site-to-site lines.",
+    "LAN 쪽 포트가 4개인 라우터. 사내 네트워크, 서버용 네트워크, 거점 간 회선을 1대로 연결할 수 있다."
+  ],
+  "56abad04": [
+    "Runs DNS, DHCP, proxy, web, file sharing and mail services.",
+    "DNS, DHCP, 프록시, 웹, 파일 공유, 메일의 각 서비스를 돌릴 수 있다."
+  ],
+  "e2b12b85": [
+    "A device only for file sharing. Cheaper than a server.",
+    "파일 공유 전용 기기. 서버보다 싸다."
+  ],
+  "c12a7e4e": [
+    "VLAN switch, 8 ports",
+    "VLAN 지원 스위치 8포트"
+  ],
+  "e3ffdd8f": [
+    "An L2 switch that can assign a VLAN to each port. A trunk port carries several VLANs over one cable.",
+    "포트마다 VLAN을 할당할 수 있는 L2 스위치. 트렁크 포트로 여러 VLAN을 1개로 모아 나를 수 있다."
+  ],
+  "cbacf498": [
+    "L3 switch, 8 ports",
+    "L3 스위치 8포트"
+  ],
+  "22a6b40e": [
+    "A switch that separates VLANs and can route between them.",
+    "VLAN을 나누고 VLAN끼리 중계(라우팅)할 수 있는 스위치."
+  ],
+  "273c286d": [
+    "Has three sides: outside, DMZ and inside. Passes only allowed traffic (everything else is blocked).",
+    "외부·DMZ·내부의 3개 면을 가진다. 허용한 통신만 통과시킨다(그 밖에는 차단)."
+  ],
+  "7dff4b42": [
+    "VLAN switch, 24 ports",
+    "VLAN 지원 스위치 24포트"
+  ],
+  "bba52f3c": [
+    "A VLAN switch with 24 ports.",
+    "24포트 VLAN 지원 스위치."
+  ],
+  "50d848b4": [
+    "L3 switch, 24 ports",
+    "L3 스위치 24포트"
+  ],
+  "6b95300e": [
+    "An L3 switch with 24 ports.",
+    "24포트 L3 스위치."
+  ],
+  "5e2b6f73": [
+    "Wireless access point",
+    "무선 액세스 포인트"
+  ],
+  "af2daf8b": [
+    "A wireless LAN base station. Connects endpoints with a matching SSID and encryption key to the wired LAN.",
+    "무선 LAN의 기지국. SSID와 암호화 키가 맞는 단말을 유선 LAN에 연결한다."
+  ],
+  "391472d0": [
+    "Spreads incoming web access across several web servers. If one stops, the rest keep responding.",
+    "들어온 웹 접속을 여러 웹 서버에 분산한다. 1대가 멈춰도 나머지로 응답을 계속할 수 있다."
+  ],
+  "c6ac3b23": [
+    "Virtual server",
+    "가상 서버"
+  ],
+  "55164a6a": [
+    "A server inside the cloud. Connects only to the cloud's vNICs. Runs the same services as an office server.",
+    "클라우드 안에 있는 서버. 클라우드의 vNIC에만 연결할 수 있다. 돌릴 수 있는 서비스는 사내 서버와 같다."
+  ],
+  "66c9ee80": [
+    "Cloud",
+    "클라우드"
+  ],
+  "aed5a5df": [
+    "A cloud that is already under contract. It joins the virtual network to the internet and is connected to the internet from the start.",
+    "계약이 끝난 클라우드. 가상 네트워크와 인터넷을 연결하는 기기로, 인터넷에는 처음부터 연결되어 있다."
+  ],
+  "288937a0": [
+    "Wide-area Ethernet",
+    "광역 이더넷망"
+  ],
+  "66ede82e": [
+    "WAN Ether",
+    "광역 이더"
+  ],
+  "1dc6f7f9": [
+    "Site 1",
+    "거점1"
+  ],
+  "1ac6f340": [
+    "Site 2",
+    "거점2"
+  ],
+  "1bc6f4d3": [
+    "Site 3",
+    "거점3"
+  ],
+  "0eca1ed2": [
+    "A carrier's site-to-site line. Connected sites communicate as if connected to one L2 switch.",
+    "통신 회사의 거점 간 회선. 연결한 거점끼리 L2 스위치 1대에 연결했을 때처럼 통신할 수 있다."
+  ],
+  "0729dea6": [
+    "A PC at an employee's home. Connects to the office by VPN from the other side of the internet.",
+    "직원의 집에 있는 PC. 인터넷 건너편에서 VPN으로 사내에 연결한다."
+  ],
+  "6b5602cd": [
+    "Internet line",
+    "인터넷 회선"
+  ],
+  "1fe14141": [
+    "Line",
+    "회선"
+  ],
+  "bb078bd9": [
+    "An internet line that is already under contract.",
+    "계약이 끝난 인터넷 회선."
+  ],
+  "a77a8051": [
+    "Internet lines (2 contracts)",
+    "인터넷 회선(2계약)"
+  ],
+  "9f9a0350": [
+    "Line 1",
+    "회선1"
+  ],
+  "a29a0809": [
+    "Line 2",
+    "회선2"
+  ],
+  "583eaee4": [
+    "Two internet lines that are already under contract.",
+    "계약이 끝난 인터넷 회선이 2개 있다."
+  ],
+  "cbf130c8": [
+    "Internet lines (3 contracts)",
+    "인터넷 회선(3계약)"
+  ],
+  "a19a0676": [
+    "Line 3",
+    "회선3"
+  ],
+  "399e79cf": [
+    "Three internet lines that are already under contract.",
+    "계약이 끝난 인터넷 회선이 3개 있다."
+  ],
+  "90624848": [
+    "The cloud is connected to the internet from the start. Its WAN needs no cable.",
+    "클라우드는 처음부터 인터넷에 연결되어 있습니다. WAN에 케이블은 필요 없습니다."
+  ],
+  "7fddc7d1": [
+    "Only virtual servers can be connected to the cloud's vNICs.",
+    "클라우드의 vNIC에는 가상 서버만 연결할 수 있습니다."
+  ],
+  "dc5e8075": [
+    "Virtual servers are inside the cloud. Connect them to the cloud's vNICs.",
+    "가상 서버는 클라우드 안에 있습니다. 클라우드의 vNIC에 연결합니다."
+  ]
 }
