@@ -39,9 +39,7 @@ export function problems({ keys, tr }) {
       if ([...new Set(t.match(/\{\d+\}/g) ?? [])].some(x => !ja.includes(x))) out.push(`${h}: ${name}に、日本語にない差し込みがある: ${t.slice(0, 60)}`);
       if ([...new Set(ja.match(/\{\d+\}/g) ?? [])].some(x => !t.includes(x))) out.push(`${h}: ${name}で、差し込みが抜けている(${ph(ja)}): ${t.slice(0, 60)}`);
       // 行の数と、行頭の印(箇条書きの「・」、「例:」)は、日本語と同じにする(ガイドの画面が、行ごとに印を見て組み立てる)
-      const jl = ja.split('
-'), tl = t.split('
-');
+      const NL = String.fromCharCode(10), jl = ja.split(NL), tl = t.split(NL);
       if (jl.length !== tl.length) { out.push(`${h}: ${name}の行の数が日本語と違う(${jl.length} と ${tl.length}): ${t.slice(0, 40)}`); continue; }
       const mk = x => (x.startsWith('例:') ? '例:' : x.startsWith('・') && !x.startsWith('・ ') ? '・' : '');
       jl.forEach((x, k) => { if (mk(x) !== mk(tl[k])) out.push(`${h}: ${name}の${k + 1}行目の行頭の印が日本語と違う: ${tl[k].slice(0, 40)}`); });
