@@ -1,3 +1,4 @@
+import { ja } from '../src/i18n/runtime';
 // AIに遊ばせて見つかった不具合の再発を防ぐテスト
 import { describe, expect, it } from 'vitest';
 import { generate } from '../src/core/gen';
@@ -23,7 +24,7 @@ describe('トラブル対応の不具合', () => {
       }
       // SPFの不具合の説明に出る「正しい値」は、SPFのレコードになっている(DKIMやDMARCのレコードを書き換えていない)
       for (const f of j.faults) if (/SPFレコード/.test(f)) { spf++; expect(f, j.id).toMatch(/(正しくは|元は) v=spf1 /); }
-      const many = j.brief.includes('困っていることは1つではありません。');
+      const many = ja(j.brief).includes('困っていることは1つではありません。');
       expect(many, `${j.id} 不具合${j.faults.length}か所`).toBe(j.faults.length > 1);
       if (j.faults.length === 1) single++;
     }
