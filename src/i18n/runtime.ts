@@ -10,8 +10,8 @@ const table = new Map<string, [string, string]>();
 for (const p of Object.values(packs)) for (const [id, v] of Object.entries(p)) table.set(id, v);
 
 function detect(): Lang {
-  // テスト(ブラウザの外)では、いつも日本語にする
-  if (typeof document === 'undefined') return 'ja';
+  // テスト(ブラウザの外)では日本語にする。環境変数 NETSHOP_LANG で、ほかの言語でもテストを回せる
+  if (typeof document === 'undefined') { const e = (globalThis as any).process?.env?.NETSHOP_LANG; return e === 'en' || e === 'ko' ? e : 'ja'; }
   try {
     const s = localStorage.getItem(KEY);
     if (s === 'ja' || s === 'en' || s === 'ko') return s;
@@ -43,6 +43,12 @@ const rev = new Map<string, string>();
 const keep = (out: string, src: string): string => { if (out !== src) { if (rev.size > 300000) rev.clear(); rev.set(out, src); } return out; };
 /** 画面に出す文字列から、元の日本語を引く(日本語のときと、翻訳で作った文字列でないときは、そのまま返す) */
 export const ja = (s: string): string => rev.get(s) ?? s;
+
+/** 名前をつなげる(「総務」+「PC-1」、「みどり」+「商事」)。日本語ではそのままつなげ、ほかの言語では間を空ける */
+export function join(a: string, b: string): string {
+  if (current === 'ja' || raw || !a || !b) return a + b;
+  return keep(a + ' ' + b, ja(a) + ja(b));
+}
 
 export function __t(s: string, id: string): string { const t = pick(id); return t == null ? s : keep(t, s); }
 export function __tt(strs: string[], id: string, ...vals: unknown[]): string {

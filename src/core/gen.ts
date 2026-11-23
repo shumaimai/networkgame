@@ -7,7 +7,8 @@ import { Builder, DESK_H, DESK_W, Factor, Job, JobCheck, SpecRow, mulberry, pick
 import { Device, GwCfg, InetCfg, L3Cfg, Rule, ServerCfg, dkimKey, isEndpoint, isGateway, isHost, makeDevice } from './model';
 import { scenario } from './scen';
 import { EXTERNAL } from './sim';
-import { Base, INDUSTRIES, NAMES, finish, makeTrouble } from './genlib';
+import { Base, INDUSTRIES, NAMES, finish, makeTrouble, shortLabel } from './genlib';
+import { join } from '../i18n/runtime';
 
 const ip = (s: string): number => parseIp(s)!;
 
@@ -83,7 +84,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
 
   const ind = pick(r, INDUSTRIES.filter(i => (cap >= 7 || !i.guest) && (cap >= 3 || i.id !== 'factory')));
   const [jp, romaji] = pick(r, NAMES);
-  const client = jp + pick(r, ind.suffix), dom = romaji + '.local';
+  const client = join(jp, pick(r, ind.suffix)), dom = romaji + '.local';
   const guestOn = !!ind.guest && internet && (vlan || !fw) && cap >= 7;
   const maxGroups = vlan ? 3 : fw ? 1 : cap >= 5 ? 2 : 1;
   const staffLabels = ind.groups.slice(0, Math.max(1, Math.min(ind.groups.length, guestOn ? maxGroups - 1 : maxGroups, vlan ? 3 : chance(0.6) ? 2 : 1)));
@@ -99,7 +100,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   const b = new Builder();
   const octet = randInt(r, 1, 12) * 10;
   const mk = (i: number, label: string, role: 'staff' | 'guest'): Group => ({
-    key: 'g' + i, label, short: label.replace(/[部室]$/, ''), role, net: ip(`192.168.${octet + i * 10}.0`), prefix: 24, vlan: 10 + i * 10,
+    key: 'g' + i, label, short: shortLabel(label), role, net: ip(`192.168.${octet + i * 10}.0`), prefix: 24, vlan: 10 + i * 10,
     gw: 0, hosts: [], pcs: [], dhcp: false, seq: {}, cursor: 0,
   });
   const groups = labels.map((l, i) => mk(i, l.label, l.role));
@@ -111,7 +112,7 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
   for (const g of groups) {
     const nPc = g.role === 'guest' ? randInt(r, 2, 3) : randInt(r, 2, Math.min(5, 2 + Math.ceil(cap / 3)));
     for (let i = 0; i < nPc; i++) {
-      const d = b.add('pc', `${g.key}pc${i + 1}`, `${g.role === 'guest' ? 'ゲスト' : tag(g)}PC-${i + 1}`, 'supplied');
+      const d = b.add('pc', `${g.key}pc${i + 1}`, join(g.role === 'guest' ? 'ゲスト' : tag(g), `PC-${i + 1}`), 'supplied');
       g.hosts.push(d); g.pcs.push(d);
     }
     if (g.role === 'guest') continue;

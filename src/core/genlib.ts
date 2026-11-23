@@ -24,6 +24,9 @@ export const INDUSTRIES: Industry[] = [
   { id: 'library', label: '図書館', suffix: ['図書館', '市民センター', '資料館'], groups: ['事務室', 'カウンター'], guest: '閲覧室', extra: ['printer'], person: ['館長', '司書'] },
   { id: 'factory', label: '工場', suffix: ['製作所', '工業', '食品'], groups: ['事務所', '製造ライン'], extra: ['printer', 'camera'], person: ['工場長', '総務の担当者'] },
 ];
+/** 部署の短い呼び名(総務部 → 総務)。機器の名前の頭に付ける */
+export const shortLabel = (label: string): string => label.replace(/[部室]$| (Dept|Room)$|[부실]$/, '');
+
 export const NAMES: [string, string][] = [
   ['みどり', 'midori'], ['あおば', 'aoba'], ['北斗', 'hokuto'], ['さくら', 'sakura'], ['つばめ', 'tsubame'], ['ひまわり', 'himawari'],
   ['白樺', 'shirakaba'], ['ポラリス', 'polaris'], ['かもめ', 'kamome'], ['こだま', 'kodama'], ['すばる', 'subaru'], ['やまびこ', 'yamabiko'],
@@ -93,11 +96,11 @@ export function makeTrouble(base: Base, factors: Factor[], seed: number, cap: nu
 function siteTitle(title: string, symptom0: string[], base: Base): string {
   // 判定は日本語の文章で行う(翻訳した文章では、語順が変わる)
   const symptom = symptom0.map(ja);
-  const sites = (base.zones ?? []).filter(z => z.tone !== 'cloud').map(z => ja(z.label));
+  const sites = (base.zones ?? []).filter(z => z.tone !== 'cloud').map(z => z.label);
   if (sites.length < 2 || !/Web|インターネット|調子|急に/.test(ja(title))) return title;
   // 拠点をまたぐ ping の項目は、どちらの拠点が原因でも落ちるので、拠点の判定には使わない
   const cross = (x: string) => /に通信できる$/.test(x);
-  const hit = sites.filter(l => symptom.some(x => !cross(x) && x.startsWith(l)));
+  const hit = sites.filter(l => symptom.some(x => !cross(x) && x.startsWith(ja(l))));
   if (hit.length === 1) return `${hit[0]}だけ通信できない`;
   if (!hit.length && symptom.some(cross)) return '拠点の間で通信できない';
   if (hit.length < sites.length) return title;

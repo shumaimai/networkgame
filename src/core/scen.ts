@@ -2,7 +2,8 @@
 // 本店・支店・クラウドを部品として組み合わせる。構成変更の依頼は、変更前と変更後の2つの構成を同じ材料から作り、
 // 変更前を最初の机の上、変更後を模範解答にする
 import { Check, Target, describe, evaluate } from './checks';
-import { Base, INDUSTRIES, NAMES, finish, makeTrouble } from './genlib';
+import { Base, INDUSTRIES, NAMES, finish, makeTrouble, shortLabel } from './genlib';
+import { join } from '../i18n/runtime';
 import { cidrStr, ipStr, parseIp } from './ip';
 import { Builder, Factor, Job, JobCheck, Rng, SpecRow, Zone, mulberry, pick, randInt, worldCost } from './job';
 import { Device, GwCfg, InetCfg, L3Cfg, World, clone, isEndpoint, makeDevice } from './model';
@@ -88,7 +89,7 @@ function compose(c: Ctx, p: Plan): Built {
     const d = c.defs[i], L = multi ? d.label : '', net = ip(`192.168.${c.octet + i * 10}.0`);
     const two = i === 0 && !!p.vrrp, rn = i === 0 && c.vrrp ? 2 : 1;
     const s: Site = { def: d, net, gw: ipStr(net + (two && !p.vipFirst ? 254 : 1)), pcs: [], hosts: [], rts: [], sw: null! };
-    for (let n = 1; n <= d.nPc; n++) s.pcs.push(b.add('pc', `${d.key}pc${n}`, `${L}PC-${n}`, 'supplied'));
+    for (let n = 1; n <= d.nPc; n++) s.pcs.push(b.add('pc', `${d.key}pc${n}`, join(L, `PC-${n}`), 'supplied'));
     s.hosts.push(...s.pcs);
     if (d.printer) s.hosts.push(s.printer = b.add('printer', `${d.key}prn`, `${L}プリンタ`, 'supplied'));
     if (d.phone) s.hosts.push(s.phone = b.add('phone', `${d.key}tel`, `${L}電話`, 'supplied'));
@@ -315,8 +316,8 @@ function composeCore(r: Rng, octet: number, dom: string, groupLabels: string[]):
   const b = new Builder(), internet = r() < 0.7;
   const groups = groupLabels.slice(0, 2).map((label, i) => ({ label, net: ip(`192.168.${octet + i * 10}.0`), vlan: 10 + i * 10, pcs: [] as Device[], hosts: [] as Device[], printer: undefined as Device | undefined }));
   groups.forEach((g, i) => {
-    const short = g.label.replace(/[部室]$/, '');
-    for (let n = 1; n <= (i === 0 ? randInt(r, 2, 3) : randInt(r, 2, 3)); n++) g.pcs.push(b.add('pc', `g${i}pc${n}`, `${short}PC-${n}`, 'supplied'));
+    const short = shortLabel(g.label);
+    for (let n = 1; n <= (i === 0 ? randInt(r, 2, 3) : randInt(r, 2, 3)); n++) g.pcs.push(b.add('pc', `g${i}pc${n}`, join(short, `PC-${n}`), 'supplied'));
     g.hosts.push(...g.pcs);
     if (i === 0) g.hosts.push(g.printer = b.add('printer', 'g0prn', `${short}プリンタ`, 'supplied'));
   });
@@ -528,7 +529,7 @@ export function scenario(seed: number, id: number, level: number, opts: { kind?:
 
   const had = new Set(initial.devices.map(d => d.id));
   const base: Base = {
-    id: `j${id}`, seed: id, kind: old ? 'migrate' : 'build', client: jp + pick(r, ind.suffix), industry: ind.label, person: pick(r, ind.person),
+    id: `j${id}`, seed: id, kind: old ? 'migrate' : 'build', client: join(jp, pick(r, ind.suffix)), industry: ind.label, person: pick(r, ind.person),
     title: tpl.title.replace('本拠', H).replace('支店', B), brief: talk.join(''), spec, tags, zones: sol.zones,
     supplied: solution.devices.filter(d => d.own === 'supplied' && !had.has(d.id)).map(d => ({ id: d.id, model: d.model, name: d.name })),
     checks, initial, solution, par: worldCost(solution), hints, faults: [],
