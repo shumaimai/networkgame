@@ -118,17 +118,17 @@ function attempt(seed: number, id: number, level: number, opts: GenOpts): Job | 
     if (g.role === 'guest') continue;
     const first = g === staff[0];
     if (ind.extra.includes('printer') && (first || chance(0.45))) {
-      g.printer = b.add('printer', `${g.key}prn`, `${tag(g)}プリンタ`, 'supplied');
+      g.printer = b.add('printer', `${g.key}prn`, join(tag(g), 'プリンタ'), 'supplied');
       g.hosts.push(g.printer);
     }
     const last = g === staff[staff.length - 1];
-    if (ind.extra.includes('phone') && cap >= 3 && chance(0.4)) g.hosts.push(b.add('phone', `${g.key}tel`, `${tag(g)}電話`, 'supplied'));
+    if (ind.extra.includes('phone') && cap >= 3 && chance(0.4)) g.hosts.push(b.add('phone', `${g.key}tel`, join(tag(g), '電話'), 'supplied'));
     if (ind.extra.includes('pos') && last) for (let i = 0; i < randInt(r, 1, 2); i++) g.hosts.push(b.add('pos', `${g.key}pos${i + 1}`, `レジ-${i + 1}`, 'supplied'));
     if (ind.extra.includes('camera') && nasWanted && last) for (let i = 0; i < randInt(r, 1, 2); i++) g.hosts.push(b.add('camera', `${g.key}cam${i + 1}`, `カメラ-${i + 1}`, 'supplied'));
     if (!bigSwitch) while (g.hosts.length > 6) { const d = g.hosts.pop()!; b.devices.splice(b.devices.indexOf(d), 1); if (g.printer === d) g.printer = undefined; g.pcs = g.pcs.filter(x => x !== d); }
   }
   if (!staff[0].printer && !nasWanted && !internet) {
-    staff[0].printer = b.add('printer', `${staff[0].key}prn`, `${tag(staff[0])}プリンタ`, 'supplied');
+    staff[0].printer = b.add('printer', `${staff[0].key}prn`, join(tag(staff[0]), 'プリンタ'), 'supplied');
     staff[0].hosts.push(staff[0].printer);
   }
 

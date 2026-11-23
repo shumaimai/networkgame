@@ -91,20 +91,20 @@ function compose(c: Ctx, p: Plan): Built {
     const s: Site = { def: d, net, gw: ipStr(net + (two && !p.vipFirst ? 254 : 1)), pcs: [], hosts: [], rts: [], sw: null! };
     for (let n = 1; n <= d.nPc; n++) s.pcs.push(b.add('pc', `${d.key}pc${n}`, join(L, `PC-${n}`), 'supplied'));
     s.hosts.push(...s.pcs);
-    if (d.printer) s.hosts.push(s.printer = b.add('printer', `${d.key}prn`, `${L}プリンタ`, 'supplied'));
-    if (d.phone) s.hosts.push(s.phone = b.add('phone', `${d.key}tel`, `${L}電話`, 'supplied'));
+    if (d.printer) s.hosts.push(s.printer = b.add('printer', `${d.key}prn`, join(L, 'プリンタ'), 'supplied'));
+    if (d.phone) s.hosts.push(s.phone = b.add('phone', `${d.key}tel`, join(L, '電話'), 'supplied'));
     const ports = s.hosts.length + rn + (i === 0 && c.hqServer ? 1 : 0);
-    s.rts.push(b.add('router', `${d.key}rt`, `${L}ルーター${rn === 2 ? '-1' : ''}`));
-    s.sw = b.add(ports <= 5 ? 'l2-5' : ports <= 8 ? 'l2-8' : 'l2-16', `${d.key}sw`, `${L}スイッチ`);
+    s.rts.push(b.add('router', `${d.key}rt`, join(L, rn === 2 ? 'ルーター-1' : 'ルーター')));
+    s.sw = b.add(ports <= 5 ? 'l2-5' : ports <= 8 ? 'l2-8' : 'l2-16', `${d.key}sw`, join(L, 'スイッチ'));
     b.link(s.rts[0], 1, s.sw, 0);
     for (const h of s.hosts) b.plug(h, s.sw);
     sites.push(s);
   }
   const hq = sites[0], branches = sites.slice(1), H = hq.def.label;
-  const sv = p.server !== 'none' ? b.add('server', 'sv', `${multi ? H : ''}サーバー`) : null;
+  const sv = p.server !== 'none' ? b.add('server', 'sv', join(multi ? H : '', 'サーバー')) : null;
   if (sv) b.plug(sv, hq.sw);
   if (p.vrrp) {
-    const r2 = b.add('router', 'hqrt2', `${multi ? H : ''}ルーター-2`);
+    const r2 = b.add('router', 'hqrt2', join(multi ? H : '', 'ルーター-2'));
     hq.rts.push(r2);
     b.link(r2, 1, hq.sw, b.freePort(hq.sw));
   }
@@ -319,7 +319,7 @@ function composeCore(r: Rng, octet: number, dom: string, groupLabels: string[]):
     const short = shortLabel(g.label);
     for (let n = 1; n <= (i === 0 ? randInt(r, 2, 3) : randInt(r, 2, 3)); n++) g.pcs.push(b.add('pc', `g${i}pc${n}`, join(short, `PC-${n}`), 'supplied'));
     g.hosts.push(...g.pcs);
-    if (i === 0) g.hosts.push(g.printer = b.add('printer', 'g0prn', `${short}プリンタ`, 'supplied'));
+    if (i === 0) g.hosts.push(g.printer = b.add('printer', 'g0prn', join(short, 'プリンタ'), 'supplied'));
   });
   const srv = { net: ip(`192.168.${octet + 100}.0`), vlan: 100 }, svIp = ipStr(srv.net + 53);
   // 各階のVLAN対応スイッチ(お客様の既設)から、2台のL3スイッチへトランクでつなぐ
