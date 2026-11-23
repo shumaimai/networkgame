@@ -1,0 +1,626 @@
+{
+  "33723b93": [
+    "Could not generate a job (seed={0}, level={1})",
+    "의뢰를 생성하지 못했습니다 (seed={0}, level={1})"
+  ],
+  "e66be2a4": [
+    "Guest",
+    "게스트"
+  ],
+  "7a294c06": [
+    "Register-{0}",
+    "계산대-{0}"
+  ],
+  "a4a72e0b": [
+    "Camera-{0}",
+    "카메라-{0}"
+  ],
+  "d70e193f": [
+    "Laptop-{0}",
+    "노트북-{0}"
+  ],
+  "084d7180": [
+    "Server",
+    "서버"
+  ],
+  "b1adb299": [
+    "Internet",
+    "인터넷"
+  ],
+  "875cf93d": [
+    "Firewall",
+    "방화벽"
+  ],
+  "cfeddec1": [
+    "Router",
+    "라우터"
+  ],
+  "66826949": [
+    "L3 switch",
+    "L3 스위치"
+  ],
+  "00aa2674": [
+    "Web server",
+    "웹 서버"
+  ],
+  "7ae3a58b": [
+    "Wireless AP",
+    "무선 AP"
+  ],
+  "13a142f1": [
+    "Home PC",
+    "자택 PC"
+  ],
+  "2164d228": [
+    "{0}F switch",
+    "{0}층 스위치"
+  ],
+  "60af69d8": [
+    "Switch",
+    "스위치"
+  ],
+  "edc23c1e": [
+    "Web server-1",
+    "웹 서버-1"
+  ],
+  "ecc23a8b": [
+    "Web server-2",
+    "웹 서버-2"
+  ],
+  "076b3d7c": [
+    "Load balancer",
+    "로드 밸런서"
+  ],
+  "8a381ef1": [
+    "DMZ switch",
+    "DMZ 스위치"
+  ],
+  "c7ce6290": [
+    "Reverse proxy",
+    "리버스 프록시"
+  ],
+  "2d50c78d": [
+    "Guest PCs",
+    "게스트 PC"
+  ],
+  "371e0f54": [
+    "PCs in {0}",
+    "{0}의 PC"
+  ],
+  "20351332": [
+    "All PCs",
+    "전 PC"
+  ],
+  "2ee3a3a2": [
+    "Devices in {0}",
+    "{0}의 기기"
+  ],
+  "c5c169d0": [
+    "All devices",
+    "전 기기"
+  ],
+  "b7b33549": [
+    "register",
+    "계산대"
+  ],
+  "9b1a6de8": [
+    "Camera",
+    "카메라"
+  ],
+  "d959469a": [
+    "Number of devices ({0} endpoints, {1} infrastructure)",
+    "기기 수(단말 {0}대·기자재 {1}대)"
+  ],
+  "af072a2c": [
+    "Number of networks ({0})",
+    "네트워크 수({0})"
+  ],
+  "5744cad6": [
+    "Topics needed: {0}",
+    "필요한 지식: {0}"
+  ],
+  "6711d446": [
+    "Subnetting",
+    "서브넷"
+  ],
+  "09627169": [
+    "Proxy",
+    "프록시"
+  ],
+  "fe2d88b8": [
+    "File sharing",
+    "파일 공유"
+  ],
+  "9c847a07": [
+    "DHCP server",
+    "DHCP 서버"
+  ],
+  "b4b6c20c": [
+    "Trunk",
+    "트렁크"
+  ],
+  "5743a4bf": [
+    "Redundancy",
+    "이중화"
+  ],
+  "1fc41881": [
+    "Mail",
+    "메일"
+  ],
+  "0771204d": [
+    "Wireless LAN",
+    "무선 LAN"
+  ],
+  "99b4186f": [
+    "Public DNS",
+    "공개 DNS"
+  ],
+  "8a01a01b": [
+    "Load balancing",
+    "부하 분산"
+  ],
+  "8b56d995": [
+    "Sender authentication",
+    "발신 도메인 인증"
+  ],
+  "3c991694": [
+    "Proxy bypass",
+    "프록시 예외"
+  ],
+  "a9f62a0c": [
+    "Monitoring",
+    "감시"
+  ],
+  "e8416e92": [
+    "Access control",
+    "통신 제한"
+  ],
+  "d8d49d8d": [
+    "Access restrictions ({0} kinds)",
+    "통신 제한({0}종류)"
+  ],
+  "8baac893": [
+    "Addresses",
+    "주소"
+  ],
+  "ee0ee61a": [
+    " (PCs obtain addresses by DHCP)",
+    "(PC는 DHCP로 자동 취득)"
+  ],
+  "5ebcf1f1": [
+    "Staff PCs may view the web only through the proxy",
+    "직원의 PC는 프록시를 거쳐서만 웹을 볼 수 있을 것"
+  ],
+  "a40307a8": [
+    "Connect directly to the cloud service {0}, without going through the proxy",
+    "클라우드 서비스 {0}만은 프록시를 거치지 않고 직접 연결한다"
+  ],
+  "0d2b112b": [
+    "The line is already under contract. Public DNS is 8.8.8.8",
+    "회선은 계약 완료. 공개 DNS는 8.8.8.8"
+  ],
+  "ae08bf8f": [
+    "Names",
+    "이름"
+  ],
+  "acd1da84": [
+    "Provide a new NAS",
+    "NAS를 새로 준비한다"
+  ],
+  "e4eaa9a6": [
+    "Use the client's NAS",
+    "고객의 NAS를 쓴다"
+  ],
+  "568274d3": [
+    "office PCs",
+    "사내 PC"
+  ],
+  "5dcc03d2": [
+    " and cameras",
+    "와 카메라"
+  ],
+  "315872e1": [
+    "{0}. Accessible from: {1}{2}",
+    "{0}. 쓸 수 있는 것은 {1}{2}"
+  ],
+  "475f9164": [
+    "Guest access",
+    "게스트용"
+  ],
+  "8bb8b82a": [
+    "PCs in {0} may use only the internet. They must not reach office devices",
+    "{0}의 PC는 인터넷만 쓸 수 있다. 사내 기기에는 닿지 않을 것"
+  ],
+  "d39a1d9f": [
+    "Floors",
+    "층"
+  ],
+  "d294c0c5": [
+    "{0}F ({1}): {2}",
+    "{0}층({1}): {2}"
+  ],
+  "cc7cb776": [
+    "Connect each floor's devices to that floor's VLAN switch (already installed by the client)",
+    "각 층의 기기는 그 층의 VLAN 지원 스위치(고객 기설)에 연결한다"
+  ],
+  "4389c347": [
+    "Keep working even if one cable between switches breaks",
+    "스위치끼리의 케이블이 1개 끊겨도 멈추지 않을 것"
+  ],
+  "c874da8e": [
+    "SSID: {0} / Encryption key: {1}\nConnect {2} wirelessly",
+    "SSID: {0} / 암호화 키: {1}\n{2}은(는) 무선으로 연결한다"
+  ],
+  "94c06fe1": [
+    "Remote work",
+    "재택근무"
+  ],
+  "2ec80b79": [
+    "Connect from the home PC to the office by VPN. Authentication key: {0}\nThe office's outside address is 203.0.113.2",
+    "자택 PC에서 VPN으로 사내에 연결한다. 인증 키: {0}\n회사의 바깥쪽 주소는 203.0.113.2"
+  ],
+  "99dce616": [
+    "Domain",
+    "도메인"
+  ],
+  "48313db8": [
+    "{0} (under contract; register records in \"Public DNS\" on the line)\nThe office's outside address is 203.0.113.2",
+    "{0}(계약 완료. 회선의 '공개 DNS'에 레코드를 등록한다)\n회사의 바깥쪽 주소는 203.0.113.2"
+  ],
+  "1395ea9b": [
+    "Websites to publish: {0}",
+    "공개할 웹 사이트: {0}"
+  ],
+  "60ab429f": [
+    "Publish the website at https://www.{0}",
+    "웹 사이트는 https://www.{0}(으)로 공개한다"
+  ],
+  "e8483ba3": [
+    "Receive mail at mail.{0}. Declare the sender in an SPF record",
+    "메일은 mail.{0}에서 받는다. SPF 레코드로 발신처를 나타낸다"
+  ],
+  "a466cd1e": [
+    "Sign outgoing mail with DKIM and publish the public key in the TXT record s1._domainkey\nSet a DMARC record (_dmarc) telling receivers to reject mail that fails authentication",
+    "DKIM 서명을 붙이고 공개 키를 s1._domainkey의 TXT 레코드에 등록한다\nDMARC 레코드(_dmarc)로 인증에 실패한 메일을 거부하도록 알린다"
+  ],
+  "6d066165": [
+    "Have the reverse proxy receive incoming web access from outside and forward it to the right web server by name\nPut the certificate on the reverse proxy (one that covers both names)\nUse the client's two web servers",
+    "밖에서 들어온 웹 접속은 리버스 프록시가 받아 이름을 보고 웹 서버로 전달한다\n인증서는 리버스 프록시에 넣는다(두 이름 모두에 들어맞는 것)\n웹 서버 2대는 고객의 기기를 쓴다"
+  ],
+  "3c6e5b6e": [
+    "Provide two web servers and spread traffic across them with a load balancer\nSend incoming web access from outside to the load balancer",
+    "웹 서버를 2대 준비하고 로드 밸런서로 분산한다\n밖에서 들어온 웹 접속은 로드 밸런서로 보낸다"
+  ],
+  "daa1cabe": [
+    "Put the certificate on the load balancer",
+    "인증서는 로드 밸런서에 넣는다"
+  ],
+  "8273c831": [
+    "Run the monitoring service on the server\nTargets: every piece of equipment with an IP address (routers, firewalls, L3 switches, servers, NAS and so on)",
+    "서버에서 감시 서비스를 돌린다\n감시 대상: 라우터, 방화벽, L3 스위치, 서버, NAS 등 IP 주소를 가진 기자재 모두"
+  ],
+  "d8284c45": [
+    "Public server",
+    "공개 서버"
+  ],
+  "f1bf1efd": [
+    "Publish the web server to the internet. The public server must not be able to enter the office network",
+    "웹 서버를 인터넷에 공개한다. 공개 서버에서 사내로는 들어갈 수 없을 것"
+  ],
+  "4d49d05a": [
+    "{0} PCs",
+    "PC {0}대"
+  ],
+  "2ba7f5ce": [
+    "Printer",
+    "프린터"
+  ],
+  "ec9899f1": [
+    "Phone",
+    "전화"
+  ],
+  "8d6d28e9": [
+    "security cameras",
+    "방범 카메라"
+  ],
+  "c16b7ee0": [
+    "Please connect our {0} so we can use them. ",
+    "{0}을(를) 연결해서 쓸 수 있게 해 주세요. "
+  ],
+  "8ab351c9": [
+    "Our {0} has {1}. We'd like them connected to a network. ",
+    "저희 {0}에 {1}이(가) 있습니다. 이것을 네트워크에 연결하고 싶습니다. "
+  ],
+  "c07092c6": [
+    "We brought in {0}, and neither cabling nor settings are done yet. Could you set it up? ",
+    "{0}을(를) 들였는데 배선도 설정도 아직입니다. 부탁드려도 될까요? "
+  ],
+  "89cafd19": [
+    "We'd like you to build the network for {0} from scratch. ",
+    "{0}의 네트워크를 처음부터 짜 주셨으면 합니다. "
+  ],
+  "ed256757": [
+    " and ",
+    "와(과) "
+  ],
+  "8e0f9e47": [
+    "Please separate the networks for {0}. ",
+    "{0}(으)로 네트워크를 나눠 주세요. "
+  ],
+  "13d88897": [
+    "Make websites viewable only through the proxy. ",
+    "웹은 프록시를 거쳤을 때만 볼 수 있게 해 주세요. "
+  ],
+  "60a01ee6": [
+    "We also need internet access. ",
+    "인터넷도 쓸 수 있게 부탁합니다. "
+  ],
+  "cd439194": [
+    "Please have PC addresses handed out automatically. ",
+    "PC 주소는 자동으로 나눠 주게 해 주세요. "
+  ],
+  "4b01c594": [
+    "We'd like to reach the printer and servers by name. ",
+    "프린터 등은 이름으로 쓸 수 있게 하고 싶습니다. "
+  ],
+  "5eca83df": [
+    "Only {0} should be able to use the shared folder. ",
+    "공유 폴더는 {0}만 쓸 수 있게 해 주세요. "
+  ],
+  "4f1c1504": [
+    "We also use a shared folder. ",
+    "공유 폴더도 씁니다. "
+  ],
+  "db6f6fc5": [
+    "Make sure office devices are hidden from the PCs in {0}. ",
+    "{0}의 PC에서는 사내 기기가 보이지 않게 해 주세요. "
+  ],
+  "dc7dede5": [
+    "Desks are split across the 1st and 2nd floors, and each floor has a VLAN switch. ",
+    "자리는 1층과 2층으로 나뉘어 있고 각 층에 VLAN 지원 스위치가 있습니다. "
+  ],
+  "b66bea19": [
+    "We want work to keep going even if one cable breaks. ",
+    "케이블이 1개 끊겨도 일이 멈추지 않게 하고 싶습니다. "
+  ],
+  "cc8cba9e": [
+    "Please set up an internal mail server as well. ",
+    "사내 메일 서버도 세워 주세요. "
+  ],
+  "4cf8c040": [
+    "We want the laptops connected wirelessly. ",
+    "노트북은 무선으로 연결하고 싶습니다. "
+  ],
+  "a2f177ba": [
+    "We want to work from home the same way as in the office. ",
+    "집에서도 사내에 있을 때처럼 일하고 싶습니다. "
+  ],
+  "b2947ee0": [
+    "We now have two websites. We'd like one machine to receive outside traffic and pass it to each web server. ",
+    "웹 사이트가 2개로 늘었습니다. 밖에서 오는 접속은 1대에서 받아 각각의 웹 서버로 나누고 싶습니다. "
+  ],
+  "cc3a5228": [
+    "We got a domain, and we'd like to publish our website under that name. ",
+    "도메인을 따서 그 이름으로 웹 사이트를 공개하고 싶습니다. "
+  ],
+  "290d95f0": [
+    "We also want to publish our website to the outside. ",
+    "자사 웹 사이트도 밖에 공개하고 싶습니다. "
+  ],
+  "e6c67063": [
+    "Only our expense-claim cloud service should connect directly without the proxy. ",
+    "경비 정산 클라우드 서비스만은 프록시를 거치지 않고 연결하고 싶습니다. "
+  ],
+  "2d2a7bd2": [
+    "Clients told us our mail lands in their spam folder. Please take care of that too. ",
+    "거래처에서 저희 메일이 스팸 메일로 분류된다고 들었습니다. 대책도 부탁합니다. "
+  ],
+  "567a1794": [
+    "Please set up monitoring too, so we know right away if a device stops. ",
+    "기기가 멈추면 바로 알 수 있게 감시도 해 주세요. "
+  ],
+  "540e5e97": [
+    "We use the same domain for mail to and from outside. ",
+    "사외와의 메일에도 같은 도메인을 씁니다. "
+  ],
+  "05223646": [
+    "Traffic has grown, so please run two web servers and spread the load across them. ",
+    "접속이 늘어서 웹 서버를 2대로 하고 분산해 주세요. "
+  ],
+  "d9e1e0bd": [
+    "Addresses and other details are in the spec.",
+    "주소 등의 조건은 사양서에 적었습니다."
+  ],
+  "ab708c92": [
+    "The requirements are in the spec.",
+    "조건은 사양서대로입니다."
+  ],
+  "544fee91": [
+    "I've attached the spec.",
+    "사양서를 붙여 둡니다."
+  ],
+  "807bce27": [
+    "Publish two websites through a reverse proxy",
+    "2개의 웹 사이트를 리버스 프록시로 공개"
+  ],
+  "03a41002": [
+    "Publish a busy website",
+    "접속이 많은 웹 사이트의 공개"
+  ],
+  "f888715c": [
+    "Web and mail on our own domain",
+    "자사 도메인으로 웹과 메일 쓰기"
+  ],
+  "822050fd": [
+    "Publish a website on our own domain",
+    "자사 도메인으로 웹 사이트 공개"
+  ],
+  "29cf73d1": [
+    "A network reachable from home",
+    "집에서도 연결되는 네트워크"
+  ],
+  "93f40aba": [
+    "A network with wireless LAN",
+    "무선 LAN이 있는 네트워크"
+  ],
+  "013690e3": [
+    "An office network that stays up",
+    "멈추지 않는 사내 네트워크"
+  ],
+  "06a6e022": [
+    "A network across two floors",
+    "두 층에 걸친 네트워크"
+  ],
+  "cb487b93": [
+    "An office network with a public server",
+    "공개 서버가 있는 사내 네트워크"
+  ],
+  "4502c79e": [
+    "A network separated by department",
+    "부서별로 나눈 네트워크"
+  ],
+  "fccf7d89": [
+    "Internet access through a proxy",
+    "프록시 경유 인터넷 접속"
+  ],
+  "b15d4b79": [
+    "A network with file sharing",
+    "파일 공유가 있는 네트워크"
+  ],
+  "c2080afc": [
+    "An office network with internal DNS",
+    "사내 DNS가 있는 네트워크"
+  ],
+  "d6b0f2c7": [
+    "Joining two networks",
+    "두 네트워크 연결하기"
+  ],
+  "90ce8f42": [
+    "A LAN that hands out addresses automatically",
+    "주소를 자동으로 나눠 주는 LAN"
+  ],
+  "54173aa4": [
+    "Getting onto the internet",
+    "인터넷 개통"
+  ],
+  "81479713": [
+    "Our first office LAN",
+    "첫 사내 LAN"
+  ],
+  "e576b76a": [
+    "One server is enough. Services such as DNS, DHCP and proxy can run together on the same server. PCs on other networks can also use it through a router or L3 switch.",
+    "서버는 1대로 충분합니다. DNS·DHCP·프록시 등의 서비스는 같은 서버에서 함께 돌릴 수 있습니다. 다른 네트워크의 PC도 라우터나 L3 스위치를 통해 같은 서버를 쓸 수 있습니다."
+  ],
+  "ec47abed": [
+    "Place an L3 switch in the middle and give each group its own VLAN. The IP set on each VLAN interface becomes that group's gateway.",
+    "중심에 L3 스위치를 놓고 그룹마다 VLAN을 나눕니다. 각 VLAN 인터페이스에 붙인 IP가 그 그룹의 게이트웨이가 됩니다."
+  ],
+  "8b5fd417": [
+    "Provide a switch for each group and connect them separately to the router's LAN1 and LAN2. Each LAN IP on the router is that side's gateway.",
+    "그룹마다 스위치를 준비해 라우터의 LAN1과 LAN2에 나누어 연결합니다. 라우터 각 LAN의 IP가 각각의 게이트웨이입니다."
+  ],
+  "6b6877fe": [
+    "Connect the endpoints to an L2 switch and set IP addresses on the same network.",
+    "단말을 L2 스위치에 연결하고 같은 네트워크의 IP 주소를 설정합니다."
+  ],
+  "a35600d8": [
+    "The subnet mask is not /24. Pick addresses that stay within the range in the spec and match the mask too (for example, /26 goes in blocks of 64).",
+    "서브넷 마스크가 /24가 아닙니다. 사양서의 범위에 들어가는 주소를 고르고 마스크도 맞춥니다(예: /26은 64개씩)."
+  ],
+  "63d765f6": [
+    "Connect the firewall's WAN to the line. A firewall passes only traffic that matches an allow rule.",
+    "방화벽의 WAN을 회선에 연결합니다. 방화벽은 허용 규칙에 들어맞는 통신만 통과시킵니다."
+  ],
+  "9a73d09f": [
+    "Connect the router's WAN to the line and set each endpoint's gateway to the router's LAN-side IP.",
+    "라우터의 WAN을 회선에 연결하고 단말의 게이트웨이를 라우터의 LAN 쪽 IP로 합니다."
+  ],
+  "e910ac08": [
+    "A small network is also needed between the L3 switch and the router. Write a default route on the L3 switch, and routes back to each group on the router.",
+    "L3 스위치와 라우터 사이에도 작은 네트워크가 필요합니다. L3 스위치에는 기본 경로를, 라우터에는 각 그룹으로 돌아오는 경로를 적습니다."
+  ],
+  "97c73708": [
+    "Turn DHCP on at the router's LAN and set the range inside the network in the spec. Set the PCs to \"Automatic\".",
+    "라우터의 LAN에서 DHCP를 켜고 나눠 줄 범위를 사양서의 네트워크 안으로 설정합니다. PC는 '자동 취득'으로 합니다."
+  ],
+  "90f5fb69": [
+    "Run DHCP on the server and create a range for each group. On each VLAN of the L3 switch, point \"DHCP relay\" to the server's IP.",
+    "서버에서 DHCP를 돌리고 그룹별 배포 범위를 만듭니다. L3 스위치의 각 VLAN에 'DHCP 릴레이'로 서버의 IP를 지정합니다."
+  ],
+  "32c10629": [
+    "Run DHCP on the server and set the range, gateway and DNS. Set the PCs to \"Automatic\".",
+    "서버에서 DHCP를 돌리고 배포 범위·게이트웨이·DNS를 설정합니다. PC는 '자동 취득'으로 합니다."
+  ],
+  "8b62785f": [
+    "Run DNS on the server and register the names in the spec as records. Forward outside names to the forwarder (8.8.8.8). Point the PCs' DNS to this server.",
+    "서버에서 DNS를 돌리고 사양서의 이름을 레코드에 등록합니다. 외부 이름은 포워더(8.8.8.8)로 전달합니다. PC의 DNS는 이 서버로 합니다."
+  ],
+  "0e8ca3ac": [
+    "Run the proxy on the server and enter \"server IP:8080\" in each PC's proxy field. Block direct web access on the router or firewall for everything except the server.",
+    "서버에서 프록시를 돌리고 PC의 프록시 란에 '서버의 IP:8080'을 넣습니다. 직접 웹 접속은 라우터나 방화벽의 규칙으로 서버 외에는 거부합니다."
+  ],
+  "d86e8586": [
+    "Write only the allowed network in \"Allowed clients\" on the NAS so other networks cannot use it.",
+    "NAS의 '이용 허용'에 써도 되는 네트워크만 적으면 다른 곳에서는 쓸 수 없게 됩니다."
+  ],
+  "420a563f": [
+    "Stop traffic from guests into the office by writing a deny rule on the device in between (the router or L3 switch). Set the guests' DNS to 8.8.8.8.",
+    "게스트에서 사내로 가는 통신은 중계하는 기기(라우터나 L3 스위치)에 거부 규칙을 적어 막습니다. 게스트의 DNS는 8.8.8.8로 합니다."
+  ],
+  "7c5d7f65": [
+    "On each floor's VLAN switch, assign the department's VLAN number to the endpoint ports. Set the port going up to the L3 switch to \"Trunk\" at both ends.",
+    "각 층의 VLAN 지원 스위치에서는 단말 포트에 그 부서의 VLAN 번호를 할당합니다. L3 스위치로 올라가는 포트는 양쪽 모두 '트렁크'로 합니다."
+  ],
+  "e6c020a5": [
+    "Connecting the 1st- and 2nd-floor switches to each other with a trunk as well gives two paths to the L3 switch. VLAN switches and L3 switches handle loops without stopping, whereas putting an unmanaged L2 switch in a loop stops traffic.",
+    "1층과 2층 스위치끼리도 트렁크로 연결하면 L3 스위치로 가는 길이 2가지가 됩니다. VLAN 지원 스위치와 L3 스위치는 고리가 되어도 멈추지 않지만, 설정이 필요 없는 L2 스위치를 고리에 넣으면 통신할 수 없게 됩니다."
+  ],
+  "c77ea2de": [
+    "Turn the mail service on at the server and register the name mail in DNS.",
+    "서버에서 메일 서비스를 켜고 DNS에 mail 이름을 등록합니다."
+  ],
+  "6def55a0": [
+    "Connect the wireless access point to a switch and set the SSID and encryption key as in the spec. Leave no cable on the laptops and enter the same SSID and key.",
+    "무선 액세스 포인트를 스위치에 연결하고 SSID와 암호화 키를 사양서대로 설정합니다. 노트북에는 케이블을 연결하지 않고 같은 SSID와 키를 넣습니다."
+  ],
+  "79f16c15": [
+    "Turn VPN on at the router (or firewall) and set the authentication key and the internal address handed out to the home PC. On the home PC, enter the office's outside address and the same authentication key.",
+    "라우터(또는 방화벽)에서 VPN을 켜고 인증 키와 자택 PC에 나눠 줄 사내 주소를 정합니다. 자택 PC에는 회사의 바깥쪽 주소와 같은 인증 키를 넣습니다."
+  ],
+  "341dc8c9": [
+    "Click the line (cloud) at the back of the desk to edit the public DNS of the contracted domain. Point the www A record to the office's outside address (203.0.113.2) and match the web server's certificate name to the published name.",
+    "책상 안쪽의 회선(구름)을 클릭하면 계약한 도메인의 공개 DNS를 편집할 수 있습니다. www의 A 레코드에 회사의 바깥쪽 주소(203.0.113.2)를 등록하고 웹 서버의 인증서 이름을 공개하는 이름에 맞춥니다."
+  ],
+  "492ecff8": [
+    "To receive mail from outside, point an MX record to the mail server's name, point that name's A record to the outside address, and forward mail (25) to the server on the firewall. For outgoing mail, register v=spf1 ip4:203.0.113.2 -all in a TXT record.",
+    "사외에서 메일을 받으려면 MX 레코드로 메일 서버의 이름을 가리키고 그 이름의 A 레코드를 바깥쪽 주소로 한 뒤 방화벽에서 메일(25)을 서버로 전달합니다. 사외로 보내는 메일을 위해 TXT 레코드에 v=spf1 ip4:203.0.113.2 -all을 등록합니다."
+  ],
+  "2a3724ee": [
+    "Connect the server acting as the reverse proxy and the two web servers to the DMZ switch. Turn \"Reverse proxy\" on at the server and enter each web server's IP address as the target for its name. Point port forwarding on the firewall to the reverse proxy. Setting the certificate name to \"*.domain\" covers both names. Register A records for both names in public DNS.",
+    "DMZ 스위치에 리버스 프록시로 쓸 서버와 웹 서버 2대를 연결합니다. 서버의 '리버스 프록시'를 켜고 이름별 전달처에 웹 서버의 IP 주소를 적습니다. 방화벽 포트 포워딩의 목적지는 리버스 프록시로 합니다. 인증서 이름을 '*.도메인 이름'으로 하면 두 이름 모두에 들어맞습니다. 공개 DNS에는 두 이름의 A 레코드를 모두 등록합니다."
+  ],
+  "b58348a5": [
+    "When you turn DKIM on at the mail server, its public key appears in the settings. Create a TXT record named s1._domainkey in public DNS and register v=DKIM1; k=rsa; p=public-key. In the _dmarc TXT record, register v=DMARC1; p=reject.",
+    "메일 서버에서 DKIM을 켜면 설정 화면에 공개 키가 나옵니다. 공개 DNS에 s1._domainkey의 TXT 레코드를 만들고 v=DKIM1; k=rsa; p=공개 키를 등록합니다. _dmarc의 TXT 레코드에는 v=DMARC1; p=reject를 등록합니다."
+  ],
+  "904c7e0c": [
+    "Add saas.example.com to \"No-proxy destinations\" on the PCs. In the router or firewall rules, allow Web from the staff network to 198.51.100.90 above the deny rule.",
+    "PC의 '프록시를 쓰지 않는 목적지'에 saas.example.com을 넣습니다. 라우터나 방화벽의 규칙에서는 직원 네트워크에서 198.51.100.90으로 가는 웹을 거부 규칙보다 위에서 허용합니다."
+  ],
+  "f26afc35": [
+    "Turn monitoring on at the server and list the IP addresses of routers, L3 switches, other servers and NAS as targets. For routers and firewalls, write their LAN-side addresses.",
+    "서버에서 감시를 켜고 감시 대상에 라우터, L3 스위치, 다른 서버나 NAS의 IP 주소를 나열합니다. 라우터나 방화벽은 LAN 쪽 주소를 적습니다."
+  ],
+  "90614405": [
+    "Put the certificate in the load balancer's settings. The certificate field on the web servers can be left blank.",
+    "인증서는 로드 밸런서의 설정에 넣습니다. 웹 서버 쪽의 인증서는 빈칸이어도 괜찮습니다."
+  ],
+  "abd19ba7": [
+    "Connect the load balancer and the two web servers to the DMZ switch, and list both servers' IP addresses in \"Backends\" on the load balancer. Point port forwarding to the load balancer.",
+    "로드 밸런서와 웹 서버 2대를 DMZ 스위치에 연결하고 장치의 '분산 대상'에 2대의 IP 주소를 적습니다. 포트 포워딩의 목적지는 로드 밸런서로 합니다."
+  ],
+  "23e124bc": [
+    "Connect the web server to the DMZ and send Web to it with \"Port forwarding\" on the firewall. Do not add any allow rule from the DMZ into the office network.",
+    "웹 서버는 DMZ에 연결하고 방화벽의 '포트 포워딩'으로 웹을 서버로 보냅니다. DMZ에서 사내로 가는 허용 규칙은 만들지 않습니다."
+  ]
+}
