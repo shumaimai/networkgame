@@ -3,6 +3,7 @@ import { ipStr, maskOf, parseCidr, parseCidrList, parseIp } from '../core/ip';
 import { CABLE_PRICE, Cable, Device, GwCfg, L3Cfg, MODEL, ServerCfg, SVC, Svc, SwitchCfg, deniesByDefault, dkimKey, isEndpoint, isGateway, isHost } from '../core/model';
 import { CLOUD_IP, EXTERNAL, Net, PUBLIC_DNS, l2Peers, lineIp, reach, tunnelState } from '../core/sim';
 import { ENTRY } from '../game/guide';
+import { ja } from '../i18n/runtime';
 import { esc, yen } from './dom';
 
 const PREFIXES = [8, 16, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
@@ -74,7 +75,7 @@ const HELP: [RegExp, (k: string) => string[]][] = [
 /** 見出しの右に、対応するガイドを開く「?」ボタンを付ける */
 function addHelp(html: string, kind: string, level: number): string {
   return html.replace(/<h3>([^<]+)((?:<small>[^<]*<\/small>)?)<\/h3>/g, (all, title: string, small: string) => {
-    const id = HELP.find(([re]) => re.test(title))?.[1](kind).find(x => ENTRY[x] && ENTRY[x].level <= level);
+    const id = HELP.find(([re]) => re.test(ja(title)))?.[1](kind).find(x => ENTRY[x] && ENTRY[x].level <= level);
     return id ? `<h3>${title}${small}<button class="q" data-act="guide-to" data-id="${id}" title="ガイド「${esc(ENTRY[id].title)}」を開く">?</button></h3>` : all;
   });
 }

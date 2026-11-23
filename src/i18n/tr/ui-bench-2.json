@@ -1,93 +1,374 @@
 {
-  "b3d3cd7b": ["* could not obtain: {0}", "※취득 실패: {0}"],
-  "9419f4a2": ["MAC address {0}\n   IP address  {1}{2}\n   Gateway     {3}\n   DNS server  {4}", "MAC 주소 {0}\n   IP 주소     {1}{2}\n   게이트웨이  {3}\n   DNS 서버    {4}"],
-  "c1fcb697": ["← more than one device has this IP address", "← 같은 IP 주소의 기기가 여러 대 있습니다"],
-  "29dc9254": ["No other device was found on the same network.", "같은 네트워크에서 다른 기기를 찾을 수 없습니다."],
-  "062e8e64": ["Enter a destination for the diagnostic.", "진단의 목적지를 입력해 주세요."],
-  "7242b5ef": ["Failed: {0}", "실패: {0}"],
-  "f8c3870a": ["via proxy", "프록시 경유"],
-  "788dbfbd": ["direct", "직접 접속"],
-  "fcf8be6a": ["Page displayed ({0})", "표시되었습니다({0})"],
-  "1a0c0eb2": ["Reached the destination", "도달했습니다"],
-  "63f6a352": ["Stopped here: {0}", "여기서 멈췄습니다: {0}"],
-  "5feea1ee": ["Reply received ({0})", "응답 있음({0})"],
-  "b1d0fbf8": ["More detail", "조금 더 자세히"],
-  "cdd6a80e": ["Hint", "힌트"],
-  "f71b3561": ["Training {0} / {1} \"{2}\" Step {3} / {4}", "연수 {0} / {1} '{2}' 단계 {3} / {4}"],
-  "eacfdf15": ["Address: automatic (DHCP)", "주소: 자동 취득(DHCP)"],
-  "227e9247": ["Proxy {0}", "프록시 {0}"],
-  "9d53f2d8": ["no records", "레코드 없음"],
-  "8a832319": ["DNS: {0} ・ forwarder {1}", "DNS: {0} ・ 포워더 {1}"],
-  "a1ccf01e": ["none", "없음"],
-  "0becd034": ["・ allow {0}", "・ 허용 {0}"],
-  "a94a058b": ["Proxy: port {0}{1}", "프록시: 포트 {0}{1}"],
-  "0a2df768": ["No-proxy destinations {0}", "프록시를 쓰지 않는 목적지 {0}"],
-  "a264140a": ["・ certificate {0}", "・ 인증서 {0}"],
-  "78b14060": ["Backends {0}{1}", "분산 대상 {0}{1}"],
-  "cce18a9d": ["Web service: on{0}", "웹 서비스: 켬{0}"],
-  "e5d0932c": ["Reverse proxy: {0} ・ certificate {1}", "리버스 프록시: {0} ・ 인증서 {1}"],
-  "b504f18c": ["・ DKIM selector {0} (for the public key, use the value shown in the settings of the server you placed; in this reference solution it is {1})", "・ DKIM 셀렉터 {0}(공개 키는 놓은 서버의 설정 화면에 나오는 값을 씁니다. 이 모범 답안에서는 {1})"],
-  "9c9cea2d": ["Mail service: on{0}", "메일 서비스: 켬{0}"],
-  "3fad07f8": ["Monitoring: {0}", "감시: {0}"],
-  "45f10ac5": ["File sharing: on{0}", "파일 공유: 켬{0}"],
-  "6dac1c63": ["NAT: off", "NAT: 끔"],
-  "d7af4097": ["Site-to-site VPN: peer {0} ・ key {1} ・ remote networks {2}", "거점 간 VPN: 상대 {0} ・ 키 {1} ・ 상대 쪽 네트워크 {2}"],
-  "013cf26f": ["Remote access VPN: key {0} ・ address handed out {1}", "원격 접속 VPN: 키 {0} ・ 나눠 주는 주소 {1}"],
-  "e9f7b520": ["・ virtual IP {0} (priority {1})", "・ 가상 IP {0}(우선순위 {1})"],
-  "f47f11b6": ["Port forwarding: {0} → {1}", "포트 포워딩: {0} → {1}"],
-  "8534d55b": ["Port VLANs:", "포트의 VLAN:"],
-  "c5a20057": ["・ DHCP relay {0}", "・ DHCP 릴레이 {0}"],
-  "eaa73ee0": ["Public DNS: {0} {1} → {2}", "공개 DNS: {0} {1} → {2}"],
-  "a482c4a7": ["SSID {0} ・ encryption key {1}", "SSID {0} ・ 암호화 키 {1}"],
-  "3c5e285f": ["Route: {0} → {1}", "경로: {0} → {1}"],
-  "aaaa8ce3": ["all", "모두"],
-  "c9a5b57c": ["Rule {0}: {1} {2} → {3} ({4})", "규칙 {0}: {1} {2} → {3}({4})"],
-  "d58e8e4b": ["Faults that were planted", "심어져 있던 문제"],
-  "8804caa9": ["no settings", "설정 없음"],
-  "b8f1ea83": ["Devices and settings in the reference solution", "모범 답안의 기기와 설정"],
-  "459f7666": ["Cabling", "배선"],
-  "993a27cb": ["In use", "사용 중"],
-  "acca8249": ["Use for {0} of the fee", "계약금 {0}(으)로 사용"],
-  "9d4b0aae": [" (free during training)", "(연수 중에는 무료입니다)"],
-  "b86c1081": ["The cause is shown under each failing acceptance test.", "검수 테스트의 불합격 항목에 원인을 표시하고 있습니다."],
-  "8f3a941f": ["Clues come in three stages. Using one reduces this job's contract fee.{0}", "단서를 3단계로 볼 수 있습니다. 쓰면 이 의뢰의 계약금이 줄어듭니다.{0}"],
-  "74f75251": ["Open the Guide (free)", "가이드 열기(무료)"],
-  "5dec175b": ["A device is stopped for a failure test. Start it before delivering.", "고장 테스트로 멈춘 기기가 있습니다. 가동한 다음 납품합니다."],
-  "d53528a8": ["Some acceptance tests have not passed yet.", "아직 합격하지 않은 검수 테스트가 있습니다."],
-  "a33ae506": ["This clears every device and cable off the Playground desk. Settings you entered are erased too.", "플레이그라운드 책상 위의 기기와 케이블을 모두 치웁니다. 입력한 설정도 지워집니다."],
-  "328310a7": ["Cancel", "그만두기"],
-  "cc7a3d2e": ["Clear", "치우기"],
-  "10795c9a": ["Start over (bought equipment is refunded)", "처음부터 다시 하기(구입한 기자재는 환불)"],
-  "5efb8fd9": ["Skip training and start taking jobs", "연수를 건너뛰고 의뢰 받기 시작"],
-  "651b92ef": ["Withdraw from this job (returns the advance; reputation falls)", "이 의뢰 취소하기(선금을 돌려주고 평판이 내려갑니다)"],
-  "e7b0d8f4": ["Menu", "메뉴"],
-  "6c16e763": ["Settings (volume, Playground and more)", "설정(소리 크기, 플레이그라운드 등)"],
-  "b335723c": ["Failure test: stopped {0}.", "고장 테스트: {0}을(를) 멈췄습니다."],
-  "83f9e862": ["Started {0}.", "{0}을(를) 가동했습니다."],
-  "aa7f1021": ["Started every stopped device.", "멈춰 있던 기기를 모두 가동했습니다."],
-  "fc0c6995": ["Copied the {1} of {0} to {2}. The IP address was not copied.", "{0}의 {1}을(를) {2}에 복사했습니다. IP 주소는 복사하지 않았습니다."],
-  "145bcaaf": ["Copied: {0}", "복사했습니다: {0}"],
-  "55accf2c": ["put it away", "치웁니다"],
-  "7a73a95a": ["return it", "반품합니다"],
-  "e9f2e4b5": ["put it back in the warehouse", "창고에 되돌립니다"],
-  "a13e9246": ["The settings you entered will be lost. Press again to {0}", "입력한 설정이 지워집니다. 한 번 더 누르면 {0}"],
-  "29ee1dc8": ["{0} to deadline", "납기까지 {0}"],
-  "d921f766": ["{0} past deadline", "납기를 {0} 초과"],
-  "666e6505": ["[Playground] Place devices freely and try communication. Nothing costs money.", "【플레이그라운드】기기를 자유롭게 놓고 통신을 시험할 수 있습니다. 돈은 들지 않습니다."],
-  "282d9bb4": ["The existing network has faults. Find the causes with the diagnostic tools and fix them.", "기존 네트워크에 문제가 있습니다. 진단 도구로 원인을 찾아 고칩니다."],
-  "4ee2c4eb": ["The desk shows the network as it runs now. Rebuild it as the \"Changes\" in the spec say. The failing acceptance tests are the parts you are about to change.", "책상 위는 지금 움직이고 있는 네트워크입니다. 사양서의 '변경 내용'대로 다시 만듭니다. 불합격인 검수 테스트가 이제부터 바꿀 부분입니다."],
-  "f51bd64d": ["Reputation <b class=\"{0}\">{1}{2}</b>", "평판 <b class=\"{0}\">{1}{2}</b>"],
-  "0156f76f": ["Delivered on time", "납기 안에 납품"],
-  "3840bb2d": ["Missed the deadline", "납기를 지키지 못함"],
-  "a7a3175f": ["Hard Mode {0} in a row → XP <b>×{1}</b>", "하드 모드 {0}회 연속 → 경험치 <b>×{1}</b>"],
-  "5e2e6628": ["Streak ended (was {0})", "연속 성공({0}회)이 끊겼습니다"],
-  "7b49b0ce": ["Meet the deadline in Hard Mode again and XP will be <b>×{0}</b>.", "다음에도 하드 모드로 납기를 지키면 경험치는 <b>×{0}</b>입니다."],
-  "5ccac62d": ["<b>Level up! Lv.{0}</b>", "<b>레벨 업! Lv.{0}</b>"],
-  "9d01a5f2": ["More equipment and guide pages are available.", "기자재와 가이드 페이지가 늘었습니다."],
-  "b791e829": ["See the devices and settings in the reference solution", "모범 답안의 기기와 설정 보기"],
-  "12f90bb6": ["Review", "돌아보기"],
-  "da325889": ["Delivered", "납품 완료"],
-  "217d4cca": ["Profit", "이익"],
-  "24ea47b4": ["XP <b>+{0}</b>", "경험치 <b>+{0}</b>"],
-  "a45122a4": ["Back to Jobs", "수주로 돌아가기"]
+  "b3d3cd7b": [
+    "* could not obtain: {0}",
+    "※취득 실패: {0}"
+  ],
+  "9419f4a2": [
+    "MAC address {0}\n   IP address  {1}{2}\n   Gateway     {3}\n   DNS server  {4}",
+    "MAC 주소 {0}\n   IP 주소     {1}{2}\n   게이트웨이  {3}\n   DNS 서버    {4}"
+  ],
+  "c1fcb697": [
+    "← more than one device has this IP address",
+    "← 같은 IP 주소의 기기가 여러 대 있습니다"
+  ],
+  "29dc9254": [
+    "No other device was found on the same network.",
+    "같은 네트워크에서 다른 기기를 찾을 수 없습니다."
+  ],
+  "062e8e64": [
+    "Enter a destination for the diagnostic.",
+    "진단의 목적지를 입력해 주세요."
+  ],
+  "7242b5ef": [
+    "Failed: {0}",
+    "실패: {0}"
+  ],
+  "f8c3870a": [
+    "via proxy",
+    "프록시 경유"
+  ],
+  "788dbfbd": [
+    "direct",
+    "직접 접속"
+  ],
+  "fcf8be6a": [
+    "Page displayed ({0})",
+    "표시되었습니다({0})"
+  ],
+  "1a0c0eb2": [
+    "Reached the destination",
+    "도달했습니다"
+  ],
+  "63f6a352": [
+    "Stopped here: {0}",
+    "여기서 멈췄습니다: {0}"
+  ],
+  "5feea1ee": [
+    "Reply received ({0})",
+    "응답 있음({0})"
+  ],
+  "b1d0fbf8": [
+    "More detail",
+    "조금 더 자세히"
+  ],
+  "cdd6a80e": [
+    "Hint",
+    "힌트"
+  ],
+  "f71b3561": [
+    "Training {0} / {1} \"{2}\" Step {3} / {4}",
+    "연수 {0} / {1} '{2}' 단계 {3} / {4}"
+  ],
+  "eacfdf15": [
+    "Address: automatic (DHCP)",
+    "주소: 자동 취득(DHCP)"
+  ],
+  "227e9247": [
+    "Proxy {0}",
+    "프록시 {0}"
+  ],
+  "9d53f2d8": [
+    "no records",
+    "레코드 없음"
+  ],
+  "8a832319": [
+    "DNS: {0} ・ forwarder {1}",
+    "DNS: {0} ・ 포워더 {1}"
+  ],
+  "a1ccf01e": [
+    "none",
+    "없음"
+  ],
+  "0becd034": [
+    "・ allow {0}",
+    "・ 허용 {0}"
+  ],
+  "a94a058b": [
+    "Proxy: port {0}{1}",
+    "프록시: 포트 {0}{1}"
+  ],
+  "0a2df768": [
+    "No-proxy destinations {0}",
+    "프록시를 쓰지 않는 목적지 {0}"
+  ],
+  "a264140a": [
+    "・ certificate {0}",
+    "・ 인증서 {0}"
+  ],
+  "78b14060": [
+    "Backends {0}{1}",
+    "분산 대상 {0}{1}"
+  ],
+  "cce18a9d": [
+    "Web service: on{0}",
+    "웹 서비스: 켬{0}"
+  ],
+  "e5d0932c": [
+    "Reverse proxy: {0} ・ certificate {1}",
+    "리버스 프록시: {0} ・ 인증서 {1}"
+  ],
+  "b504f18c": [
+    "・ DKIM selector {0} (for the public key, use the value shown in the settings of the server you placed; in this reference solution it is {1})",
+    "・ DKIM 셀렉터 {0}(공개 키는 놓은 서버의 설정 화면에 나오는 값을 씁니다. 이 모범 답안에서는 {1})"
+  ],
+  "9c9cea2d": [
+    "Mail service: on{0}",
+    "메일 서비스: 켬{0}"
+  ],
+  "3fad07f8": [
+    "Monitoring: {0}",
+    "감시: {0}"
+  ],
+  "45f10ac5": [
+    "File sharing: on{0}",
+    "파일 공유: 켬{0}"
+  ],
+  "6dac1c63": [
+    "NAT: off",
+    "NAT: 끔"
+  ],
+  "d7af4097": [
+    "Site-to-site VPN: peer {0} ・ key {1} ・ remote networks {2}",
+    "거점 간 VPN: 상대 {0} ・ 키 {1} ・ 상대 쪽 네트워크 {2}"
+  ],
+  "013cf26f": [
+    "Remote access VPN: key {0} ・ address handed out {1}",
+    "원격 접속 VPN: 키 {0} ・ 나눠 주는 주소 {1}"
+  ],
+  "e9f7b520": [
+    "・ virtual IP {0} (priority {1})",
+    "・ 가상 IP {0}(우선순위 {1})"
+  ],
+  "f47f11b6": [
+    "Port forwarding: {0} → {1}",
+    "포트 포워딩: {0} → {1}"
+  ],
+  "8534d55b": [
+    "Port VLANs:",
+    "포트의 VLAN:"
+  ],
+  "c5a20057": [
+    "・ DHCP relay {0}",
+    "・ DHCP 릴레이 {0}"
+  ],
+  "eaa73ee0": [
+    "Public DNS: {0} {1} → {2}",
+    "공개 DNS: {0} {1} → {2}"
+  ],
+  "a482c4a7": [
+    "SSID {0} ・ encryption key {1}",
+    "SSID {0} ・ 암호화 키 {1}"
+  ],
+  "3c5e285f": [
+    "Route: {0} → {1}",
+    "경로: {0} → {1}"
+  ],
+  "aaaa8ce3": [
+    "all",
+    "모두"
+  ],
+  "c9a5b57c": [
+    "Rule {0}: {1} {2} → {3} ({4})",
+    "규칙 {0}: {1} {2} → {3}({4})"
+  ],
+  "d58e8e4b": [
+    "Faults that were planted",
+    "심어져 있던 문제"
+  ],
+  "8804caa9": [
+    "no settings",
+    "설정 없음"
+  ],
+  "b8f1ea83": [
+    "Devices and settings in the reference solution",
+    "모범 답안의 기기와 설정"
+  ],
+  "459f7666": [
+    "Cabling",
+    "배선"
+  ],
+  "993a27cb": [
+    "In use",
+    "사용 중"
+  ],
+  "acca8249": [
+    "Use for {0} of the fee",
+    "계약금 {0}(으)로 사용"
+  ],
+  "9d4b0aae": [
+    " (free during training)",
+    "(연수 중에는 무료입니다)"
+  ],
+  "b86c1081": [
+    "The cause is shown under each failing acceptance test.",
+    "검수 테스트의 불합격 항목에 원인을 표시하고 있습니다."
+  ],
+  "8f3a941f": [
+    "Clues come in three stages. Using one reduces this job's contract fee.{0}",
+    "단서를 3단계로 볼 수 있습니다. 쓰면 이 의뢰의 계약금이 줄어듭니다.{0}"
+  ],
+  "74f75251": [
+    "Open the Guide (free)",
+    "가이드 열기(무료)"
+  ],
+  "5dec175b": [
+    "A device is stopped for a failure test. Start it before delivering.",
+    "고장 테스트로 멈춘 기기가 있습니다. 가동한 다음 납품합니다."
+  ],
+  "d53528a8": [
+    "Some acceptance tests have not passed yet.",
+    "아직 합격하지 않은 검수 테스트가 있습니다."
+  ],
+  "a33ae506": [
+    "This clears every device and cable off the Playground desk. Settings you entered are erased too.",
+    "플레이그라운드 책상 위의 기기와 케이블을 모두 치웁니다. 입력한 설정도 지워집니다."
+  ],
+  "328310a7": [
+    "Cancel",
+    "그만두기"
+  ],
+  "cc7a3d2e": [
+    "Clear",
+    "치우기"
+  ],
+  "10795c9a": [
+    "Start over (bought equipment is refunded)",
+    "처음부터 다시 하기(구입한 기자재는 환불)"
+  ],
+  "5efb8fd9": [
+    "Skip training and start taking jobs",
+    "연수를 건너뛰고 의뢰 받기 시작"
+  ],
+  "651b92ef": [
+    "Withdraw from this job (returns the advance; reputation falls)",
+    "이 의뢰 취소하기(선금을 돌려주고 평판이 내려갑니다)"
+  ],
+  "e7b0d8f4": [
+    "Menu",
+    "메뉴"
+  ],
+  "6c16e763": [
+    "Settings (volume, Playground and more)",
+    "설정(소리 크기, 플레이그라운드 등)"
+  ],
+  "b335723c": [
+    "Failure test: stopped {0}.",
+    "고장 테스트: {0}을(를) 멈췄습니다."
+  ],
+  "83f9e862": [
+    "Started {0}.",
+    "{0}을(를) 가동했습니다."
+  ],
+  "aa7f1021": [
+    "Started every stopped device.",
+    "멈춰 있던 기기를 모두 가동했습니다."
+  ],
+  "fc0c6995": [
+    "Copied the {1} of {0} to {2}. The IP address was not copied.",
+    "{0}의 {1}을(를) {2}에 복사했습니다. IP 주소는 복사하지 않았습니다."
+  ],
+  "145bcaaf": [
+    "Copied: {0}",
+    "복사했습니다: {0}"
+  ],
+  "55accf2c": [
+    "put it away",
+    "치웁니다"
+  ],
+  "7a73a95a": [
+    "return it",
+    "반품합니다"
+  ],
+  "e9f2e4b5": [
+    "put it back in the warehouse",
+    "창고에 되돌립니다"
+  ],
+  "a13e9246": [
+    "The settings you entered will be lost. Press again to {0}",
+    "입력한 설정이 지워집니다. 한 번 더 누르면 {0}"
+  ],
+  "29ee1dc8": [
+    "{0} to deadline",
+    "납기까지 {0}"
+  ],
+  "d921f766": [
+    "{0} past deadline",
+    "납기를 {0} 초과"
+  ],
+  "666e6505": [
+    "[Playground] Place devices freely and try communication. Nothing costs money.",
+    "【플레이그라운드】기기를 자유롭게 놓고 통신을 시험할 수 있습니다. 돈은 들지 않습니다."
+  ],
+  "282d9bb4": [
+    "The existing network has faults. Find the causes with the diagnostic tools and fix them.",
+    "기존 네트워크에 문제가 있습니다. 진단 도구로 원인을 찾아 고칩니다."
+  ],
+  "4ee2c4eb": [
+    "The desk shows the network as it runs now. Rebuild it as the \"Changes\" in the spec say. The failing acceptance tests are the parts you are about to change.",
+    "책상 위는 지금 움직이고 있는 네트워크입니다. 사양서의 '변경 내용'대로 다시 만듭니다. 불합격인 검수 테스트가 이제부터 바꿀 부분입니다."
+  ],
+  "f51bd64d": [
+    "Reputation <b class=\"{0}\">{1}{2}</b>",
+    "평판 <b class=\"{0}\">{1}{2}</b>"
+  ],
+  "0156f76f": [
+    "Delivered on time",
+    "납기 안에 납품"
+  ],
+  "3840bb2d": [
+    "Missed the deadline",
+    "납기를 지키지 못함"
+  ],
+  "a7a3175f": [
+    "Hard Mode {0} in a row → XP <b>×{1}</b>",
+    "하드 모드 {0}회 연속 → 경험치 <b>×{1}</b>"
+  ],
+  "5e2e6628": [
+    "Streak ended (was {0})",
+    "연속 성공({0}회)이 끊겼습니다"
+  ],
+  "7b49b0ce": [
+    "Meet the deadline in Hard Mode again and XP will be <b>×{0}</b>.",
+    "다음에도 하드 모드로 납기를 지키면 경험치는 <b>×{0}</b>입니다."
+  ],
+  "5ccac62d": [
+    "<b>Level up! Lv.{0}</b>",
+    "<b>레벨 업! Lv.{0}</b>"
+  ],
+  "9d01a5f2": [
+    "More equipment and guide pages are available.",
+    "기자재와 가이드 페이지가 늘었습니다."
+  ],
+  "b791e829": [
+    "See the devices and settings in the reference solution",
+    "모범 답안의 기기와 설정 보기"
+  ],
+  "12f90bb6": [
+    "Review",
+    "돌아보기"
+  ],
+  "da325889": [
+    "Delivered",
+    "납품 완료"
+  ],
+  "217d4cca": [
+    "Profit",
+    "이익"
+  ],
+  "24ea47b4": [
+    "XP <b>+{0}</b>",
+    "경험치 <b>+{0}</b>"
+  ],
+  "a45122a4": [
+    "Back to Jobs",
+    "수주로 돌아가기"
+  ],
+  "5235ebf4": [
+    "[{0}] {1} — \"{2}\"",
+    "[{0}] {1} '{2}'"
+  ],
+  "c7c97e29": [
+    "{0} — \"{1}\"",
+    "{0} '{1}'"
+  ]
 }

@@ -739,7 +739,8 @@ p, li, td, dd, .brief, .info, .sl, .card h3, .coach p { word-break: auto-phrase;
 .langs button.on { border-color: var(--teal); color: #fff; background: #17403f; }
 .langs button:hover { border-color: var(--teal); }
 /* 英語と韓国語: 単語の途中で折り返さない */
-html:not([lang="ja"]) p, html:not([lang="ja"]) li, html:not([lang="ja"]) td, html:not([lang="ja"]) dd, html:not([lang="ja"]) .brief, html:not([lang="ja"]) .info, html:not([lang="ja"]) .sl { word-break: normal; overflow-wrap: break-word; }
-html[lang="ko"] p, html[lang="ko"] li, html[lang="ko"] .brief, html[lang="ko"] .info, html[lang="ko"] .sl { word-break: keep-all; }
+html:not([lang="ja"]) p, html:not([lang="ja"]) li, html:not([lang="ja"]) td, html:not([lang="ja"]) dd, html:not([lang="ja"]) .brief, html:not([lang="ja"]) .info, html:not([lang="ja"]) .sl, html:not([lang="ja"]) .hint, html:not([lang="ja"]) .r-review span { word-break: normal; overflow-wrap: break-word; }
+html[lang="ko"] p, html[lang="ko"] li, html[lang="ko"] .brief, html[lang="ko"] .info, html[lang="ko"] .sl, html[lang="ko"] .hint, html[lang="ko"] .r-review span { word-break: keep-all; }
+html:not([lang="ja"]) .r-review div { grid-template-columns: 112px 1fr; }
 html:not([lang="ja"]) .sign h1 { font-size: 96px; letter-spacing: .02em; }
 html:not([lang="ja"]) .tile b, html:not([lang="ja"]) .tab { letter-spacing: 0; }

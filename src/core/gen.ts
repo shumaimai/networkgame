@@ -531,7 +531,8 @@ const mx = ws.reduce((t, d) => t + d.x, 0) / ws.length, top = Math.min(...ws.map
   if (web) spec.push({ head: '公開サーバー', body: 'Webサーバーをインターネットに公開する。公開サーバーから社内には入れないこと' });
 
   const talk: string[] = [];
-  const things = [`PC${b.devices.filter(d => d.kind === 'pc').length}台`, printerGroups.length ? 'プリンタ' : '', phones.length ? '電話' : '', cams.length ? '防犯カメラ' : '', b.devices.some(d => d.kind === 'pos') ? 'レジ' : ''].filter(Boolean).join('、');
+  const pcCnt = b.devices.filter(d => d.kind === 'pc').length;
+  const things = [pcCnt ? `PC${pcCnt}台` : '', printerGroups.length ? 'プリンタ' : '', phones.length ? '電話' : '', cams.length ? '防犯カメラ' : '', b.devices.some(d => d.kind === 'pos') ? 'レジ' : ''].filter(Boolean).join('、');
   talk.push(pick(r, [
     `${things}をつないで使えるようにしてください。`,
     `うちの${ind.label}に${things}があります。これをネットワークにつなぎたいんです。`,

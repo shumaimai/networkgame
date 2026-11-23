@@ -22,7 +22,11 @@ function detect(): Lang {
 let current: Lang = detect();
 // 0 より大きい間は、日本語のまま返す(依頼の生成で、文章に頼った判定を日本語で行うために使う)
 let raw = 0;
-if (typeof document !== 'undefined') document.documentElement.lang = current;
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = current;
+  const trial = import.meta.env?.VITE_TRIAL === '1';
+  document.title = current === 'en' ? `Network Shop${trial ? ' (Trial)' : ''}` : current === 'ko' ? `네트워크 가게${trial ? ' 체험판' : ''}` : `ネットワーク屋さん${trial ? ' お試し版' : ''}`;
+}
 
 export const lang = (): Lang => current;
 /** 言語を変える。画面の文章は読み込みのときに決まるものがあるので、ページを読み込み直す */

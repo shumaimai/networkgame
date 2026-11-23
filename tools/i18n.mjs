@@ -58,7 +58,10 @@ if (process.argv[1]?.endsWith('i18n.mjs')) {
     await writeFile('shots/i18n-todo.tsv', todo.slice(0, n).map(([h, s]) => `${h}\t${c.where.get(h)}\t${s.split('\n').join('\\n')}`).join('\n') + '\n');
   }
   const bad = problems(c);
-  if (cmd === 'check') for (const b of bad.slice(0, 40)) console.log(b);
+  if (cmd === 'check') {
+    for (const [h, s] of todo.slice(0, 20)) console.log(`${h}: 未翻訳 (${c.where.get(h)}): ${s.slice(0, 50)}`);
+    for (const b of bad.slice(0, 40)) console.log(b);
+  }
   console.log(`翻訳の単位 ${c.keys.size}個(${[...c.keys.values()].reduce((t, s) => t + s.length, 0)}字) / 翻訳済み ${c.keys.size - todo.length}個 / 残り ${todo.length}個 / 問題 ${bad.length}件`);
-  if (cmd === 'check' && bad.length) process.exit(1);
+  if (cmd === 'check' && (bad.length || todo.length)) process.exit(1);
 }

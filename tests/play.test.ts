@@ -16,14 +16,14 @@ describe('トラブル対応の不具合', () => {
       // 不具合1つにつき、机の上の少なくとも1か所が模範解答と違う
       expect(worldDiff(j.solution, j.initial), `${j.id} ${j.faults.join(' / ')}`).toBeGreaterThanOrEqual(j.faults.length);
       // 回線の挿し間違いを入れた依頼では、そのケーブルが机の上に残っている(あとから「抜けている」で消されていない)
-      if (j.faults.some(f => /回線が .* ポートに挿さっている/.test(f))) {
+      if (j.faults.some(f => /回線が .* ポートに挿さっている/.test(ja(f)))) {
         wan++;
         const c = j.initial.cables.find(x => x.a.dev === 'inet' || x.b.dev === 'inet');
         expect(c, `${j.id} ${j.faults.join(' / ')}`).toBeTruthy();
         expect((c!.a.dev === 'inet' ? c!.b : c!.a).port).toBeGreaterThan(0);
       }
       // SPFの不具合の説明に出る「正しい値」は、SPFのレコードになっている(DKIMやDMARCのレコードを書き換えていない)
-      for (const f of j.faults) if (/SPFレコード/.test(f)) { spf++; expect(f, j.id).toMatch(/(正しくは|元は) v=spf1 /); }
+      for (const f of j.faults) if (/SPFレコード/.test(ja(f))) { spf++; expect(ja(f), j.id).toMatch(/(正しくは|元は) v=spf1 /); }
       const many = ja(j.brief).includes('困っていることは1つではありません。');
       expect(many, `${j.id} 不具合${j.faults.length}か所`).toBe(j.faults.length > 1);
       if (j.faults.length === 1) single++;

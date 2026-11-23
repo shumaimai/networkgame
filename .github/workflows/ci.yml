@@ -20,5 +20,6 @@ jobs:
           # デスクトップアプリ用の Electron 本体は、ここでは使わないので取ってこない
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npm run typecheck
+      - run: node tools/i18n.mjs check
       - run: npm test
       - run: npm run build

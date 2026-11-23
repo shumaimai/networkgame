@@ -1,126 +1,502 @@
 {
-  "e9c02701": ["Trial version · Play up to Lv.5", "체험판 · Lv.5까지 플레이할 수 있습니다"],
-  "8ece9311": ["Continue", "이어서 하기"],
-  "27bdf6f7": ["· Job in progress", "· 작업 중인 의뢰 있음"],
-  "3841d71e": ["Lv.{0} · Week {1} · Funds {2}{3}", "Lv.{0} · {1}주차 · 자금 {2}{3}"],
-  "08ea9b7d": ["New Game", "처음부터"],
-  "fc878d3a": ["Your current save will be erased", "지금의 세이브 데이터는 지워집니다"],
-  "931e87de": ["Starts with the training jobs", "연수부터 시작합니다"],
-  "07d5a353": ["Trial version ·", "체험판 ·"],
-  "45c4362c": ["Made for desktop browsers (mouse and keyboard) ·", "PC 브라우저(마우스와 키보드)용입니다 ·"],
-  "a2df6c22": ["Network Shop", "네트워크 가게"],
-  "6631fd4e": ["A game about building and repairing office networks for clients", "사내 네트워크의 구축과 수리를 맡는 일의 게임"],
-  "929ca08f": ["This erases your current save and starts from the training jobs.", "지금의 세이브 데이터를 지우고 연수부터 시작합니다."],
-  "d03c7f5f": ["Erase and start", "지우고 시작"],
-  "5e98e91a": ["Jobs", "수주"],
-  "f92e6379": ["Purchasing", "매입"],
-  "b8eb2166": ["End of the trial", "체험판은 여기까지"],
-  "0d851dc7": ["Max level", "최고 레벨"],
-  "16de104d": ["{0} to next", "다음까지 {0}"],
-  "ae28df28": ["The trial version goes up to Lv.5", "체험판에서는 Lv.5까지 올라갑니다"],
-  "2021ddbe": ["Trial", "체험판"],
-  "f849ad47": ["The number of Hard Mode deliveries in a row that met the deadline. It returns to 0 if you are late or withdraw from a job.", "하드 모드에서 납기를 지킨 납품이 이어진 횟수입니다. 늦거나 의뢰를 취소하면 0으로 돌아갑니다."],
-  "7abbbc21": ["Hard <b>{0}</b> in a row<i>Next: XP ×{1}</i>", "하드 <b>{0}</b>회 연속<i>다음은 경험치 ×{1}</i>"],
-  "23a2ca82": ["A higher reputation raises contract fees", "평판이 높을수록 계약금이 늘어납니다"],
-  "578110e2": ["Week {0}", "{0}주차"],
-  "760b35b0": ["Records", "실적"],
-  "6243fa06": ["Settings", "설정"],
-  "bed7eb22": ["{0} PCs", "PC {0}대"],
-  "e749f630": ["/ {0} networks", "/ 네트워크 {0}개"],
-  "da190ec3": ["/ {0} faults", "/ 문제 {0}곳"],
-  "4f9da612": ["Cheaper", "가격 하락"],
-  "9eb53f8d": ["Dearer", "가격 상승"],
-  "2d608255": ["Equipment prices change every week.", "기자재 가격은 주가 바뀔 때마다 움직입니다."],
-  "7a640133": ["No big changes in equipment prices this week.", "이번 주는 기자재 가격에 큰 움직임이 없습니다."],
-  "eb96fbfe": ["<b class=\"wk\">~ Week {0} ~</b>", "<b class=\"wk\">~ {0}주차 ~</b>"],
-  "96cbcccd": ["Check prices under Purchasing", "가격은 '매입'에서 확인할 수 있습니다"],
-  "bc473003": ["Delivering one job moves you to the next week. Every week, the jobs and the equipment prices change.", "의뢰를 1건 납품하면 다음 주가 됩니다. 주가 바뀔 때마다 의뢰와 기자재 가격이 바뀝니다."],
-  "2ffab35d": ["A new week has started. The jobs and the equipment prices have changed.", "주가 바뀌어 의뢰와 기자재 가격이 바뀌었습니다."],
-  "1cd65ca8": ["Paid {0} for the warehouse.", "창고비 {0}을(를) 지불했습니다."],
-  "9a36b89a": ["~ Week {0} ~", "~ {0}주차 ~"],
-  "ed658cc9": ["{0}Equipment bought in a cheap week and kept in the warehouse can be used on later jobs.", "{0}싼 주에 매입해 창고에 두면 나중의 의뢰에서 쓸 수 있습니다."],
-  "54048d40": ["Choose a job", "의뢰 고르기"],
-  "09474d9a": ["This week's five jobs are listed here. Click a card to read its spec and acceptance tests. After checking the details, press \"Accept\" to move to the workbench. The number of ★ is the difficulty. Start with jobs that have few ★.", "이번 주의 의뢰가 5건 있습니다. 카드를 클릭하면 사양서와 검수 테스트를 읽을 수 있습니다. 내용을 확인한 뒤 '수주하기'를 누르면 작업 화면으로 넘어갑니다. ★의 수가 난이도입니다. 처음에는 ★이 적은 의뢰부터 받습니다."],
-  "c1c5ba11": ["Reading a card", "카드 보는 법"],
-  "f7527a68": ["The mark at the top left is the job type. \"Build\" jobs start from an empty desk, and \"Troubleshooting\" jobs fix a network that stopped working. The contract fee and the expected equipment cost are at the bottom.", "왼쪽 위의 표시가 의뢰의 종류입니다. '구축'은 빈 책상에서 네트워크를 짜고, '장애 대응'은 움직이지 않게 된 네트워크를 고칩니다. 아래에 계약금과 기자재비의 기준이 나와 있습니다."],
-  "8668d70d": ["Move to the next week", "다음 주로 넘어가기"],
-  "615af3af": ["If there is no job you want, click here to move to the next week. The jobs and the equipment prices change. Delivering a job also moves you to the next week.", "받고 싶은 의뢰가 없을 때는 여기를 클릭해 다음 주로 넘어갑니다. 의뢰와 기자재 가격이 바뀝니다. 의뢰를 1건 납품했을 때도 다음 주가 됩니다."],
-  "91bd64d6": ["Click here to buy equipment and keep it in the warehouse. Prices change every week, so buying in a cheap week lowers your equipment cost. You can also buy equipment on the workbench, so jobs can be done without purchasing in advance. Equipment you cannot buy yet is listed too, with the level that unlocks it.", "여기를 클릭하면 기자재를 사서 창고에 둘 수 있습니다. 기자재 가격은 주마다 바뀌므로 싼 주에 사 두면 기자재비를 줄일 수 있습니다. 기자재는 작업 화면에서도 살 수 있으므로 매입을 하지 않아도 의뢰는 진행할 수 있습니다. 아직 살 수 없는 기자재도 해제되는 레벨과 함께 나와 있습니다."],
-  "c229f72f": ["This is where purchased equipment is kept. How much fits is set by the number of slots. You start with a free shelf (6 slots); rent a warehouse here when you need more.", "매입한 기자재를 두는 곳입니다. 둘 수 있는 양은 슬롯 수로 정해집니다. 처음에는 무료 선반(6슬롯)이고, 모자라면 여기서 창고를 빌립니다."],
-  "f951f047": ["Level", "레벨"],
-  "df113044": ["Delivering a job earns XP. As your level rises, more equipment, guide pages and kinds of jobs become available. If you choose Hard Mode (with a deadline) when accepting and keep meeting the deadline, the XP multiplier rises. You can also level up on the same jobs without a time limit.", "의뢰를 납품하면 경험치가 들어옵니다. 레벨이 오르면 살 수 있는 기자재, 가이드 항목, 의뢰의 내용이 늘어납니다. 수주할 때 하드 모드(납기 있음)를 고르고 계속 납기를 지키면 경험치 배율이 올라갑니다. 시간 제한 없이도 같은 의뢰로 레벨을 올릴 수 있습니다."],
-  "a425a4bf": ["Read explanations of devices and mechanisms here, free, at any time. Click here when you meet a word you do not know while working. On the workbench, the \"?\" next to a settings heading also opens the guide.", "기기와 구조의 설명을 언제든지 무료로 읽을 수 있습니다. 작업 중에 모르는 말이 나오면 여기를 클릭합니다. 작업 화면에서는 설정란의 '?'에서도 열 수 있습니다."],
-  "4df60238": ["Change the sound volume here. The Playground, a desk with no money and no job where you can try things freely, also opens from here. You can watch this walkthrough again from Settings.", "소리의 크기를 바꿀 수 있습니다. 돈도 의뢰도 없는 책상에서 자유롭게 시험해 볼 수 있는 '플레이그라운드'도 여기서 엽니다. 이 설명도 설정에서 다시 볼 수 있습니다."],
-  "303830fc": ["Next", "다음"],
-  "86ad494d": ["Start taking jobs", "의뢰 받기 시작"],
-  "e5f708e1": ["How to play {0} / {1}", "진행 방법 설명 {0} / {1}"],
-  "9916dbaa": ["End walkthrough", "설명 끝내기"],
-  "f87e31e0": ["Job in progress", "작업 중인 의뢰"],
-  "8e101f41": ["Back to work", "작업으로 돌아가기"],
-  "3ce80b95": ["Done", "수료"],
-  "c58045e9": ["Training {0}", "연수 {0}"],
-  "7e9d74bf": ["What this training covers", "이 연수에서 다루는 것"],
-  "0decb6ed": ["On-screen guidance takes you through {0} steps.", "화면의 안내에 따라 {0}단계로 진행합니다."],
-  "e9ca7b5a": ["Fee <b>{0}</b>", "계약금 <b>{0}</b>"],
-  "759cfa17": ["Training", "연수"],
-  "9433455d": ["There are three training jobs. After finishing all of them, you can choose and accept jobs.", "연수는 3개입니다. 모두 마치면 의뢰를 골라서 받을 수 있게 됩니다."],
-  "ad92fe47": ["Skip training", "연수 건너뛰기"],
-  "6ec5f809": ["(warehouse {0})", "(창고비 {0})"],
-  "dc7cd26c": ["Regular", "단골"],
-  "07349535": ["If all bought new: equipment {0} · profit <i>{1}</i>", "신품으로 갖출 경우의 기준: 기자재비 {0} · 이익 <i>{1}</i>"],
-  "97096c39": ["Needs almost no equipment", "기자재는 거의 필요 없습니다"],
-  "c6c8ffd3": ["Acceptance tests: {0}", "검수 테스트 {0}항목"],
-  "98ef326a": ["Difficulty score", "난이도 점수"],
-  "739be297": ["<b>{0} pts</b>", "<b>{0}점</b>"],
-  "e4639464": ["XP", "경험치"],
-  "d62afad3": ["Deadline (Hard Mode)", "납기(하드 모드)"],
-  "c11df202": ["<b>{0} min</b>", "<b>{0}분</b>"],
-  "0793820b": ["This week's jobs. Delivering one moves you to the next week, and the jobs and equipment prices change.", "이번 주의 의뢰입니다. 1건 납품하면 다음 주가 되고, 의뢰와 기자재 가격이 바뀝니다."],
-  "b26c94a6": ["Skip to next week{0}", "받지 않고 다음 주로{0}"],
-  "c12c36a2": ["{0} more", "그 밖에 {0}항목"],
-  "b8a594c0": ["You can read these before accepting", "읽고 나서 수주할 수 있습니다"],
-  "7c5954e7": ["Expected equipment cost (this week's prices)", "기자재비의 기준(이번 주 가격)"],
-  "492e65fb": ["Equipment cost for ★3", "★3이 되는 기자재비"],
-  "5f8983bc": ["<b>{0} or less</b>", "<b>{0} 이하</b>"],
-  "d7ad2313": [" ({0} in a row now)", "(지금 {0}회 연속)"],
-  "162ffad7": ["You have a job in progress. Deliver it or withdraw from it to accept the next one.", "작업 중인 의뢰가 있습니다. 납품하거나 취소하면 다음 의뢰를 받을 수 있습니다."],
-  "b7a85073": ["{0} items. Pass all of them to deliver", "{0}항목. 모두 합격하면 납품할 수 있습니다"],
-  "71132221": ["Difficulty {0}", "난이도 {0}"],
-  "cec14020": ["{0} pts", "{0}점"],
-  "46777109": ["A total of up to 8 points is ★1, up to 17 is ★2, up to 29 is ★3, up to 44 is ★4, and 45 or more is ★5.", "합계가 8점까지는 ★1, 17점까지 ★2, 29점까지 ★3, 44점까지 ★4, 45점 이상은 ★5입니다."],
-  "3eddbd92": ["Advance (received when you accept)", "선금(수주할 때 받음)"],
-  "f2961265": ["<b>Hard Mode<em>Deadline: {0} min</em></b>On time: contract fee +30%, XP ×{1}{2}. The multiplier rises with each on-time delivery in a row (up to ×{3}). If you are late or withdraw, the streak returns to 0 and your reputation falls. With this off, there is no time limit.", "<b>하드 모드<em>납기 {0}분</em></b>납기를 지키면 계약금 +30%, 경험치 ×{1}{2}. 연속으로 지킬수록 배율이 올라갑니다(최대 ×{3}). 늦거나 취소하면 연속은 0으로 돌아가고 평판이 내려갑니다. 끄면 시간 제한이 없습니다."],
-  "c20d58f6": ["Accept", "수주하기"],
-  "048f137a": ["You will start taking jobs without the training. What the training covers (switches, IP addresses, routers, diagnostic tools) can be read in the Guide.", "연수를 받지 않고 의뢰를 받기 시작합니다. 연수에서 다루는 내용(스위치, IP 주소, 라우터, 진단 도구)은 가이드에서 읽을 수 있습니다."],
-  "2c700855": ["Skip", "건너뛰기"],
-  "32fc4444": ["Unlocked at the next level (Lv.{0})", "다음 레벨(Lv.{0})에서 늘어나는 것"],
-  "3a9c1afd": ["No jobs delivered yet.", "납품한 의뢰는 아직 없습니다."],
-  "8e2ffc18": ["Jobs delivered", "납품한 의뢰"],
-  "37f48152": ["<b>{0}</b>", "<b>{0}건</b>"],
-  "76f21e2c": ["Total profit", "이익 합계"],
-  "acf4b4bb": ["★3 deliveries", "★3 납품"],
-  "0be0a1da": ["Unlocked so far", "지금까지 늘어난 것"],
-  "9c0c1536": ["Recent deliveries", "최근 납품"],
-  "9d73914c": ["Saves the time taken per job, the help used, withdrawn jobs and so on, in a form a spreadsheet can open", "의뢰별 시간, 사용한 도움말, 취소한 의뢰 등을 스프레드시트에서 열 수 있는 형식으로 저장합니다"],
-  "c6351b4d": ["Export play log ({0})", "플레이 기록 내보내기({0}건)"],
-  "7efde5d2": ["Play log exported.", "플레이 기록을 내보냈습니다."],
-  "a832a8e9": ["How to play", "진행 방법 설명"],
-  "f4830de9": ["Watch the walkthrough again", "진행 방법 설명 다시 보기"],
-  "84e4e385": ["Playground is open", "플레이그라운드를 열고 있습니다"],
-  "9f05a803": ["Open Playground", "플레이그라운드 열기"],
-  "435e0fd4": ["Sound effects volume", "효과음 크기"],
-  "2ef1f5b4": ["Music volume", "BGM 크기"],
-  "1f2511a8": ["Screen", "화면"],
-  "b65d4e8e": ["Toggle full screen", "전체 화면으로 / 되돌리기"],
-  "512c70ff": ["A desk with no money and no job. Place any device in the game, as many as you like, and try things freely. It does not affect your job in progress, funds or level.", "돈도 의뢰도 없는 책상입니다. 게임에 나오는 기기를 무엇이든 몇 대든 놓고 자유롭게 짜서 시험해 볼 수 있습니다. 진행 중인 의뢰, 자금, 레벨에는 영향을 주지 않습니다."],
-  "f5cba32f": ["Language / 言語 / 언어", "Language / 言語 / 언어"],
-  "cf147738": ["Save data", "세이브 데이터"],
-  "f9c39c64": ["Export save", "세이브 데이터 내보내기"],
-  "cb76636e": ["Import save", "세이브 데이터 불러오기"],
-  "292d0395": ["Erase save data and start over", "세이브 데이터를 지우고 처음부터 시작"],
-  "e92d6029": ["To title", "타이틀로"],
-  "a2e27fc6": ["Wrong format", "형식이 다릅니다"],
-  "096ec56e": ["Save data imported (Lv.{0}).", "세이브 데이터를 불러왔습니다(Lv.{0})."],
-  "6ba7ec7e": ["This file cannot be read as save data.", "이 파일은 세이브 데이터로 읽을 수 없습니다."],
-  "4bfedc20": ["Press again to erase", "한 번 더 누르면 지웁니다"]
+  "e9c02701": [
+    "Trial version · Play up to Lv.5",
+    "체험판 · Lv.5까지 플레이할 수 있습니다"
+  ],
+  "8ece9311": [
+    "Continue",
+    "이어서 하기"
+  ],
+  "27bdf6f7": [
+    "· Job in progress",
+    "· 작업 중인 의뢰 있음"
+  ],
+  "3841d71e": [
+    "Lv.{0} · Week {1} · Funds {2}{3}",
+    "Lv.{0} · {1}주차 · 자금 {2}{3}"
+  ],
+  "08ea9b7d": [
+    "New Game",
+    "처음부터"
+  ],
+  "fc878d3a": [
+    "Your current save will be erased",
+    "지금의 세이브 데이터는 지워집니다"
+  ],
+  "931e87de": [
+    "Starts with the training jobs",
+    "연수부터 시작합니다"
+  ],
+  "07d5a353": [
+    "Trial version ·",
+    "체험판 ·"
+  ],
+  "45c4362c": [
+    "Made for desktop browsers (mouse and keyboard) ·",
+    "PC 브라우저(마우스와 키보드)용입니다 ·"
+  ],
+  "a2df6c22": [
+    "Network Shop",
+    "네트워크 가게"
+  ],
+  "6631fd4e": [
+    "A game about building and repairing office networks for clients",
+    "사내 네트워크의 구축과 수리를 맡는 일의 게임"
+  ],
+  "929ca08f": [
+    "This erases your current save and starts from the training jobs.",
+    "지금의 세이브 데이터를 지우고 연수부터 시작합니다."
+  ],
+  "d03c7f5f": [
+    "Erase and start",
+    "지우고 시작"
+  ],
+  "5e98e91a": [
+    "Jobs",
+    "수주"
+  ],
+  "f92e6379": [
+    "Purchasing",
+    "매입"
+  ],
+  "b8eb2166": [
+    "End of the trial",
+    "체험판은 여기까지"
+  ],
+  "0d851dc7": [
+    "Max level",
+    "최고 레벨"
+  ],
+  "16de104d": [
+    "{0} to next",
+    "다음까지 {0}"
+  ],
+  "ae28df28": [
+    "The trial version goes up to Lv.5",
+    "체험판에서는 Lv.5까지 올라갑니다"
+  ],
+  "2021ddbe": [
+    "Trial",
+    "체험판"
+  ],
+  "f849ad47": [
+    "The number of Hard Mode deliveries in a row that met the deadline. It returns to 0 if you are late or withdraw from a job.",
+    "하드 모드에서 납기를 지킨 납품이 이어진 횟수입니다. 늦거나 의뢰를 취소하면 0으로 돌아갑니다."
+  ],
+  "7abbbc21": [
+    "Hard <b>{0}</b> in a row<i>Next: XP ×{1}</i>",
+    "하드 <b>{0}</b>회 연속<i>다음은 경험치 ×{1}</i>"
+  ],
+  "23a2ca82": [
+    "A higher reputation raises contract fees",
+    "평판이 높을수록 계약금이 늘어납니다"
+  ],
+  "578110e2": [
+    "Week {0}",
+    "{0}주차"
+  ],
+  "760b35b0": [
+    "Records",
+    "실적"
+  ],
+  "6243fa06": [
+    "Settings",
+    "설정"
+  ],
+  "bed7eb22": [
+    "{0} PCs",
+    "PC {0}대"
+  ],
+  "e749f630": [
+    "/ {0} networks",
+    "/ 네트워크 {0}개"
+  ],
+  "da190ec3": [
+    "/ {0} faults",
+    "/ 문제 {0}곳"
+  ],
+  "4f9da612": [
+    "Cheaper",
+    "가격 하락"
+  ],
+  "9eb53f8d": [
+    "Dearer",
+    "가격 상승"
+  ],
+  "2d608255": [
+    "Equipment prices change every week.",
+    "기자재 가격은 주가 바뀔 때마다 움직입니다."
+  ],
+  "7a640133": [
+    "No big changes in equipment prices this week.",
+    "이번 주는 기자재 가격에 큰 움직임이 없습니다."
+  ],
+  "eb96fbfe": [
+    "<b class=\"wk\">~ Week {0} ~</b>",
+    "<b class=\"wk\">~ {0}주차 ~</b>"
+  ],
+  "96cbcccd": [
+    "Check prices under Purchasing",
+    "가격은 '매입'에서 확인할 수 있습니다"
+  ],
+  "bc473003": [
+    "Delivering one job moves you to the next week. Every week, the jobs and the equipment prices change.",
+    "의뢰를 1건 납품하면 다음 주가 됩니다. 주가 바뀔 때마다 의뢰와 기자재 가격이 바뀝니다."
+  ],
+  "2ffab35d": [
+    "A new week has started. The jobs and the equipment prices have changed.",
+    "주가 바뀌어 의뢰와 기자재 가격이 바뀌었습니다."
+  ],
+  "1cd65ca8": [
+    "Paid {0} for the warehouse.",
+    "창고비 {0}을(를) 지불했습니다."
+  ],
+  "9a36b89a": [
+    "~ Week {0} ~",
+    "~ {0}주차 ~"
+  ],
+  "ed658cc9": [
+    "{0}Equipment bought in a cheap week and kept in the warehouse can be used on later jobs.",
+    "{0}싼 주에 매입해 창고에 두면 나중의 의뢰에서 쓸 수 있습니다."
+  ],
+  "54048d40": [
+    "Choose a job",
+    "의뢰 고르기"
+  ],
+  "09474d9a": [
+    "This week's five jobs are listed here. Click a card to read its spec and acceptance tests. After checking the details, press \"Accept\" to move to the workbench. The number of ★ is the difficulty. Start with jobs that have few ★.",
+    "이번 주의 의뢰가 5건 있습니다. 카드를 클릭하면 사양서와 검수 테스트를 읽을 수 있습니다. 내용을 확인한 뒤 '수주하기'를 누르면 작업 화면으로 넘어갑니다. ★의 수가 난이도입니다. 처음에는 ★이 적은 의뢰부터 받습니다."
+  ],
+  "c1c5ba11": [
+    "Reading a card",
+    "카드 보는 법"
+  ],
+  "f7527a68": [
+    "The mark at the top left is the job type. \"Build\" jobs start from an empty desk, and \"Troubleshooting\" jobs fix a network that stopped working. The contract fee and the expected equipment cost are at the bottom.",
+    "왼쪽 위의 표시가 의뢰의 종류입니다. '구축'은 빈 책상에서 네트워크를 짜고, '장애 대응'은 움직이지 않게 된 네트워크를 고칩니다. 아래에 계약금과 기자재비의 기준이 나와 있습니다."
+  ],
+  "8668d70d": [
+    "Move to the next week",
+    "다음 주로 넘어가기"
+  ],
+  "615af3af": [
+    "If there is no job you want, click here to move to the next week. The jobs and the equipment prices change. Delivering a job also moves you to the next week.",
+    "받고 싶은 의뢰가 없을 때는 여기를 클릭해 다음 주로 넘어갑니다. 의뢰와 기자재 가격이 바뀝니다. 의뢰를 1건 납품했을 때도 다음 주가 됩니다."
+  ],
+  "91bd64d6": [
+    "Click here to buy equipment and keep it in the warehouse. Prices change every week, so buying in a cheap week lowers your equipment cost. You can also buy equipment on the workbench, so jobs can be done without purchasing in advance. Equipment you cannot buy yet is listed too, with the level that unlocks it.",
+    "여기를 클릭하면 기자재를 사서 창고에 둘 수 있습니다. 기자재 가격은 주마다 바뀌므로 싼 주에 사 두면 기자재비를 줄일 수 있습니다. 기자재는 작업 화면에서도 살 수 있으므로 매입을 하지 않아도 의뢰는 진행할 수 있습니다. 아직 살 수 없는 기자재도 해제되는 레벨과 함께 나와 있습니다."
+  ],
+  "c229f72f": [
+    "This is where purchased equipment is kept. How much fits is set by the number of slots. You start with a free shelf (6 slots); rent a warehouse here when you need more.",
+    "매입한 기자재를 두는 곳입니다. 둘 수 있는 양은 슬롯 수로 정해집니다. 처음에는 무료 선반(6슬롯)이고, 모자라면 여기서 창고를 빌립니다."
+  ],
+  "f951f047": [
+    "Level",
+    "레벨"
+  ],
+  "df113044": [
+    "Delivering a job earns XP. As your level rises, more equipment, guide pages and kinds of jobs become available. If you choose Hard Mode (with a deadline) when accepting and keep meeting the deadline, the XP multiplier rises. You can also level up on the same jobs without a time limit.",
+    "의뢰를 납품하면 경험치가 들어옵니다. 레벨이 오르면 살 수 있는 기자재, 가이드 항목, 의뢰의 내용이 늘어납니다. 수주할 때 하드 모드(납기 있음)를 고르고 계속 납기를 지키면 경험치 배율이 올라갑니다. 시간 제한 없이도 같은 의뢰로 레벨을 올릴 수 있습니다."
+  ],
+  "a425a4bf": [
+    "Read explanations of devices and mechanisms here, free, at any time. Click here when you meet a word you do not know while working. On the workbench, the \"?\" next to a settings heading also opens the guide.",
+    "기기와 구조의 설명을 언제든지 무료로 읽을 수 있습니다. 작업 중에 모르는 말이 나오면 여기를 클릭합니다. 작업 화면에서는 설정란의 '?'에서도 열 수 있습니다."
+  ],
+  "4df60238": [
+    "Change the sound volume here. The Playground, a desk with no money and no job where you can try things freely, also opens from here. You can watch this walkthrough again from Settings.",
+    "소리의 크기를 바꿀 수 있습니다. 돈도 의뢰도 없는 책상에서 자유롭게 시험해 볼 수 있는 '플레이그라운드'도 여기서 엽니다. 이 설명도 설정에서 다시 볼 수 있습니다."
+  ],
+  "303830fc": [
+    "Next",
+    "다음"
+  ],
+  "86ad494d": [
+    "Start taking jobs",
+    "의뢰 받기 시작"
+  ],
+  "e5f708e1": [
+    "How to play {0} / {1}",
+    "진행 방법 설명 {0} / {1}"
+  ],
+  "9916dbaa": [
+    "End walkthrough",
+    "설명 끝내기"
+  ],
+  "f87e31e0": [
+    "Job in progress",
+    "작업 중인 의뢰"
+  ],
+  "8e101f41": [
+    "Back to work",
+    "작업으로 돌아가기"
+  ],
+  "3ce80b95": [
+    "Done",
+    "수료"
+  ],
+  "c58045e9": [
+    "Training {0}",
+    "연수 {0}"
+  ],
+  "7e9d74bf": [
+    "What this training covers",
+    "이 연수에서 다루는 것"
+  ],
+  "0decb6ed": [
+    "On-screen guidance takes you through {0} steps.",
+    "화면의 안내에 따라 {0}단계로 진행합니다."
+  ],
+  "e9ca7b5a": [
+    "Fee <b>{0}</b>",
+    "계약금 <b>{0}</b>"
+  ],
+  "759cfa17": [
+    "Training",
+    "연수"
+  ],
+  "9433455d": [
+    "There are three training jobs. After finishing all of them, you can choose and accept jobs.",
+    "연수는 3개입니다. 모두 마치면 의뢰를 골라서 받을 수 있게 됩니다."
+  ],
+  "ad92fe47": [
+    "Skip training",
+    "연수 건너뛰기"
+  ],
+  "6ec5f809": [
+    "(warehouse {0})",
+    "(창고비 {0})"
+  ],
+  "dc7cd26c": [
+    "Regular",
+    "단골"
+  ],
+  "07349535": [
+    "If all bought new: equipment {0} · profit <i>{1}</i>",
+    "신품으로 갖출 경우의 기준: 기자재비 {0} · 이익 <i>{1}</i>"
+  ],
+  "97096c39": [
+    "Needs almost no equipment",
+    "기자재는 거의 필요 없습니다"
+  ],
+  "c6c8ffd3": [
+    "Acceptance tests: {0}",
+    "검수 테스트 {0}항목"
+  ],
+  "98ef326a": [
+    "Difficulty score",
+    "난이도 점수"
+  ],
+  "739be297": [
+    "<b>{0} pts</b>",
+    "<b>{0}점</b>"
+  ],
+  "e4639464": [
+    "XP",
+    "경험치"
+  ],
+  "d62afad3": [
+    "Deadline (Hard Mode)",
+    "납기(하드 모드)"
+  ],
+  "c11df202": [
+    "<b>{0} min</b>",
+    "<b>{0}분</b>"
+  ],
+  "0793820b": [
+    "This week's jobs. Delivering one moves you to the next week, and the jobs and equipment prices change.",
+    "이번 주의 의뢰입니다. 1건 납품하면 다음 주가 되고, 의뢰와 기자재 가격이 바뀝니다."
+  ],
+  "b26c94a6": [
+    "Skip to next week{0}",
+    "받지 않고 다음 주로{0}"
+  ],
+  "c12c36a2": [
+    "{0} more",
+    "그 밖에 {0}항목"
+  ],
+  "b8a594c0": [
+    "You can read these before accepting",
+    "읽고 나서 수주할 수 있습니다"
+  ],
+  "7c5954e7": [
+    "Expected equipment cost (this week's prices)",
+    "기자재비의 기준(이번 주 가격)"
+  ],
+  "492e65fb": [
+    "Equipment cost for ★3",
+    "★3이 되는 기자재비"
+  ],
+  "5f8983bc": [
+    "<b>{0} or less</b>",
+    "<b>{0} 이하</b>"
+  ],
+  "d7ad2313": [
+    " ({0} in a row now)",
+    "(지금 {0}회 연속)"
+  ],
+  "162ffad7": [
+    "You have a job in progress. Deliver it or withdraw from it to accept the next one.",
+    "작업 중인 의뢰가 있습니다. 납품하거나 취소하면 다음 의뢰를 받을 수 있습니다."
+  ],
+  "b7a85073": [
+    "{0} items. Pass all of them to deliver",
+    "{0}항목. 모두 합격하면 납품할 수 있습니다"
+  ],
+  "71132221": [
+    "Difficulty {0}",
+    "난이도 {0}"
+  ],
+  "cec14020": [
+    "{0} pts",
+    "{0}점"
+  ],
+  "46777109": [
+    "A total of up to 8 points is ★1, up to 17 is ★2, up to 29 is ★3, up to 44 is ★4, and 45 or more is ★5.",
+    "합계가 8점까지는 ★1, 17점까지 ★2, 29점까지 ★3, 44점까지 ★4, 45점 이상은 ★5입니다."
+  ],
+  "3eddbd92": [
+    "Advance (received when you accept)",
+    "선금(수주할 때 받음)"
+  ],
+  "f2961265": [
+    "<b>Hard Mode<em>Deadline: {0} min</em></b>On time: contract fee +30%, XP ×{1}{2}. The multiplier rises with each on-time delivery in a row (up to ×{3}). If you are late or withdraw, the streak returns to 0 and your reputation falls. With this off, there is no time limit.",
+    "<b>하드 모드<em>납기 {0}분</em></b>납기를 지키면 계약금 +30%, 경험치 ×{1}{2}. 연속으로 지킬수록 배율이 올라갑니다(최대 ×{3}). 늦거나 취소하면 연속은 0으로 돌아가고 평판이 내려갑니다. 끄면 시간 제한이 없습니다."
+  ],
+  "c20d58f6": [
+    "Accept",
+    "수주하기"
+  ],
+  "048f137a": [
+    "You will start taking jobs without the training. What the training covers (switches, IP addresses, routers, diagnostic tools) can be read in the Guide.",
+    "연수를 받지 않고 의뢰를 받기 시작합니다. 연수에서 다루는 내용(스위치, IP 주소, 라우터, 진단 도구)은 가이드에서 읽을 수 있습니다."
+  ],
+  "2c700855": [
+    "Skip",
+    "건너뛰기"
+  ],
+  "32fc4444": [
+    "Unlocked at the next level (Lv.{0})",
+    "다음 레벨(Lv.{0})에서 늘어나는 것"
+  ],
+  "3a9c1afd": [
+    "No jobs delivered yet.",
+    "납품한 의뢰는 아직 없습니다."
+  ],
+  "8e2ffc18": [
+    "Jobs delivered",
+    "납품한 의뢰"
+  ],
+  "37f48152": [
+    "<b>{0}</b>",
+    "<b>{0}건</b>"
+  ],
+  "76f21e2c": [
+    "Total profit",
+    "이익 합계"
+  ],
+  "acf4b4bb": [
+    "★3 deliveries",
+    "★3 납품"
+  ],
+  "0be0a1da": [
+    "Unlocked so far",
+    "지금까지 늘어난 것"
+  ],
+  "9c0c1536": [
+    "Recent deliveries",
+    "최근 납품"
+  ],
+  "9d73914c": [
+    "Saves the time taken per job, the help used, withdrawn jobs and so on, in a form a spreadsheet can open",
+    "의뢰별 시간, 사용한 도움말, 취소한 의뢰 등을 스프레드시트에서 열 수 있는 형식으로 저장합니다"
+  ],
+  "c6351b4d": [
+    "Export play log ({0})",
+    "플레이 기록 내보내기({0}건)"
+  ],
+  "7efde5d2": [
+    "Play log exported.",
+    "플레이 기록을 내보냈습니다."
+  ],
+  "a832a8e9": [
+    "How to play",
+    "진행 방법 설명"
+  ],
+  "f4830de9": [
+    "Watch the walkthrough again",
+    "진행 방법 설명 다시 보기"
+  ],
+  "84e4e385": [
+    "Playground is open",
+    "플레이그라운드를 열고 있습니다"
+  ],
+  "9f05a803": [
+    "Open Playground",
+    "플레이그라운드 열기"
+  ],
+  "435e0fd4": [
+    "Sound effects volume",
+    "효과음 크기"
+  ],
+  "2ef1f5b4": [
+    "Music volume",
+    "BGM 크기"
+  ],
+  "1f2511a8": [
+    "Screen",
+    "화면"
+  ],
+  "b65d4e8e": [
+    "Toggle full screen",
+    "전체 화면으로 / 되돌리기"
+  ],
+  "512c70ff": [
+    "A desk with no money and no job. Place any device in the game, as many as you like, and try things freely. It does not affect your job in progress, funds or level.",
+    "돈도 의뢰도 없는 책상입니다. 게임에 나오는 기기를 무엇이든 몇 대든 놓고 자유롭게 짜서 시험해 볼 수 있습니다. 진행 중인 의뢰, 자금, 레벨에는 영향을 주지 않습니다."
+  ],
+  "f5cba32f": [
+    "Language / 言語 / 언어",
+    "Language / 言語 / 언어"
+  ],
+  "cf147738": [
+    "Save data",
+    "세이브 데이터"
+  ],
+  "f9c39c64": [
+    "Export save",
+    "세이브 데이터 내보내기"
+  ],
+  "cb76636e": [
+    "Import save",
+    "세이브 데이터 불러오기"
+  ],
+  "292d0395": [
+    "Erase save data and start over",
+    "세이브 데이터를 지우고 처음부터 시작"
+  ],
+  "e92d6029": [
+    "To title",
+    "타이틀로"
+  ],
+  "a2e27fc6": [
+    "Wrong format",
+    "형식이 다릅니다"
+  ],
+  "096ec56e": [
+    "Save data imported (Lv.{0}).",
+    "세이브 데이터를 불러왔습니다(Lv.{0})."
+  ],
+  "6ba7ec7e": [
+    "This file cannot be read as save data.",
+    "이 파일은 세이브 데이터로 읽을 수 없습니다."
+  ],
+  "4bfedc20": [
+    "Press again to erase",
+    "한 번 더 누르면 지웁니다"
+  ],
+  "3748eaae": [
+    "<b>{0} — \"{1}\"</b>",
+    "<b>{0} '{1}'</b>"
+  ]
 }

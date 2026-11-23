@@ -20,7 +20,9 @@
 - `node e2e/mode.mjs` プレイグラウンドと、ハードモードの連続成功
 - `node e2e/view.mjs` 机の拡大・縮小と移動(ボタン、何もない場所のドラッグ、ホイール、拡大したままの操作)
 - `node e2e/play.mjs` AIに遊ばせて見つかった点(研修の案内の位置、習う前の設定欄、ポートの重なり、設定パネルの状態表示、納品結果の収まり)
-- 変更したら typecheck、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs・play.mjs・view.mjs・mode.mjs・intro.mjs)を通す
+- `node e2e/lang.mjs` 英語・韓国語への切り替え、全画面・ガイド全50項目で日本語が残っていないこと、英語・韓国語での研修と納品
+- `node tools/i18n.mjs <stats|todo|check>` 翻訳の単位の集計、未翻訳の書き出し(`shots/i18n-todo.tsv`)、翻訳の過不足・差し込み(`{0}`)・タグの検査
+- 変更したら typecheck、`node tools/i18n.mjs check`、npm test、e2e(run.mjs・panel.mjs・adv.mjs・extra.mjs・play.mjs・view.mjs・mode.mjs・intro.mjs・lang.mjs)を通す
 - `node tools/maxsave.mjs [app]` 最高レベルのセーブを `saves/max-level.json` に作る(app を付けるとデスクトップアプリにも入れる)。設定の「セーブデータを読み込む」で読める。`node e2e/app.mjs` は一時フォルダのセーブで起動するので、遊んでいるセーブ(%APPDATA%/NetworkShop)には触らない
 
 ## 構成
@@ -32,6 +34,7 @@
   - `scen.ts` 拠点やクラウドをまたぐ依頼(Lv.19〜)。`Plan`(支店の数、拠点間のつなぎ方、冗長化、クラウドなど)から構成を組む `compose` と、依頼の種類の表 `TEMPLATES`。構成変更の依頼は、変更前と変更後の2つの `Plan` を同じ材料から組む
   - `genlib.ts` gen.ts と scen.ts の共通部品(業種と名前、難易度と報酬、トラブル対応への作り替え)
 - `src/game/` `state.ts` 進行(レベル、相場、倉庫、受注、ヘルプ、納品)/ `tutorial.ts` 研修3件 / `guide.ts` ガイドの本文と図解
+- `src/i18n/` `runtime.ts` 言語(`ja`/`en`/`ko`)の判定・切り替えと実行時の表引き / `tr/*.json` 翻訳の表(`ID: [英語, 韓国語]`)。ビルド時は `tools/i18n-plugin.mjs` がソースの日本語文字列を `__t`/`__tt` に自動で包む
 - `src/ui/` `app.ts`(1920×1080の固定ステージを拡大縮小)/ `hub.ts` 受注 / `shop.ts` 仕入れ / `ware.ts` 倉庫 / `guide.ts` ガイド / `bench.ts` 作業画面 / `desk.ts` 机(SVG)/ `panel.ts` 機器の設定 / `style.css`
 - `public/img/` Geminiで作った素材。`python tools/gen_assets.py [名前]` で作り直せる(マゼンタ背景を抜く)
 
@@ -68,6 +71,7 @@
 - ポートは機器の絵とは別の層(`.pg`)に描く。ポートまわりの見た目は `.pg` のCSSで決める(`.dev` の中のCSSは効かない)
 - 新しい設定項目を足したら `defaultCfg` に入れる。古いセーブには `fillCfg` が補う。設定欄は `PanelCtx.level` で、そのレベルに届くまで隠す
 - チュートリアルの案内は `[data-pal]` `[data-dev]` `[data-port]` `[data-diag]` `[data-act]` を目印にしている。属性名を変えたら tutorial.ts も直す
+- 翻訳(英語・韓国語): ソースには日本語をそのまま書く。文言を足したり変えたりしたら `node tools/i18n.mjs todo` で未翻訳を出し、`src/i18n/tr/*.json` に英語・韓国語を入れて `node tools/i18n.mjs check` を通す(古いIDもここで見つかる)。正規表現などで表示文字列の中身を判定する箇所は `ja()`(`src/i18n/runtime.ts`)を通して元の日本語に戻してから判定する。部署名と機器名をつなげる箇所は `join()` を使う(英語・韓国語では空白が入る)
 - シェル経由のコマンドは約8KBで切れる。大きなファイルはヒアドキュメントで書かない
 
 ## 用語と文体
