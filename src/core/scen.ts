@@ -237,7 +237,7 @@ function compose(c: Ctx, p: Plan): Built {
     add({ t: 'mailOut' });
     add({ t: 'flow', from: ids(hq.pcs), to: { dev: mailHost.id }, svc: 'mail', expect: 'ok' }, who(hq));
   }
-  if (p.vrrp) add({ t: 'failover', kinds: ['router'], what: `${multi ? H + 'の' : ''}ルーター`, near: hq.pcs[0].id, checks: [web(hq), ...(fileTo ? [file(hq)] : []), ...branches.map(web)] });
+  if (p.vrrp) add({ t: 'failover', kinds: ['router'], what: multi ? `${H}のルーター` : 'ルーター', near: hq.pcs[0].id, checks: [web(hq), ...(fileTo ? [file(hq)] : []), ...branches.map(web)] });
 
   know(true, 'ルーター', 4);
   know(!!p.dhcp, 'DHCP', 3);
@@ -262,11 +262,11 @@ function compose(c: Ctx, p: Plan): Built {
   if (p.link === 'vpn') spec.push({ head: '拠点間', body: `インターネット経由の拠点間VPNでつなぐ。事前共有キー: ${c.psk}\n外側のアドレス: ${sites.map((s, i) => `${s.def.label} ${ipStr(lineIp(i))}(回線${i + 1})`).join('、')}${between}` });
   spec.push({ head: 'インターネット', body: p.vrrp ? '回線を2本契約済み(回線1・回線2)。ルーターを2台置き、WANを別々の回線につなぐ\nルーターが1台止まっても、通信が続くこと'
     : p.link === 'wan' ? `回線は${H}にだけある。${others}も、${H}の回線からインターネットに出る` : p.link === 'vpn' ? '回線は拠点ごとに契約済み。公開DNSは 8.8.8.8' : '回線は契約済み。公開DNSは 8.8.8.8' });
-  if (proxy) spec[spec.length - 1].body += `\n${multi ? 'どの拠点の' : ''}PCも、${multi ? H + 'の' : ''}サーバーのプロキシ経由でだけWebを見られること`;
+  if (proxy) spec[spec.length - 1].body += '\n' + (multi ? `どの拠点のPCも、${H}のサーバーのプロキシ経由でだけWebを見られること` : 'PCはサーバーのプロキシ経由でだけWebを見られること');
   if (p.breakout) spec[spec.length - 1].body += `\n${labels[1]}には回線2もある。${labels[1]}のPCは、クラウドサービス ${SAAS} にだけ、プロキシも${H}も通さずに回線2から直接つなぐ\n回線2のプロバイダ側のアドレスは ${ipStr(lineIp(1) - 1)}`;
   if (records.length) spec.push({ head: '名前', body: records.map(x => `${x.name} → ${q.nameOf(b.devices.find(d => d.cfg.ip === x.ip)!.id)}`).join('\n') + (multi ? `\nDNSサーバーは${H}のサーバーを全拠点で使う` : '') });
   if (sv && !full && !vs) spec.push({ head: 'ファイル共有', body: `${sv.name}(${svIp})の共有フォルダを、社内のPCから使う` });
-  if (vs) spec.push({ head: 'クラウド', body: `仮想ネットワーク: ${cidr(VNET)}(クラウドの vNET は ${ipStr(VNET + 1)})\n仮想サーバー: ${vsIp}。共有フォルダを社内のPCから使う\nクラウドの外側のアドレス: ${CLOUD}\n${multi ? H + 'の' : ''}ルーターとクラウドを拠点間VPNでつなぐ。事前共有キー: ${c.psk}\nセキュリティグループでは、社内から仮想ネットワークへの通信と、仮想サーバーから外への通信を許可する` });
+  if (vs) spec.push({ head: 'クラウド', body: `仮想ネットワーク: ${cidr(VNET)}(クラウドの vNET は ${ipStr(VNET + 1)})\n仮想サーバー: ${vsIp}。共有フォルダを社内のPCから使う\nクラウドの外側のアドレス: ${CLOUD}\n${multi ? `${H}のルーター` : 'ルーター'}とクラウドを拠点間VPNでつなぐ。事前共有キー: ${c.psk}\nセキュリティグループでは、社内から仮想ネットワークへの通信と、仮想サーバーから外への通信を許可する` });
   if (webHost) spec.push({ head: 'ドメイン', body: `${c.pubDom}(契約済み。回線の「公開DNS」にレコードを登録する)\nWebサイトは https://www.${c.pubDom} で公開し、${webHost.name}が応答する\n外側のアドレス: ${vs ? `クラウド ${CLOUD}` : `会社 ${ipStr(lineIp(0))}`}` + (mailHost ? `\nメールは mail.${c.pubDom} で受け取り、${mailHost.name}が処理する。SPFレコードで送信元を示す` : '') });
 
   // ---- 方針 ----
@@ -286,11 +286,11 @@ function compose(c: Ctx, p: Plan): Built {
   }
   if (vs) {
     hints.push('仮想サーバーをクラウドの vNIC につなぎ、クラウドの vNET に仮想ネットワークのアドレスを付けます。仮想サーバーのゲートウェイは、この vNET のアドレスです。');
-    hints.push(`${multi ? H + 'の' : ''}ルーターとクラウドの両方に、拠点間VPNを設定します。クラウドの外側のアドレスは ${CLOUD} です。${multi ? `クラウド側の「相手側のネットワーク」には、全拠点のネットワークを書きます。${p.link === 'vpn' ? `${others}のルーターでは、${H}向けのVPNの相手側のネットワークに、仮想ネットワークも加えます。` : ''}` : ''}`);
+    hints.push(`${multi ? `${H}のルーター` : 'ルーター'}とクラウドの両方に、拠点間VPNを設定します。クラウドの外側のアドレスは ${CLOUD} です。${multi ? `クラウド側の「相手側のネットワーク」には、全拠点のネットワークを書きます。${p.link === 'vpn' ? `${others}のルーターでは、${H}向けのVPNの相手側のネットワークに、仮想ネットワークも加えます。` : ''}` : ''}`);
     hints.push('クラウドは、セキュリティグループ(フィルター)で許可した通信だけを通します。社内のネットワークから仮想ネットワークへの許可と、仮想ネットワークから外への許可を書きます。');
   }
   if (webHost) hints.push(vs ? `クラウドの「ポート転送」でWebを仮想サーバーへ送ります。公開DNSの www のAレコードは、クラウドの外側のアドレス(${CLOUD})にします。仮想サーバーの証明書の名前は www.${c.pubDom} です。` : '');
-  if (proxy) hints.push(`${multi ? H + 'の' : ''}サーバーでプロキシを動かし、${multi ? '全拠点の' : ''}PCのプロキシ欄に「サーバーのIP:8080」を入れます。${multi ? H + 'の' : ''}ルーターのフィルターで、サーバーからのWebを許可し、その下でほかのWebを拒否します。${p.link === 'vpn' ? '拠点ごとに回線があるので、ほかの拠点のルーターでもWebを拒否します。' : ''}`);
+  if (proxy) hints.push((multi ? `${H}のサーバーでプロキシを動かし、全拠点のPCのプロキシ欄に「サーバーのIP:8080」を入れます。${H}のルーターのフィルターで、サーバーからのWebを許可し、その下でほかのWebを拒否します。` : 'サーバーでプロキシを動かし、PCのプロキシ欄に「サーバーのIP:8080」を入れます。ルーターのフィルターで、サーバーからのWebを許可し、その下でほかのWebを拒否します。') + (p.link === 'vpn' ? '拠点ごとに回線があるので、ほかの拠点のルーターでもWebを拒否します。' : ''));
   if (p.breakout) hints.push(`${labels[1]}のルーターのWANを回線2につなぎます。${labels[1]}のルーターに、宛先 ${EXTERNAL[SAAS]}/32、ネクストホップ ${ipStr(lineIp(1) - 1)}(回線2のプロバイダ側)のルートを書きます。宛先の範囲が狭いルートが優先されるので、この宛先だけが回線2から出ていき、ほかは 0.0.0.0/0 のルートで${H}へ向かいます。${labels[1]}のPCの「プロキシを使わない宛先」に ${SAAS} を入れます。`);
   if (p.mail && vs) hints.push(`メールも仮想サーバーで動かし、クラウドのポート転送でメール(25)を仮想サーバーへ送ります。公開DNSには mail のAレコード、MXレコード、SPFのTXTレコード(v=spf1 ip4:${CLOUD} -all)を登録します。`);
 
@@ -372,7 +372,7 @@ function composeCore(r: Rng, octet: number, dom: string, groupLabels: string[]):
 
   const spec: SpecRow[] = [
     { head: 'アドレス', body: groups.map(g => `${g.label}: ${cidr(g.net)}(VLAN ${g.vlan})`).join('\n') + `\nサーバー: ${cidr(srv.net)}(VLAN ${srv.vlan})` },
-    { head: 'フロア', body: floors.map((f, i) => `${i + 1}階(${msw[i].name}): ${f.map(h => h.name).join('、')}`).join('\n') + '\n各階の機器は、その階のVLAN対応スイッチ(お客様の既設)につなぐ\nサーバー' + (rt ? 'とルーター' : '') + 'は1階スイッチにつなぐ' },
+    { head: 'フロア', body: floors.map((f, i) => `${i + 1}階(${msw[i].name}): ${f.map(h => h.name).join('、')}`).join('\n') + (rt ? '\n各階の機器は、その階のVLAN対応スイッチ(お客様の既設)につなぐ\nサーバーとルーターは1階スイッチにつなぐ' : '\n各階の機器は、その階のVLAN対応スイッチ(お客様の既設)につなぐ\nサーバーは1階スイッチにつなぐ') },
     { head: 'L3スイッチ', body: 'L3スイッチを2台置き、各階のスイッチからそれぞれにトランクでつなぐ\nどちらか1台が止まっても、ケーブルが1本切れても、通信が続くこと' },
     { head: '名前', body: records.map(x => `${x.name} → ${q.nameOf(b.devices.find(d => d.cfg.ip === x.ip)!.id)}`).join('\n') },
   ];
@@ -397,7 +397,7 @@ const some = (r: Rng, q: number): boolean => r() < q;
 const TEMPLATES: Tpl[] = [
   { key: 'wan', lv: 19, title: '2つの拠点を広域イーサネットでつなぐ', make: r => ({ after: { branches: 1, link: 'wan', server: some(r, 0.6) ? 'full' : 'none', dhcp: some(r, 0.4) } }) },
   { key: 'branch', lv: 19, title: '新しい拠点をつなぐ', make: r => { const after: Plan = { branches: 1, link: 'wan', server: some(r, 0.6) ? 'full' : 'none', dhcp: some(r, 0.4) }; return { before: { ...after, branches: 0, link: 'none' }, after }; } },
-  { key: 'wanproxy', lv: 19, title: '全拠点のWebを本拠のプロキシに通す', make: r => ({ after: { branches: 1, link: 'wan', server: 'full', proxy: true, dhcp: some(r, 0.3) } }) },
+  { key: 'wanproxy', lv: 19, title: '', make: r => ({ after: { branches: 1, link: 'wan', server: 'full', proxy: true, dhcp: some(r, 0.3) } }) },
   { key: 'toproxy', lv: 19, title: '拠点のWebをプロキシ経由に切り替える', make: r => { const after: Plan = { branches: 1, link: 'wan', server: 'full', proxy: true, dhcp: some(r, 0.3) }; return { before: { ...after, proxy: false }, after }; } },
   { key: 'branchvpn', lv: 20, title: '新しい拠点を拠点間VPNでつなぐ', make: r => { const after: Plan = { branches: 1, link: 'vpn', server: some(r, 0.6) ? 'full' : 'none', dhcp: some(r, 0.4) }; return { before: { ...after, branches: 0, link: 'none' }, after }; } },
   { key: 'addsite', lv: 20, title: '3つ目の拠点を増やす', make: r => { const after: Plan = { branches: 2, link: 'wan', server: 'full', isolate: some(r, 0.5) }; return { before: { ...after, branches: 1, isolate: false }, after }; } },
@@ -409,12 +409,12 @@ const TEMPLATES: Tpl[] = [
   { key: 'cloud', lv: 22, title: 'クラウドの仮想サーバーを使う', make: r => ({ after: { branches: 0, link: 'none', cloud: true, server: 'none', pubWeb: some(r, 0.5), dhcp: some(r, 0.4) } }) },
   { key: 'tocloud', lv: 22, title: '社内のサーバーをクラウドへ移す', make: r => { const pubWeb = some(r, 0.5), dhcp = some(r, 0.4); return { before: { branches: 0, link: 'none', server: 'plain', pubWeb, dhcp }, after: { branches: 0, link: 'none', cloud: true, server: 'none', pubWeb, dhcp } }; } },
   { key: 'core', lv: 23, title: 'L3スイッチを二重にする', make: () => ({ after: { branches: 0, link: 'none', server: 'none' } }) },
-  { key: 'wanvrrp', lv: 23, title: '本拠を二重にした拠点間ネットワーク', make: r => ({ after: { branches: 1, link: 'wan', vrrp: true, server: 'full', dhcp: some(r, 0.3) } }) },
+  { key: 'wanvrrp', lv: 23, title: '', make: r => ({ after: { branches: 1, link: 'wan', vrrp: true, server: 'full', dhcp: some(r, 0.3) } }) },
   { key: 'vpncloud', lv: 24, title: '2つの拠点とクラウドをつなぐ', make: r => ({ after: { branches: 1, link: 'vpn', cloud: true, server: 'none', pubWeb: some(r, 0.5) } }) },
   { key: 'wancloud', lv: 23, title: '拠点で共有しているサーバーをクラウドへ移す', make: () => ({ before: { branches: 1, link: 'wan', server: 'plain' }, after: { branches: 1, link: 'wan', cloud: true, server: 'none' } }) },
   { key: 'cloudmail', lv: 24, title: 'Webとメールをクラウドで動かす', make: () => ({ after: { branches: 0, link: 'none', cloud: true, server: 'none', pubWeb: true, mail: true } }) },
   { key: 'mailmove', lv: 24, title: 'Webとメールをクラウドへ移す', make: r => { const dhcp = some(r, 0.4); return { before: { branches: 0, link: 'none', server: 'plain', pubWeb: true, mail: true, dhcp }, after: { branches: 0, link: 'none', cloud: true, server: 'none', pubWeb: true, mail: true, dhcp } }; } },
-  { key: 'breakout', lv: 24, title: '支店からクラウドサービスへ直接つなぐ', make: () => ({ after: { branches: 1, link: 'wan', server: 'full', proxy: true, breakout: true } }) },
+  { key: 'breakout', lv: 24, title: '', make: () => ({ after: { branches: 1, link: 'wan', server: 'full', proxy: true, breakout: true } }) },
 ];
 
 /** 生成に失敗した理由を受け取る(テスト用) */
@@ -488,7 +488,7 @@ export function scenario(seed: number, id: number, level: number, opts: { kind?:
     vrrp: ['先月ルーターが壊れて、丸一日仕事になりませんでした。', 'ルーターと回線を2つずつにして、片方が止まっても使えるようにしてください。'],
     tovrrp: ['ルーターが壊れると仕事が止まるので、2台に増やします。回線も1本、追加で契約しました。', 'いまのネットワークはそのまま使います。'],
     cloud: ['サーバーは社内に置かず、クラウドの仮想サーバーを使います。契約は済んでいます。', '社内のPCから、仮想サーバーの共有フォルダを使えるようにしてください。', after.pubWeb ? 'Webサイトも仮想サーバーで公開します。' : ''],
-    tocloud: ['社内のサーバーが古くなったので、クラウドの仮想サーバーに引っ越します。', `共有フォルダ${after.pubWeb ? 'とWebサイト' : ''}を移してください。`, '引っ越しが済んだら、古いサーバーは片付けてください。'],
+    tocloud: ['社内のサーバーが古くなったので、クラウドの仮想サーバーに引っ越します。', (after.pubWeb ? '共有フォルダとWebサイトを移してください。' : '共有フォルダを移してください。'), '引っ越しが済んだら、古いサーバーは片付けてください。'],
     core: ['部署をまたぐ通信はすべてL3スイッチを通るので、止まると全員の仕事が止まります。', 'L3スイッチを2台にして、1台が止まっても使えるようにしてください。', '各階には、VLAN対応のスイッチがあります。'],
     wanvrrp: [`${H}のルーターが止まると、${B}までインターネットが使えなくなります。`, `${H}のルーターと回線を二重にしてください。`, '拠点の間は、広域イーサネットを契約してあります。'],
     vpncloud: [`${H}と${B}の両方から、クラウドの仮想サーバーを使います。`, `クラウドとのVPNは${H}にだけ張り、${B}は${H}を通して使います。`, after.pubWeb ? 'Webサイトも仮想サーバーで公開します。' : ''],
@@ -512,7 +512,7 @@ export function scenario(seed: number, id: number, level: number, opts: { kind?:
       branch: `${H}の機器と設定は、いまのものを使う\n${B}の端末はお客様が用意してある。${B}のルーターとスイッチを新しく用意する`,
       wan2vpn: `${B}に回線2を新しく契約済み。${B}のルーターのWANを回線2につなぐ\n広域イーサネットは解約するので、ケーブルをすべて外す`,
       tovrrp: '回線2を新しく契約済み。ルーターを1台追加する\nいまの機器と配線は、そのまま使ってよい',
-      tocloud: '共有フォルダ' + (after.pubWeb ? 'とWebサイト' : '') + 'を仮想サーバーへ移し、いまのサーバーを撤去する' + (after.pubWeb ? '\n公開DNSのレコードも、新しい公開先に合わせる' : ''),
+      tocloud: after.pubWeb ? '共有フォルダとWebサイトを仮想サーバーへ移し、いまのサーバーを撤去する\n公開DNSのレコードも、新しい公開先に合わせる' : '共有フォルダを仮想サーバーへ移し、いまのサーバーを撤去する',
       wancloud: `共有フォルダを仮想サーバーへ移し、いまのサーバーを撤去する\n${B}からも、${H}を通して仮想サーバーを使う`,
       toproxy: `${H}のサーバーでプロキシを動かし、全拠点のPCに設定する\nプロキシを通さないWebは、${H}のルーターで拒否する`,
       branchvpn: `${H}の機器と設定は、いまのものを使う\n${B}の端末はお客様が用意してある。${B}のルーターとスイッチを新しく用意する\n${B}のルーターのWANは回線2につなぐ`,
@@ -530,7 +530,7 @@ export function scenario(seed: number, id: number, level: number, opts: { kind?:
   const had = new Set(initial.devices.map(d => d.id));
   const base: Base = {
     id: `j${id}`, seed: id, kind: old ? 'migrate' : 'build', client: join(jp, pick(r, ind.suffix)), industry: ind.label, person: pick(r, ind.person),
-    title: tpl.title.replace('本拠', H).replace('支店', B), brief: talk.join(''), spec, tags, zones: sol.zones,
+    title: tpl.key === 'wanproxy' ? `全拠点のWebを${H}のプロキシに通す` : tpl.key === 'wanvrrp' ? `${H}を二重にした拠点間ネットワーク` : tpl.key === 'breakout' ? `${B}からクラウドサービスへ直接つなぐ` : tpl.title, brief: talk.join(''), spec, tags, zones: sol.zones,
     supplied: solution.devices.filter(d => d.own === 'supplied' && !had.has(d.id)).map(d => ({ id: d.id, model: d.model, name: d.name })),
     checks, initial, solution, par: worldCost(solution), hints, faults: [],
   };

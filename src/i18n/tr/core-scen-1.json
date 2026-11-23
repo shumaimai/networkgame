@@ -1,0 +1,298 @@
+{
+  "798ce0af": [
+    "Head Office",
+    "본사"
+  ],
+  "dbd52e6b": [
+    "Branch",
+    "지점"
+  ],
+  "fffe3644": [
+    "Sales Office",
+    "영업소"
+  ],
+  "a5c5ce67": [
+    "Sub-office",
+    "분실"
+  ],
+  "78440218": [
+    "Annex",
+    "별관"
+  ],
+  "e0b996d4": [
+    "Main Store",
+    "본점"
+  ],
+  "681d12e0": [
+    "Station Store",
+    "역전점"
+  ],
+  "fcfb331d": [
+    "Warehouse",
+    "창고"
+  ],
+  "2d61e80b": [
+    "Main Clinic",
+    "본원"
+  ],
+  "e432cf01": [
+    "Branch Clinic",
+    "분원"
+  ],
+  "a1f8542a": [
+    "Checkup Centre",
+    "검진소"
+  ],
+  "0fb394d1": [
+    "Main Office",
+    "본소"
+  ],
+  "3125fd3a": [
+    "Branch Office",
+    "지소"
+  ],
+  "23963318": [
+    "Field Office",
+    "출장소"
+  ],
+  "035b5052": [
+    "Wide-area Ethernet",
+    "광역 이더넷"
+  ],
+  "9ba533ef": [
+    "Router-1",
+    "라우터-1"
+  ],
+  "9ca53582": [
+    "Router-2",
+    "라우터-2"
+  ],
+  "17664a71": [
+    "router at {0}",
+    "{0}의 라우터"
+  ],
+  "b0bd0428": [
+    "Site-to-site link",
+    "거점 간 접속"
+  ],
+  "63fa26c9": [
+    "Site-to-site VPN",
+    "거점 간 VPN"
+  ],
+  "f74e2ac0": [
+    "Redundant gateway",
+    "이중화 게이트웨이"
+  ],
+  "9d944ae9": [
+    "Do not allow traffic between {0} and {1}",
+    "{0}와(과) {1} 사이는 통신시키지 않는다"
+  ],
+  "c5ddad36": [
+    "Send traffic between {0} and {1} through {2}",
+    "{0}와(과) {1} 사이의 통신은 {2}을(를) 경유시킨다"
+  ],
+  "bca12eb3": [
+    "Between sites",
+    "거점 간"
+  ],
+  "be222e52": [
+    "Connect {0} over wide-area Ethernet\nAssign addresses on the wide-area Ethernet side from {1}{2}",
+    "광역 이더넷망으로 {0}을(를) 연결한다\n광역 이더넷 쪽 주소는 {1}에서 할당한다{2}"
+  ],
+  "7e2da4cd": [
+    "{0} {1} (line {2})",
+    "{0} {1}(회선{2})"
+  ],
+  "a06f9f69": [
+    "Connect by site-to-site VPN over the internet. Pre-shared key: {0}\nOutside addresses: {1}{2}",
+    "인터넷을 거치는 거점 간 VPN으로 연결한다. 사전 공유 키: {0}\n바깥쪽 주소: {1}{2}"
+  ],
+  "34ed83d3": [
+    "Two lines are under contract (line 1 and line 2). Place two routers and connect their WANs to separate lines\nTraffic must continue even if one router stops",
+    "회선을 2개 계약 완료(회선1·회선2). 라우터를 2대 놓고 WAN을 각기 다른 회선에 연결한다\n라우터가 1대 멈춰도 통신이 이어질 것"
+  ],
+  "7eff60a7": [
+    "Only {0} has an internet line. {1} also reaches the internet through the line at {2}",
+    "회선은 {0}에만 있다. {1}도 {2}의 회선에서 인터넷으로 나간다"
+  ],
+  "9945ecdf": [
+    "Each site has an internet line under contract. Public DNS is 8.8.8.8",
+    "회선은 거점마다 계약 완료. 공개 DNS는 8.8.8.8"
+  ],
+  "daeee24f": [
+    "PCs at every site may view the web only through the proxy on the server at {0}",
+    "어느 거점의 PC도 {0} 서버의 프록시를 거쳐서만 웹을 볼 수 있을 것"
+  ],
+  "f3643d37": [
+    "PCs may view the web only through the proxy on the server",
+    "PC는 서버의 프록시를 거쳐서만 웹을 볼 수 있을 것"
+  ],
+  "2119b220": [
+    "{0} also has line 2. PCs at {1} connect directly to the cloud service {2} over line 2, bypassing both the proxy and {3}\nThe provider-side address on line 2 is {4}",
+    "{0}에는 회선2도 있다. {1}의 PC는 클라우드 서비스 {2}에만 프록시도 {3}도 거치지 않고 회선2에서 직접 연결한다\n회선2의 프로바이더 쪽 주소는 {4}"
+  ],
+  "249680c6": [
+    "Use the server at {0} as the DNS server across all sites",
+    "DNS 서버는 {0}의 서버를 모든 거점에서 쓴다"
+  ],
+  "94e7705c": [
+    "Use the shared folder on {0} ({1}) from office PCs",
+    "{0}({1})의 공유 폴더를 사내 PC에서 쓴다"
+  ],
+  "c372b291": [
+    "Virtual network: {0} (the cloud's vNET is {1})\nVirtual server: {2}. Use its shared folder from office PCs\nThe cloud's outside address: {3}\nConnect the {4} and the cloud by site-to-site VPN. Pre-shared key: {5}\nIn the security group, allow traffic from the office to the virtual network and from the virtual server to the outside",
+    "가상 네트워크: {0}(클라우드의 vNET은 {1})\n가상 서버: {2}. 공유 폴더를 사내 PC에서 쓴다\n클라우드의 바깥쪽 주소: {3}\n{4}와(과) 클라우드를 거점 간 VPN으로 연결한다. 사전 공유 키: {5}\n보안 그룹에서는 사내에서 가상 네트워크로 가는 통신과 가상 서버에서 밖으로 가는 통신을 허용한다"
+  ],
+  "efeb35fa": [
+    "cloud {0}",
+    "클라우드 {0}"
+  ],
+  "4d492627": [
+    "office {0}",
+    "회사 {0}"
+  ],
+  "36ec2f0f": [
+    "{0} (under contract; register records in \"Public DNS\" on the line)\nPublish the website at https://www.{1}, served by {2}\nOutside address: {3}",
+    "{0}(계약 완료. 회선의 '공개 DNS'에 레코드를 등록한다)\n웹 사이트는 https://www.{1}(으)로 공개하고 {2}이(가) 응답한다\n바깥쪽 주소: {3}"
+  ],
+  "fbbfb420": [
+    "Receive mail at mail.{0}, handled by {1}. Declare the sender in an SPF record",
+    "메일은 mail.{0}에서 받고 {1}이(가) 처리한다. SPF 레코드로 발신처를 나타낸다"
+  ],
+  "b6da0af7": [
+    "Place just one server at {0}. Point the PCs at the other sites to this server as their DNS server.",
+    "서버는 {0}에 1대만 놓습니다. 다른 거점의 PC도 DNS 서버로 이 서버를 지정합니다."
+  ],
+  "f6dcc2b4": [
+    "Place a router and an L2 switch at each site, and set each endpoint's gateway to its own site's router. {0}",
+    "거점마다 라우터와 L2 스위치를 놓고 단말의 게이트웨이를 그 거점의 라우터로 합니다. {0}"
+  ],
+  "18d6429c": [
+    "Wide-area Ethernet puts connected devices on the same network. Connect LAN2 of each site's router to it and give them separate addresses from the range in the spec.",
+    "광역 이더넷망은 연결한 기기끼리 같은 네트워크가 되는 회선입니다. 각 거점 라우터의 LAN2를 연결하고 사양서의 범위에서 각기 다른 주소를 붙입니다."
+  ],
+  "50fdb9b5": [
+    "On the router at {0}, write routes to the other sites' networks (the next hop is the wide-area Ethernet address of the peer router). On the other sites' routers, write a route for 0.0.0.0/0 pointing to the router at {1}. That lets them reach the internet through the line at {2}.",
+    "{0}의 라우터에는 다른 거점의 네트워크로 향하는 경로를 적습니다(넥스트 홉은 상대 라우터의 광역 이더넷 쪽 주소). 다른 거점의 라우터에는 목적지 0.0.0.0/0으로 {1}의 라우터로 향하는 경로를 적습니다. 이로써 {2}의 회선에서 인터넷으로 나갈 수 있습니다."
+  ],
+  "f6821fb2": [
+    "Traffic between {0} and {1} passes through the router at {2}, so write the deny rule on the router at {3}.",
+    "{0}와(과) {1} 사이의 통신은 {2}의 라우터를 거치므로 {3}의 라우터에 거부 규칙을 적습니다."
+  ],
+  "2dd7de01": [
+    "Connect the WAN of each site's router to its own line. In \"Site-to-site VPN\" on each router, enter the peer's outside address, pre-shared key and remote networks. Both ends need these settings.",
+    "각 거점 라우터의 WAN을 각각의 회선에 연결합니다. 라우터의 '거점 간 VPN'에 상대의 바깥쪽 주소, 사전 공유 키, 상대 쪽 네트워크를 등록합니다. 설정은 양쪽 라우터에 필요합니다."
+  ],
+  "a118353f": [
+    " Traffic between {0} and {1} goes through {2}, so list both {3} and the other branch in the remote networks.",
+    " {0}와(과) {1} 사이는 {2}을(를) 경유하므로 상대 쪽 네트워크에 {3}와(과) 다른 한쪽 거점 둘 다를 적습니다."
+  ],
+  "f11d2e6d": [
+    "Connect LAN1 of both routers to the same switch, and their WANs to separate lines. Give LAN1 different IP addresses on the two routers, and enter the same address in \"Virtual IP\" on both. Set the endpoints' gateway to this virtual IP address.",
+    "2대 라우터의 LAN1을 같은 스위치에 연결하고 WAN은 각기 다른 회선에 연결합니다. LAN1의 IP 주소는 2대에서 다르게 하고 '가상 IP 주소'에는 2대 모두 같은 주소를 넣습니다. 단말의 게이트웨이는 이 가상 IP 주소로 합니다."
+  ],
+  "8c00a446": [
+    "If you set the virtual IP address to the address the endpoints already use as their gateway, you do not have to touch the endpoints' settings. Change LAN1 on the existing router to another address.",
+    "가상 IP 주소를 지금 단말이 게이트웨이로 쓰고 있는 주소로 하면 단말 설정을 바꾸지 않아도 됩니다. 그 경우 원래 라우터의 LAN1은 다른 주소로 바꿉니다."
+  ],
+  "de17014a": [
+    "Turn DHCP on at both routers and split the ranges so they do not overlap. Make each range large enough to cover every PC on its own.",
+    "DHCP는 2대 모두 켜고 나눠 줄 범위가 겹치지 않게 나눕니다. 각각의 범위는 1대만으로도 모든 PC에 나눠 줄 수 있는 크기로 합니다."
+  ],
+  "dae3a12c": [
+    "Set a virtual IP address on the wide-area Ethernet side (LAN2) as well, and point the routes from the other sites to that virtual IP address.",
+    "광역 이더넷 쪽(LAN2)에도 가상 IP 주소를 설정하고 다른 거점에서 오는 경로는 그 가상 IP 주소로 향하게 합니다."
+  ],
+  "04ad0273": [
+    "Connect the virtual server to the cloud's vNIC and give the cloud's vNET an address on the virtual network. The virtual server's gateway is this vNET address.",
+    "가상 서버를 클라우드의 vNIC에 연결하고 클라우드의 vNET에 가상 네트워크의 주소를 붙입니다. 가상 서버의 게이트웨이는 이 vNET의 주소입니다."
+  ],
+  "3992c13a": [
+    " On the routers at {0}, add the virtual network to the remote networks of the VPN toward {1}.",
+    " {0}의 라우터에서는 {1}행 VPN의 상대 쪽 네트워크에 가상 네트워크도 더합니다."
+  ],
+  "ef122236": [
+    "In \"Remote networks\" on the cloud side, list every site's network.{0}",
+    "클라우드 쪽의 '상대 쪽 네트워크'에는 모든 거점의 네트워크를 적습니다.{0}"
+  ],
+  "66531940": [
+    "Configure site-to-site VPN on both the {0} and the cloud. The cloud's outside address is {1}. {2}",
+    "{0}와(과) 클라우드 양쪽에 거점 간 VPN을 설정합니다. 클라우드의 바깥쪽 주소는 {1}입니다. {2}"
+  ],
+  "f9af20e6": [
+    "The cloud passes only traffic allowed in its security group (filter). Write an allow rule from the office network to the virtual network, and one from the virtual network to the outside.",
+    "클라우드는 보안 그룹(필터)에서 허용한 통신만 통과시킵니다. 사내 네트워크에서 가상 네트워크로 가는 허용과 가상 네트워크에서 밖으로 가는 허용을 적습니다."
+  ],
+  "36dc7a00": [
+    "Send Web to the virtual server with \"Port forwarding\" on the cloud. Point the www A record in public DNS to the cloud's outside address ({0}). Set the virtual server's certificate name to www.{1}.",
+    "클라우드의 '포트 포워딩'으로 웹을 가상 서버로 보냅니다. 공개 DNS의 www A 레코드는 클라우드의 바깥쪽 주소({0})로 합니다. 가상 서버의 인증서 이름은 www.{1}입니다."
+  ],
+  "f193c22a": [
+    "Run the proxy on the server at {0} and enter \"server IP:8080\" in the proxy field of PCs at every site. In the filter on the router at {1}, allow Web from the server and deny other Web below it.",
+    "{0}의 서버에서 프록시를 돌리고 모든 거점 PC의 프록시 란에 '서버의 IP:8080'을 넣습니다. {1} 라우터의 필터에서 서버에서 나가는 웹을 허용하고 그 아래에서 다른 웹을 거부합니다."
+  ],
+  "4210859c": [
+    "Run the proxy on the server and enter \"server IP:8080\" in each PC's proxy field. In the router's filter, allow Web from the server and deny other Web below it.",
+    "서버에서 프록시를 돌리고 PC의 프록시 란에 '서버의 IP:8080'을 넣습니다. 라우터의 필터에서 서버에서 나가는 웹을 허용하고 그 아래에서 다른 웹을 거부합니다."
+  ],
+  "43897c2c": [
+    " Since each site has its own line, deny Web on the other sites' routers too.",
+    " 거점마다 회선이 있으므로 다른 거점의 라우터에서도 웹을 거부합니다."
+  ],
+  "5741ad87": [
+    "Connect the WAN of the router at {0} to line 2. On the router at {1}, write a route with destination {2}/32 and next hop {3} (the provider side of line 2). Narrower routes win, so only this destination leaves over line 2 while everything else follows 0.0.0.0/0 toward {4}. Add {6} to \"No-proxy destinations\" on the PCs at {5}.",
+    "{0} 라우터의 WAN을 회선2에 연결합니다. {1}의 라우터에 목적지 {2}/32, 넥스트 홉 {3}(회선2의 프로바이더 쪽)인 경로를 적습니다. 목적지 범위가 좁은 경로가 우선되므로 이 목적지만 회선2에서 나가고 나머지는 0.0.0.0/0 경로로 {4}(으)로 향합니다. {5} PC의 '프록시를 쓰지 않는 목적지'에 {6}을(를) 넣습니다."
+  ],
+  "dcff0434": [
+    "Run mail on the virtual server too, and forward mail (25) to it on the cloud. In public DNS, register the mail A record, the MX record and the SPF TXT record (v=spf1 ip4:{0} -all).",
+    "메일도 가상 서버에서 돌리고 클라우드의 포트 포워딩으로 메일(25)을 가상 서버로 보냅니다. 공개 DNS에는 mail의 A 레코드, MX 레코드, SPF의 TXT 레코드(v=spf1 ip4:{0} -all)를 등록합니다."
+  ],
+  "4870d42c": [
+    "Office",
+    "사내"
+  ],
+  "cd7eca67": [
+    "L3 switch-1",
+    "L3 스위치-1"
+  ],
+  "ce7ecbfa": [
+    "L3 switch-2",
+    "L3 스위치-2"
+  ],
+  "937ff771": [
+    "Server: {0} (VLAN {1})",
+    "서버: {0}(VLAN {1})"
+  ],
+  "11017a1b": [
+    "Connect each floor's devices to that floor's VLAN switch (already installed by the client)\nConnect the server and router to the 1F switch",
+    "각 층의 기기는 그 층의 VLAN 지원 스위치(고객 기설)에 연결한다\n서버와 라우터는 1층 스위치에 연결한다"
+  ],
+  "b81d7d2d": [
+    "Connect each floor's devices to that floor's VLAN switch (already installed by the client)\nConnect the server to the 1F switch",
+    "각 층의 기기는 그 층의 VLAN 지원 스위치(고객 기설)에 연결한다\n서버는 1층 스위치에 연결한다"
+  ],
+  "02e8a909": [
+    "Place two L3 switches and connect each floor's switch to both of them with trunks\nTraffic must continue even if either unit stops or one cable breaks",
+    "L3 스위치를 2대 놓고 각 층 스위치에서 각각에 트렁크로 연결한다\n어느 1대가 멈춰도, 케이블이 1개 끊겨도 통신이 이어질 것"
+  ],
+  "249ed1c8": [
+    "The line is already under contract. Public DNS is 8.8.8.8\nNetwork between the router and L3 switches: {0} (VLAN 99)",
+    "회선은 계약 완료. 공개 DNS는 8.8.8.8\n라우터와 L3 스위치 사이의 네트워크: {0}(VLAN 99)"
+  ],
+  "287edfe4": [
+    "Create VLAN interfaces for the same VLANs on both L3 switches. Give them different IP addresses on the two units, and enter the same address in \"Virtual IP\" on both. Set the gateway of the endpoints and server to this virtual IP address.",
+    "2대의 L3 스위치에 같은 VLAN의 VLAN 인터페이스를 만듭니다. IP 주소는 2대에서 다르게 하고 '가상 IP'에는 2대 모두 같은 주소를 넣습니다. 단말과 서버의 게이트웨이는 이 가상 IP 주소로 합니다."
+  ],
+  "ee597596": [
+    "Run one trunk from each floor's switch to each of the two L3 switches. Set the ports at both ends of a trunk to Trunk. VLAN switches and L3 switches keep working even when cabled in a loop.",
+    "각 층의 스위치에서 2대의 L3 스위치로 1개씩 트렁크로 연결합니다. 트렁크는 양쪽 포트를 트렁크로 합니다. VLAN 지원 스위치와 L3 스위치는 고리가 되어도 통신이 멈추지 않습니다."
+  ],
+  "c26f2525": [
+    "Connect the server to a port on the 1F switch and assign the server VLAN number to that port. Create the server VLAN interface on both L3 switches too.",
+    "서버는 1층 스위치의 포트에 연결하고 그 포트에 서버용 VLAN 번호를 할당합니다. L3 스위치에는 서버용 VLAN 인터페이스도 2대 모두 만듭니다."
+  ],
+  "eaf38ee7": [
+    "Connect the router's LAN1 to the 1F switch as well and set that port to VLAN 99. Create a VLAN 99 interface and virtual IP on both L3 switches and point their default route to the router. On the router, write routes back to each office network via the VLAN 99 virtual IP address.",
+    "라우터의 LAN1도 1층 스위치에 연결하고 그 포트를 VLAN 99로 합니다. L3 스위치 2대에 VLAN 99 인터페이스와 가상 IP를 만들고 기본 경로를 라우터로 향하게 합니다. 라우터에는 사내 각 네트워크로 돌아오는 경로를 VLAN 99의 가상 IP 주소 앞으로 적습니다."
+  ]
+}
