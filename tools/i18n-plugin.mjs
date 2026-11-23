@@ -7,7 +7,8 @@
 // 正規表現の中の日本語は書き換えない。表示の文字で判定している処理は、言語に関係なく動くように別に作る(AGENTS.md)
 import { parseAst, transformWithOxc } from 'vite';
 
-export const JA = /[ぁ-んァ-ヶ一-龠々〆]/;
+// 「、」「。」も入れる(名前を「、」で並べる join('、') などを、言語ごとの区切りに替えるため)
+export const JA = /[ぁ-んァ-ヶ一-龠々〆、。]/;
 /** 文字列のID(FNV-1a の32ビット、16進8桁) */
 export const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16).padStart(8, '0'); };
 const INLINE = new Set(['b', 'code', 'i', 'em', 'strong', 'br', 'u', 's']);
