@@ -38,7 +38,8 @@ export function problems({ keys, tr }) {
       if (typeof t !== 'string' || !t) { out.push(`${h}: ${name}がない: ${ja.slice(0, 40)}`); continue; }
       if ([...new Set(t.match(/\{\d+\}/g) ?? [])].some(x => !ja.includes(x))) out.push(`${h}: ${name}に、日本語にない差し込みがある: ${t.slice(0, 60)}`);
       if ([...new Set(ja.match(/\{\d+\}/g) ?? [])].some(x => !t.includes(x))) out.push(`${h}: ${name}で、差し込みが抜けている(${ph(ja)}): ${t.slice(0, 60)}`);
-      for (const mark of ['・', '例:']) if (ja.startsWith(mark) !== t.startsWith(mark)) out.push(`${h}: ${name}の行頭の印(${mark})が日本語と違う: ${t.slice(0, 40)}`);
+      // 箇条書きの「・」は、すぐあとに文字が続くものだけ(「・ 」は区切りの記号)
+      for (const mark of ['・', '例:']) if ((ja.startsWith(mark) && !ja.startsWith('・ ')) !== (t.startsWith(mark) && !t.startsWith('・ '))) out.push(`${h}: ${name}の行頭の印(${mark})が日本語と違う: ${t.slice(0, 40)}`);
       if ((ja.match(/<[a-z]+/g) ?? []).length !== (t.match(/<[a-z]+/g) ?? []).length) out.push(`${h}: ${name}のタグの数が日本語と違う: ${t.slice(0, 60)}`);
     }
   }
